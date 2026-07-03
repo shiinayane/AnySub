@@ -6,16 +6,21 @@ import { pickBestVideo } from './locator.js';
 import { setVideo, startRender, setRenderer, applyStyle } from './controller.js';
 import { invalidateLayout } from './overlay.js';
 import { createTextRenderer } from './render-text.js';
+import { createAssRenderer } from './render-ass.js';
+import { parseAss } from './parse-ass.js';
 import { toast, updateStatus } from './notify.js';
 
-// 格式注册表:决定用哪个渲染器 + 如何把文件变成 state.cues。
-// 加 ASS 时:在前面插一条 { test: n => /\.(ass|ssa)$/i.test(n), parse: t => ({ ass: t }), create: createAssRenderer },
-// 并把文本项的 test 收紧为 /\.(srt|vtt|sbv)$/i。
+// 格式注册表:test 命中即用其 parse(填充文本保底 cues)+ create(渲染器)。
 const FORMATS = [
   {
-    test: () => true, // 目前文本渲染器作为兜底
+    test: (name) => /\.(ass|ssa)$/i.test(name || ''),
+    parse: (text) => ({ cues: parseAss(text), assText: text }),
+    create: (parsed) => createAssRenderer(parsed.assText),
+  },
+  {
+    test: () => true, // 文本渲染器兜底(SRT / VTT / 其它)
     parse: (text, name) => ({ cues: parseSubtitle(text, name) }),
-    create: createTextRenderer,
+    create: () => createTextRenderer(),
   },
 ];
 
@@ -38,7 +43,7 @@ export function loadFile(file) {
       state.cues = parsed.cues;
       state.fileName = file.name;
       invalidateLayout();
-      setRenderer(fmt.create());
+      setRenderer(fmt.create(parsed));
       applyStyle();
       startRender();
       updateStatus();

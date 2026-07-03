@@ -4,10 +4,12 @@
 
 Chrome / Edge / Safari / Firefox 通用。
 
-## 功能(v0.6.0)
+## 功能(v0.7.0)
 
-- 📂 本地字幕文件挂载(选择 / 拖拽 / **清除**),**文件不出本机、不联网**
-- 🎬 支持 **SRT / VTT**(ASS/SSA 降级为纯文本;高保真渲染在后续版本)
+- 📂 本地字幕文件挂载(选择 / 拖拽 / **清除**),**文件不出本机**(SRT/VTT 全程离线)
+- 🎬 支持 **SRT / VTT / ASS / SSA**
+- ✨ **ASS/SSA 高保真渲染**:懒加载 [libass-wasm](https://github.com/libass/JavascriptSubtitlesOctopus),
+  还原斜体/粗体/描边/定位/特效/字体;**加载失败(无网/CSP)自动降级为纯文本**,字幕始终可见
 - 🎨 **自绘覆盖层渲染**:样式完全可控且跨浏览器一致(不受 Safari `::cue` 限制)
   - 背景:描边 / **半透明(默认)** / 黑底 / 无
   - 颜色:白 / 黄 / 青 / 绿
@@ -66,8 +68,11 @@ src/
 ├── locator.js      穿透 Shadow DOM 定位 <video>
 ├── decode.js       读取文件 + 编码探测(UTF-8→GBK→Big5)
 ├── parse.js        SRT/VTT → 统一 cue 结构(XSS 安全、时间排序)
+├── parse-ass.js    ASS/SSA → cue(文本保底用)
 ├── overlay.js      覆盖层定位 / 全屏跟随(格式无关)
 ├── render-text.js  文本渲染器(实现 renderer 接口)
+├── render-ass.js   ASS 渲染器:文本保底 + libass 升级
+├── octopus-loader.js  懒加载 libass-wasm(blob worker + CDN wasm/字体)
 ├── controller.js   渲染循环 + 视频生命周期 + 当前渲染器
 ├── loader.js       载入流程 + 格式注册表(分派渲染器)
 ├── ui.js           面板 + 胶囊 + 拖拽吸附 + 选视频
@@ -92,15 +97,18 @@ npm run build && python3 -m http.server 8000
 ## 路线图
 
 - [x] ~~自绘覆盖层:样式可控、字号随播放器缩放、全屏跟随~~(v0.2.0)
-- [ ] **阶段二**:ASS/SSA 高保真渲染(懒加载 [libass-wasm](https://github.com/libass/JavascriptSubtitlesOctopus))
 - [x] ~~设置持久化(字号 / 位置 / 背景 / 颜色)~~(v0.4.0)
+- [x] ~~ASS/SSA 高保真渲染(libass-wasm),失败降级纯文本~~(v0.7.0)
 - [ ] 跨域 iframe 内视频支持
 - [ ] 更多格式(SUB/SBV/LRC/SMI/TTML)与在线字幕搜索
+- [ ] ASS 自定义字体(内嵌 / 用户提供,改善冷门字体还原)
 
 ## 设计说明
 
 **渲染层**用自绘覆盖层(在视频上叠一层 `div`,按 `timeupdate` 显示当前字幕):相比原生 `TextTrack` / `::cue`,能完全掌控背景/描边/颜色/位置,且字号按播放器高度等比缩放,跨浏览器(尤其 Safari)一致。渲染采用**事件驱动 + 120ms 定时兜底**而非 `requestAnimationFrame`——rAF 在后台标签会被暂停,事件驱动同时更省 CPU。全屏时把覆盖层重新挂到 `document.fullscreenElement` 上以避免被顶层遮挡。
 
-所有本地文件通过标准 `<input type=file>` / 拖拽读取,不使用任何 `GM_*` 接口,以保证 Safari 完整兼容。ASS 特效渲染留给阶段二的 libass-wasm 模块。
+所有本地文件通过标准 `<input type=file>` / 拖拽读取,不使用任何 `GM_*` 接口,以保证 Safari 完整兼容。
+
+**ASS 高保真**采用「先保底、后升级」:打开 `.ass/.ssa` 时先用文本渲染器立即显示(离线可用),同时后台懒加载 libass-wasm——主脚本经 blob `<script>` 注入(避开 `eval`/CSP inline),worker 整段包进 blob 并预置 `Module.locateFile` 使 wasm/字体从 CDN(jsdelivr)加载(绕过跨域 worker 限制)。就绪后切换到 canvas 高保真渲染并撤下文本;若任一步被网络或站点 CSP(`worker-src`/`connect-src`/`script-src`)拦截,则**保留文本渲染**,字幕始终可见。libass-wasm 不含字体,故指定含 CJK 的 Noto Sans SC 作 fallback,避免渲染空白。
 
 > 已知限制:若站点对**裸 `<video>` 元素**(而非其容器)请求全屏,DOM 覆盖层无法叠加其上;绝大多数站点全屏的是播放器容器,不受影响。

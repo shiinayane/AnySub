@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.6.0
+// @version      0.7.0
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -443,10 +443,172 @@
 			}
 		};
 	}
+	var CDN = `https://cdn.jsdelivr.net/npm/libass-wasm@4.1.0/dist/js/`;
+	var FALLBACK_FONT = "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.5/files/noto-sans-sc-chinese-simplified-400-normal.woff2";
+	var loadPromise = null;
+	function loadOctopus() {
+		if (loadPromise) return loadPromise;
+		loadPromise = doLoad().catch((err) => {
+			loadPromise = null;
+			throw err;
+		});
+		return loadPromise;
+	}
+	async function doLoad() {
+		if (!window.SubtitlesOctopus) {
+			await injectScript(await fetchText(CDN + "subtitles-octopus.js"));
+			if (!window.SubtitlesOctopus) throw new Error("SubtitlesOctopus 未定义(可能被 CSP 拦截)");
+		}
+		const workerText = await fetchText(CDN + "subtitles-octopus-worker.js");
+		const prefix = "var Module={locateFile:function(p){return " + JSON.stringify(CDN) + "+p;}};\n";
+		const workerUrl = URL.createObjectURL(new Blob([prefix + workerText], { type: "text/javascript" }));
+		return {
+			Octopus: window.SubtitlesOctopus,
+			workerUrl,
+			fallbackFont: FALLBACK_FONT
+		};
+	}
+	function fetchText(url) {
+		return fetch(url, { credentials: "omit" }).then((r) => {
+			if (!r.ok) throw new Error(`加载失败 ${r.status}: ${url}`);
+			return r.text();
+		});
+	}
+	function injectScript(text) {
+		return new Promise((resolve, reject) => {
+			const s = document.createElement("script");
+			s.src = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+			s.onload = () => resolve();
+			s.onerror = () => reject(new Error("主脚本注入失败(可能被 CSP 拦截)"));
+			(document.head || document.documentElement).appendChild(s);
+		});
+	}
+	function createAssRenderer(assText) {
+		const textRenderer = createTextRenderer();
+		let octopus = null;
+		let usingLibass = false;
+		let disposed = false;
+		function tryLibass() {
+			loadOctopus().then(({ Octopus, workerUrl, fallbackFont }) => {
+				if (disposed || !state.video) return;
+				octopus = new Octopus({
+					video: state.video,
+					subContent: assText,
+					workerUrl,
+					fallbackFont,
+					onReady: () => {
+						if (disposed) {
+							safeDispose();
+							return;
+						}
+						usingLibass = true;
+						textRenderer.destroy();
+						toast("已启用 ASS 高保真渲染");
+					},
+					onError: (e) => {
+						console.warn("[AnySub] libass 渲染出错,保留文本", e);
+					}
+				});
+			}).catch((err) => {
+				console.warn("[AnySub] 无法加载 libass,使用文本渲染:", err && err.message);
+				toast("ASS 按文本显示(高保真渲染不可用)");
+			});
+		}
+		function safeDispose() {
+			if (octopus) {
+				try {
+					octopus.dispose();
+				} catch (_) {}
+				octopus = null;
+			}
+		}
+		return {
+			mount() {
+				textRenderer.mount();
+				tryLibass();
+			},
+			renderAt(v, rect, layoutChanged) {
+				if (!usingLibass) textRenderer.renderAt(v, rect, layoutChanged);
+			},
+			applyStyle() {
+				if (!usingLibass) textRenderer.applyStyle();
+			},
+			destroy() {
+				disposed = true;
+				textRenderer.destroy();
+				safeDispose();
+			}
+		};
+	}
+	function parseAss(text) {
+		const lines = text.split(/\r?\n/);
+		const cues = [];
+		let inEvents = false;
+		let idxStart = 1, idxEnd = 2, idxText = 9;
+		for (const raw of lines) {
+			const line = raw.trim();
+			if (/^\[/.test(line)) {
+				inEvents = /^\[events\]/i.test(line);
+				continue;
+			}
+			if (!inEvents) continue;
+			if (/^format\s*:/i.test(line)) {
+				const cols = line.slice(line.indexOf(":") + 1).split(",").map((s) => s.trim().toLowerCase());
+				const s = cols.indexOf("start"), e = cols.indexOf("end"), t = cols.indexOf("text");
+				if (s >= 0) idxStart = s;
+				if (e >= 0) idxEnd = e;
+				if (t >= 0) idxText = t;
+				continue;
+			}
+			if (/^dialogue\s*:/i.test(line)) {
+				const fields = splitFields(line.slice(line.indexOf(":") + 1), idxText);
+				const start = assTime(fields[idxStart]);
+				const end = assTime(fields[idxEnd]);
+				if (!isFinite(start) || !isFinite(end) || end <= start) continue;
+				let body = (fields[idxText] || "").replace(/\\N/gi, "\n").replace(/\\h/gi, " ");
+				body = sanitize(body);
+				if (body) cues.push({
+					start,
+					end,
+					text: body
+				});
+			}
+		}
+		cues.sort((a, b) => a.start - b.start);
+		return cues;
+	}
+	function splitFields(rest, textIdx) {
+		const out = [];
+		let start = 0;
+		for (let i = 0; i < textIdx; i++) {
+			const c = rest.indexOf(",", start);
+			if (c < 0) {
+				out.push(rest.slice(start));
+				return out;
+			}
+			out.push(rest.slice(start, c));
+			start = c + 1;
+		}
+		out.push(rest.slice(start));
+		return out;
+	}
+	function assTime(t) {
+		if (!t) return NaN;
+		const m = t.trim().match(/^(\d+):(\d{1,2}):(\d{1,2})[.,](\d{1,3})$/);
+		if (!m) return NaN;
+		return +m[1] * 3600 + +m[2] * 60 + +m[3] + parseFloat("0." + m[4]);
+	}
 	var FORMATS = [{
+		test: (name) => /\.(ass|ssa)$/i.test(name || ""),
+		parse: (text) => ({
+			cues: parseAss(text),
+			assText: text
+		}),
+		create: (parsed) => createAssRenderer(parsed.assText)
+	}, {
 		test: () => true,
 		parse: (text, name) => ({ cues: parseSubtitle(text, name) }),
-		create: createTextRenderer
+		create: () => createTextRenderer()
 	}];
 	function loadFile(file) {
 		if (!file) return;
@@ -468,7 +630,7 @@
 			state.cues = parsed.cues;
 			state.fileName = file.name;
 			invalidateLayout();
-			setRenderer(fmt.create());
+			setRenderer(fmt.create(parsed));
 			applyStyle();
 			startRender();
 			updateStatus();

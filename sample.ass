@@ -1,0 +1,17 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 384
+PlayResY: 288
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, Bold, Outline, Alignment, MarginV
+Style: Default,Arial,24,&H00FFFFFF,&H00000000,0,2,2,20
+Style: Top,Arial,22,&H0000E5FF,&H00000000,1,2,8,20
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,AnySub ASS 高保真渲染测试
+Dialogue: 0,0:00:02.00,0:00:05.00,Top,,0,0,0,,{\fad(300,300)}顶部彩色字幕(libass)
+Dialogue: 0,0:00:05.50,0:00:09.00,Default,,0,0,0,,支持{\i1}斜体{\i0}、{\b1}粗体{\b0}与\N换行
+Dialogue: 0,0:00:09.50,0:00:14.00,Default,,0,0,0,,{\pos(192,240)}\N定位、描边、字体等特效
+Dialogue: 0,0:00:14.50,0:00:19.00,Default,,0,0,0,,无网络/被 CSP 拦截时自动降级为纯文本
