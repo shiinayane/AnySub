@@ -1,7 +1,7 @@
 // AnySub 入口:初始化 UI + 动态视频监听
 import { state } from './state.js';
 import { injectStyle } from './styles.js';
-import { buildUI } from './ui.js';
+import { buildUI, updateFabVisibility } from './ui.js';
 import { pickBestVideo } from './locator.js';
 import { setVideo } from './render.js';
 import { loadSettings } from './storage.js';
@@ -17,6 +17,7 @@ function init() {
   restoreSettings();
   injectStyle();
   buildUI();
+  updateFabVisibility();
   watchVideos();
 }
 
@@ -30,13 +31,19 @@ function restoreSettings() {
   if (typeof saved.color === 'string') s.color = saved.color;
 }
 
-// SPA 切换视频后自动重新挂载
+// 监听 DOM 变化:切换胶囊可见性 + SPA 换视频后自动重新挂载(防抖,避免频繁全 DOM 遍历)
 function watchVideos() {
-  const mo = new MutationObserver(() => {
+  let timer = 0;
+  const react = () => {
     if (state.video && !state.video.isConnected && state.cues.length) {
       const nv = pickBestVideo();
       if (nv && nv !== state.video) setVideo(nv);
     }
+    updateFabVisibility();
+  };
+  const mo = new MutationObserver(() => {
+    clearTimeout(timer);
+    timer = setTimeout(react, 300);
   });
   mo.observe(document.documentElement, { childList: true, subtree: true });
 }

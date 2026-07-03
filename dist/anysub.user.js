@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.4.0
+// @version      0.5.0
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -534,6 +534,11 @@
 		makeDraggable(fab);
 		syncControls();
 	}
+	function updateFabVisibility() {
+		const hasVideo = collectVideos().length > 0;
+		refs.fab.style.display = hasVideo ? "" : "none";
+		if (!hasVideo && refs.panel) refs.panel.style.display = "none";
+	}
 	function syncControls() {
 		const { panel } = refs;
 		const s = state.style;
@@ -678,6 +683,7 @@
 		restoreSettings();
 		injectStyle();
 		buildUI();
+		updateFabVisibility();
 		watchVideos();
 	}
 	function restoreSettings() {
@@ -689,11 +695,17 @@
 		if (typeof saved.color === "string") s.color = saved.color;
 	}
 	function watchVideos() {
-		new MutationObserver(() => {
+		let timer = 0;
+		const react = () => {
 			if (state.video && !state.video.isConnected && state.cues.length) {
 				const nv = pickBestVideo();
 				if (nv && nv !== state.video) setVideo(nv);
 			}
+			updateFabVisibility();
+		};
+		new MutationObserver(() => {
+			clearTimeout(timer);
+			timer = setTimeout(react, 300);
 		}).observe(document.documentElement, {
 			childList: true,
 			subtree: true

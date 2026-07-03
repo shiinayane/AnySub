@@ -153,6 +153,13 @@ function wireEvents() {
   syncControls();
 }
 
+// 仅当页面存在 <video> 时才显示胶囊;无视频时连面板一起收起
+export function updateFabVisibility() {
+  const hasVideo = collectVideos().length > 0;
+  refs.fab.style.display = hasVideo ? '' : 'none';
+  if (!hasVideo && refs.panel) refs.panel.style.display = 'none';
+}
+
 // 用(可能已从持久化恢复的)state.style 同步各控件的初始显示
 function syncControls() {
   const { panel } = refs;
