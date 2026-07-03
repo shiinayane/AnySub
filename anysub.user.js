@@ -2,7 +2,7 @@
 // @name         AnySub · 通用字幕挂载
 // @name:en      AnySub · Universal Subtitle Loader
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.2.0
+// @version      0.3.0
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @description:en Load local subtitle files (SRT/VTT) onto any HTML5 video with a custom overlay renderer: full style control, player-relative font scaling, fullscreen following.
 // @author       shiinayane
@@ -41,7 +41,7 @@
     active: false,      // 渲染循环是否运行
     style: {
       fontPct: 100,     // 字号百分比,100% = 视频高度的 4.5%
-      bg: 'outline',    // 'outline' | 'translucent' | 'solid' | 'none'
+      bg: 'translucent',// 'outline' | 'translucent' | 'solid' | 'none'
       color: '#ffffff',
       bottomPct: 8,     // 距底部 = 视频高度的百分比
     },
@@ -312,6 +312,19 @@
       .catch((err) => { console.error('[AnySub]', err); toast('读取字幕失败:' + err.message); });
   }
 
+  function clearSubtitle() {
+    if (!state.cues.length) { toast('当前没有字幕'); return; }
+    state.cues = [];
+    state.fileName = '';
+    state.active = false;
+    if (intervalId) { clearInterval(intervalId); intervalId = 0; }
+    if (overlay) overlay.style.display = 'none';
+    if (cueBox) cueBox.innerHTML = '';
+    lastHtml = '';
+    updateStatus();
+    toast('已清除字幕');
+  }
+
   // ────────────────────────────────────────────────────────────
   // UI
   // ────────────────────────────────────────────────────────────
@@ -330,8 +343,9 @@
 
     fab = document.createElement('div');
     fab.id = 'anysub-fab';
+    fab.className = 'dock-right';
     fab.textContent = '字';
-    fab.title = 'AnySub · 点击打开字幕面板(可拖动)';
+    fab.title = 'AnySub · 点击打开字幕面板(可拖动,松手吸附到最近边缘)';
 
     panel = document.createElement('div');
     panel.id = 'anysub-panel';
@@ -341,13 +355,15 @@
       <div class="anysub-row">
         <button id="anysub-choose">选择字幕文件</button>
         <button id="anysub-pickvid" title="页面多个视频时,点此再点视频画面指定">选视频</button>
+        <button id="anysub-clear">清除</button>
       </div>
       <div class="anysub-row anysub-drop" id="anysub-drop">或将字幕文件拖到这里</div>
       <div class="anysub-row">
         <label>偏移</label>
-        <button data-off="-1">−1s</button><button data-off="-0.5">−0.5</button>
-        <span id="anysub-offset">0.0s</span>
-        <button data-off="0.5">+0.5</button><button data-off="1">+1s</button>
+        <button data-off="-1">−1</button><button data-off="-0.1">−0.1</button>
+        <input type="number" id="anysub-offset" value="0.0" step="0.1" title="可手动输入,单位秒">
+        <span class="anysub-unit">s</span>
+        <button data-off="0.1">+0.1</button><button data-off="1">+1</button>
       </div>
       <div class="anysub-row">
         <label>字号</label>
@@ -362,8 +378,8 @@
       <div class="anysub-row">
         <label>背景</label>
         <div class="anysub-seg" id="anysub-bg">
-          <button data-bg="outline" class="on">描边</button>
-          <button data-bg="translucent">半透</button>
+          <button data-bg="outline">描边</button>
+          <button data-bg="translucent" class="on">半透</button>
           <button data-bg="solid">黑底</button>
           <button data-bg="none">无</button>
         </div>
@@ -396,18 +412,26 @@
     // 打开/关闭(拖动时不触发)
     fab.addEventListener('click', () => {
       if (fab.__dragged) { fab.__dragged = false; return; }
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      const show = panel.style.display === 'none';
+      panel.style.display = show ? 'block' : 'none';
+      if (show) positionPanel();
     });
     panel.querySelector('#anysub-close').addEventListener('click', () => { panel.style.display = 'none'; });
     panel.querySelector('#anysub-choose').addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); fileInput.value = ''; });
     panel.querySelector('#anysub-pickvid').addEventListener('click', startPickVideo);
+    panel.querySelector('#anysub-clear').addEventListener('click', clearSubtitle);
 
+    const offInput = panel.querySelector('#anysub-offset');
     panel.querySelectorAll('[data-off]').forEach((b) => b.addEventListener('click', () => {
       state.offset = Math.round((state.offset + parseFloat(b.dataset.off)) * 10) / 10;
-      panel.querySelector('#anysub-offset').textContent = state.offset.toFixed(1) + 's';
+      offInput.value = state.offset.toFixed(1);
       renderTick();
     }));
+    offInput.addEventListener('input', () => {
+      const val = parseFloat(offInput.value);
+      if (!isNaN(val)) { state.offset = val; renderTick(); }
+    });
 
     const fontR = panel.querySelector('#anysub-font');
     fontR.addEventListener('input', () => {
@@ -448,29 +472,56 @@
     });
   }
 
-  // 胶囊拖动(避免遮挡画面时可自由移动)
+  // 胶囊拖动 + 松手吸附到最近的左右边缘
   function makeDraggable(el) {
     let sx, sy, ox, oy, moved;
     el.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       const r = el.getBoundingClientRect();
       sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top; moved = false;
+      el.classList.add('dragging');
+      el.classList.remove('dock-left', 'dock-right');
+      el.style.left = r.left + 'px'; el.style.top = r.top + 'px';
+      el.style.right = 'auto'; el.style.bottom = 'auto';
       el.setPointerCapture(e.pointerId);
       const move = (ev) => {
         const dx = ev.clientX - sx, dy = ev.clientY - sy;
         if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
-        el.style.left = Math.max(0, ox + dx) + 'px';
-        el.style.top = Math.max(0, oy + dy) + 'px';
-        el.style.right = 'auto'; el.style.bottom = 'auto';
+        el.style.left = Math.min(window.innerWidth - r.width, Math.max(0, ox + dx)) + 'px';
+        el.style.top = Math.min(window.innerHeight - r.height, Math.max(0, oy + dy)) + 'px';
       };
       const up = () => {
         el.__dragged = moved;
+        el.classList.remove('dragging');
         el.removeEventListener('pointermove', move);
         el.removeEventListener('pointerup', up);
+        snapFab(el);
       };
       el.addEventListener('pointermove', move);
       el.addEventListener('pointerup', up);
     });
+  }
+
+  // 吸附:根据释放位置贴到最近的左/右边缘,保留竖直位置
+  function snapFab(el) {
+    const r = el.getBoundingClientRect();
+    const W = window.innerWidth || document.documentElement.clientWidth || 1;
+    const onRight = r.left + r.width / 2 >= W / 2;
+    el.style.left = ''; el.style.right = ''; el.style.bottom = 'auto';
+    el.style.top = Math.min(window.innerHeight - r.height - 4, Math.max(4, r.top)) + 'px';
+    el.classList.add(onRight ? 'dock-right' : 'dock-left');
+  }
+
+  // 面板贴着胶囊所在的一侧弹出
+  function positionPanel() {
+    const fr = fab.getBoundingClientRect();
+    const W = window.innerWidth || document.documentElement.clientWidth || 1;
+    const onRight = fr.left + fr.width / 2 >= W / 2;
+    panel.style.left = ''; panel.style.right = ''; panel.style.top = ''; panel.style.bottom = '';
+    if (onRight) panel.style.right = '12px'; else panel.style.left = '12px';
+    const H = window.innerHeight || document.documentElement.clientHeight || 800;
+    const ph = panel.offsetHeight || 380;
+    panel.style.top = Math.max(10, Math.min(H - ph - 10, fr.top - ph / 2)) + 'px';
   }
 
   // 手动选视频
@@ -524,13 +575,19 @@
         max-width:92%;text-align:center;line-height:1.25;white-space:pre-wrap;word-break:break-word;
         font-family:-apple-system,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;
         font-weight:600;border-radius:4px;box-sizing:border-box;}
-      #anysub-fab{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:30px;height:30px;
+      #anysub-fab{position:fixed;bottom:28%;z-index:2147483646;width:30px;height:30px;
         display:flex;align-items:center;justify-content:center;
         background:#2b6cff;color:#fff;border-radius:50%;
         font:14px/1 -apple-system,system-ui,sans-serif;cursor:grab;user-select:none;touch-action:none;
-        box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:.35;transition:opacity .25s;}
+        box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:.35;transition:opacity .25s,transform .2s;}
       #anysub-fab:hover{opacity:1;}
       #anysub-fab:active{cursor:grabbing;}
+      #anysub-fab.dock-right{right:0;}
+      #anysub-fab.dock-left{left:0;}
+      #anysub-fab.dock-right:not(.dragging){transform:translateX(32%);}
+      #anysub-fab.dock-left:not(.dragging){transform:translateX(-32%);}
+      #anysub-fab.dock-right:hover,#anysub-fab.dock-left:hover{transform:translateX(0);}
+      #anysub-fab.dragging{transition:none;cursor:grabbing;}
       #anysub-panel{position:fixed;right:16px;bottom:54px;z-index:2147483647;width:270px;
         background:#1e1e1e;color:#eee;border-radius:10px;padding:10px;
         font:13px/1.4 -apple-system,system-ui,sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.5);}
@@ -545,7 +602,10 @@
       #anysub-panel .anysub-seg{display:flex;gap:4px;flex:1;flex-wrap:wrap;}
       #anysub-panel .anysub-seg button{flex:1;min-width:40px;}
       #anysub-panel .anysub-drop{justify-content:center;border:1px dashed #555;border-radius:6px;padding:10px;opacity:.6;font-size:12px;}
-      #anysub-offset{min-width:44px;text-align:center;}
+      #anysub-offset{width:48px;text-align:center;background:#2a2a2a;color:#eee;
+        border:1px solid #555;border-radius:6px;padding:4px 2px;font-size:12px;-moz-appearance:textfield;}
+      #anysub-offset::-webkit-outer-spin-button,#anysub-offset::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+      #anysub-panel .anysub-unit{opacity:.6;font-size:12px;margin-left:-2px;}
       #anysub-font,#anysub-pos{flex:1;}
       #anysub-panel .anysub-status{opacity:.6;font-size:12px;word-break:break-all;}
       .anysub-vidpick{position:fixed;z-index:2147483647;border:3px solid #2b6cff;background:rgba(43,108,255,.15);cursor:pointer;box-sizing:border-box;}
