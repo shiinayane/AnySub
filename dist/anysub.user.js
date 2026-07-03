@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.3.0
+// @version      0.4.0
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -365,6 +365,28 @@
 			toast("读取字幕失败:" + err.message);
 		});
 	}
+	var KEY = "anysub:settings:v1";
+	function loadSettings() {
+		try {
+			return JSON.parse(localStorage.getItem(KEY)) || {};
+		} catch (_) {
+			return {};
+		}
+	}
+	function saveSettings(obj) {
+		try {
+			localStorage.setItem(KEY, JSON.stringify(obj));
+		} catch (_) {}
+	}
+	function persist() {
+		const s = state.style;
+		saveSettings({
+			fontPct: s.fontPct,
+			bottomPct: s.bottomPct,
+			bg: s.bg,
+			color: s.color
+		});
+	}
 	var PANEL_HTML = `
   <div class="anysub-row anysub-head"><span>AnySub 字幕</span><span id="anysub-close">✕</span></div>
   <div class="anysub-row">
@@ -487,6 +509,7 @@
 			panel.querySelector("#anysub-fontval").textContent = state.style.fontPct + "%";
 			invalidateLayout();
 			renderTick();
+			persist();
 		});
 		const posR = panel.querySelector("#anysub-pos");
 		posR.addEventListener("input", () => {
@@ -494,18 +517,37 @@
 			panel.querySelector("#anysub-posval").textContent = state.style.bottomPct + "%";
 			invalidateLayout();
 			renderTick();
+			persist();
 		});
 		setupSeg("#anysub-bg", "bg", (val) => {
 			state.style.bg = val;
 			applyStyle();
+			persist();
 		});
 		setupSeg("#anysub-color", "color", (val) => {
 			state.style.color = val;
 			applyStyle();
+			persist();
 		});
 		setupDrop(panel.querySelector("#anysub-drop"));
 		setupDrop(document.body);
 		makeDraggable(fab);
+		syncControls();
+	}
+	function syncControls() {
+		const { panel } = refs;
+		const s = state.style;
+		const fontR = panel.querySelector("#anysub-font");
+		fontR.value = s.fontPct;
+		panel.querySelector("#anysub-fontval").textContent = s.fontPct + "%";
+		const posR = panel.querySelector("#anysub-pos");
+		posR.value = s.bottomPct;
+		panel.querySelector("#anysub-posval").textContent = s.bottomPct + "%";
+		setSegActive("#anysub-bg", "bg", s.bg);
+		setSegActive("#anysub-color", "color", s.color);
+	}
+	function setSegActive(sel, attr, val) {
+		refs.panel.querySelectorAll(`${sel} button`).forEach((b) => b.classList.toggle("on", b.dataset[attr] === val));
 	}
 	function setupSeg(sel, attr, cb) {
 		const group = refs.panel.querySelector(sel);
@@ -633,9 +675,18 @@
 			requestAnimationFrame(init);
 			return;
 		}
+		restoreSettings();
 		injectStyle();
 		buildUI();
 		watchVideos();
+	}
+	function restoreSettings() {
+		const saved = loadSettings();
+		const s = state.style;
+		if (typeof saved.fontPct === "number") s.fontPct = saved.fontPct;
+		if (typeof saved.bottomPct === "number") s.bottomPct = saved.bottomPct;
+		if (typeof saved.bg === "string") s.bg = saved.bg;
+		if (typeof saved.color === "string") s.color = saved.color;
 	}
 	function watchVideos() {
 		new MutationObserver(() => {

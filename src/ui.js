@@ -5,6 +5,13 @@ import { renderTick, applyStyle, clearSubtitle, setVideo, invalidateLayout } fro
 import { loadFile } from './loader.js';
 import { collectVideos, isVisible } from './locator.js';
 import { toast } from './notify.js';
+import { saveSettings } from './storage.js';
+
+// 持久化当前样式偏好(偏移不入库)
+function persist() {
+  const s = state.style;
+  saveSettings({ fontPct: s.fontPct, bottomPct: s.bottomPct, bg: s.bg, color: s.color });
+}
 
 const PANEL_HTML = `
   <div class="anysub-row anysub-head"><span>AnySub 字幕</span><span id="anysub-close">✕</span></div>
@@ -128,21 +135,41 @@ function wireEvents() {
   fontR.addEventListener('input', () => {
     state.style.fontPct = parseInt(fontR.value, 10);
     panel.querySelector('#anysub-fontval').textContent = state.style.fontPct + '%';
-    invalidateLayout(); renderTick();
+    invalidateLayout(); renderTick(); persist();
   });
   const posR = panel.querySelector('#anysub-pos');
   posR.addEventListener('input', () => {
     state.style.bottomPct = parseInt(posR.value, 10);
     panel.querySelector('#anysub-posval').textContent = state.style.bottomPct + '%';
-    invalidateLayout(); renderTick();
+    invalidateLayout(); renderTick(); persist();
   });
 
-  setupSeg('#anysub-bg', 'bg', (val) => { state.style.bg = val; applyStyle(); });
-  setupSeg('#anysub-color', 'color', (val) => { state.style.color = val; applyStyle(); });
+  setupSeg('#anysub-bg', 'bg', (val) => { state.style.bg = val; applyStyle(); persist(); });
+  setupSeg('#anysub-color', 'color', (val) => { state.style.color = val; applyStyle(); persist(); });
 
   setupDrop(panel.querySelector('#anysub-drop'));
   setupDrop(document.body);
   makeDraggable(fab);
+  syncControls();
+}
+
+// 用(可能已从持久化恢复的)state.style 同步各控件的初始显示
+function syncControls() {
+  const { panel } = refs;
+  const s = state.style;
+  const fontR = panel.querySelector('#anysub-font');
+  fontR.value = s.fontPct;
+  panel.querySelector('#anysub-fontval').textContent = s.fontPct + '%';
+  const posR = panel.querySelector('#anysub-pos');
+  posR.value = s.bottomPct;
+  panel.querySelector('#anysub-posval').textContent = s.bottomPct + '%';
+  setSegActive('#anysub-bg', 'bg', s.bg);
+  setSegActive('#anysub-color', 'color', s.color);
+}
+
+function setSegActive(sel, attr, val) {
+  refs.panel.querySelectorAll(`${sel} button`).forEach((b) =>
+    b.classList.toggle('on', b.dataset[attr] === val));
 }
 
 function setupSeg(sel, attr, cb) {

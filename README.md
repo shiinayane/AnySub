@@ -4,7 +4,7 @@
 
 Chrome / Edge / Safari / Firefox 通用。
 
-## 功能(v0.3.0)
+## 功能(v0.4.0)
 
 - 📂 本地字幕文件挂载(选择 / 拖拽 / **清除**),**文件不出本机、不联网**
 - 🎬 支持 **SRT / VTT**(ASS/SSA 降级为纯文本;高保真渲染在后续版本)
@@ -19,6 +19,7 @@ Chrome / Edge / Safari / Firefox 通用。
 - 🔎 **穿透 Shadow DOM** 定位视频;页面多个视频时可手动「选视频」
 - 🔄 `MutationObserver` 监听,SPA 切换视频后自动重新挂载
 - 🫧 **非侵入式 UI**:小胶囊**吸附到最近边缘**并半藏、可拖动,不遮挡观看
+- 💾 **设置持久化**:字号 / 位置 / 背景 / 颜色偏好自动记住(localStorage,按站点)
 - ⚙️ 渲染**事件驱动 + 定时兜底**(不依赖 rAF),后台标签/PiP 也稳定
 
 ## 安装
@@ -69,6 +70,7 @@ src/
 ├── loader.js    载入流程(串联 decode/parse/locator/render)
 ├── ui.js        面板 + 胶囊 + 拖拽吸附 + 选视频
 ├── styles.js    注入 CSS
+├── storage.js   设置持久化(localStorage)
 └── notify.js    toast + 状态栏
 ```
 
@@ -87,9 +89,9 @@ npm run build && python3 -m http.server 8000
 
 - [x] ~~自绘覆盖层:样式可控、字号随播放器缩放、全屏跟随~~(v0.2.0)
 - [ ] **阶段二**:ASS/SSA 高保真渲染(懒加载 [libass-wasm](https://github.com/libass/JavascriptSubtitlesOctopus))
+- [x] ~~设置持久化(字号 / 位置 / 背景 / 颜色)~~(v0.4.0)
 - [ ] 跨域 iframe 内视频支持
 - [ ] 更多格式(SUB/SBV/LRC/SMI/TTML)与在线字幕搜索
-- [ ] 设置持久化(记住字号 / 偏移 / 样式偏好)
 
 ## 设计说明
 
