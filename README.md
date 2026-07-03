@@ -23,17 +23,19 @@ Chrome / Edge / Safari / Firefox 通用。
 
 ## 安装
 
+> 安装的是构建产物 [`dist/anysub.user.js`](./dist/anysub.user.js)(源码在 `src/`,见下方「开发」)。
+
 ### Chrome / Edge / Firefox
 
 1. 安装 [Tampermonkey](https://www.tampermonkey.net/) 或 [Violentmonkey](https://violentmonkey.github.io/)
-2. 打开 [`anysub.user.js`](./anysub.user.js) 原始文件,管理器会自动识别并提示安装
-   - 或:Tampermonkey → 新建脚本 → 粘贴 `anysub.user.js` 全部内容 → 保存
+2. 打开 [`dist/anysub.user.js`](./dist/anysub.user.js) 原始文件,管理器会自动识别并提示安装
+   - 或:Tampermonkey → 新建脚本 → 粘贴 `dist/anysub.user.js` 全部内容 → 保存
 
 ### Safari(macOS / iOS)
 
 1. App Store 安装 [Userscripts](https://apps.apple.com/us/app/userscripts/id1463298887)(开源、免费)
 2. Safari → 设置 → 扩展 → 启用 Userscripts,并在网站权限中允许
-3. 点工具栏 Userscripts 图标 →「Open App」→ 把 `anysub.user.js` 放入其脚本目录
+3. 点工具栏 Userscripts 图标 →「Open App」→ 把 `dist/anysub.user.js` 放入其脚本目录
    - 本脚本仅用标准 Web API(`@grant none`),不依赖 GM 特权接口,故 Safari 完整可用
 
 ## 使用
@@ -43,15 +45,43 @@ Chrome / Edge / Safari / Firefox 通用。
 3. 「选择字幕文件」或把字幕文件**拖到面板**
 4. 按需调节偏移 / 字号
 
-## 本地测试(开发者)
+## 开发
+
+源码按功能拆分为 ES 模块(`src/`),用 [Vite](https://vitejs.dev) + [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 打包成单个带 `==UserScript==` 头的 `dist/anysub.user.js`。
 
 ```bash
-# 用任意静态服务器打开 demo.html(直接双击也可,但联网视频需 http 环境更稳)
-python3 -m http.server 8000
+npm install       # 安装依赖
+npm run build     # 构建 → dist/anysub.user.js
+npm run dev       # 开发服务器:改代码自动重载 + 一键安装到脚本管理器
+```
+
+### 目录结构
+
+```
+src/
+├── main.js      入口:init + 动态视频监听(MutationObserver)
+├── state.js     全局状态 + 常量
+├── refs.js      共享 DOM 引用(由 ui 填充,其余模块只读)
+├── locator.js   穿透 Shadow DOM 定位 <video>
+├── decode.js    读取文件 + 编码探测(UTF-8→GBK→Big5)
+├── parse.js     SRT/VTT → 统一 cue 结构
+├── render.js    覆盖层渲染 + 渲染循环 + 样式 + 清除
+├── loader.js    载入流程(串联 decode/parse/locator/render)
+├── ui.js        面板 + 胶囊 + 拖拽吸附 + 选视频
+├── styles.js    注入 CSS
+└── notify.js    toast + 状态栏
+```
+
+模块依赖为无环 DAG:`main → ui → {render, loader, locator, notify}`;`loader → {decode, parse, locator, render, notify}`;底层 `state / refs` 被广泛引用。以后加 ASS 渲染只需新增 `render-ass.js` 并在 `loader` 里按格式分派。
+
+### 本地测试
+
+```bash
+npm run build && python3 -m http.server 8000
 # 浏览器访问 http://localhost:8000/demo.html
 ```
 
-`demo.html` 内联加载脚本 + 一个联网示例视频,配 `sample.srt` 可完整走通流程。
+`demo.html` 内联加载 `dist/anysub.user.js` + 一个联网示例视频,配 `sample.srt` 可完整走通流程。
 
 ## 路线图
 
