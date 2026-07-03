@@ -2,8 +2,8 @@
 import { state } from './state.js';
 import { injectStyle } from './styles.js';
 import { buildUI, updateFabVisibility } from './ui.js';
-import { pickBestVideo } from './locator.js';
-import { setVideo } from './render.js';
+import { pickBestVideo, isVisible } from './locator.js';
+import { setVideo } from './controller.js';
 import { loadSettings } from './storage.js';
 
 // 避免在同一 window 重复注入
@@ -35,7 +35,9 @@ function restoreSettings() {
 function watchVideos() {
   let timer = 0;
   const react = () => {
-    if (state.video && !state.video.isConnected && state.cues.length) {
+    // SPA 场景:当前视频被移除,或变得不可见(被换成另一个视频/隐藏)时,改挂到当前最佳视频
+    if (state.cues.length && state.video &&
+        (!state.video.isConnected || !isVisible(state.video))) {
       const nv = pickBestVideo();
       if (nv && nv !== state.video) setVideo(nv);
     }

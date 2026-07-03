@@ -48,5 +48,6 @@ const CSS = `
 export function injectStyle() {
   const s = document.createElement('style');
   s.textContent = CSS;
-  document.head.appendChild(s);
+  // document.head 在 XML/SVG/极简文档下可能为 null,回退到 documentElement
+  (document.head || document.documentElement).appendChild(s);
 }

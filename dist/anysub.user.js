@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.5.0
+// @version      0.6.0
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -73,17 +73,55 @@
 	function injectStyle() {
 		const s = document.createElement("style");
 		s.textContent = CSS;
-		document.head.appendChild(s);
+		(document.head || document.documentElement).appendChild(s);
 	}
 	var refs = {
 		uiRoot: null,
 		overlay: null,
-		cueBox: null,
 		fab: null,
 		panel: null,
 		statusEl: null,
 		fileInput: null
 	};
+	var lastRectKey = "", lastRect = null;
+	function invalidateLayout() {
+		lastRectKey = "";
+	}
+	function fullscreenEl() {
+		return document.fullscreenElement || document.webkitFullscreenElement || null;
+	}
+	function getHost() {
+		const fs = fullscreenEl();
+		if (fs && fs.tagName !== "VIDEO") return fs;
+		return document.body;
+	}
+	function ensureMounted(el) {
+		const host = getHost();
+		if (el.parentNode !== host) host.appendChild(el);
+	}
+	function hideOverlay() {
+		if (refs.overlay) refs.overlay.style.display = "none";
+	}
+	function positionOverlay(v) {
+		const r = v.getBoundingClientRect();
+		const key = `${r.left}|${r.top}|${r.width}|${r.height}`;
+		if (key === lastRectKey) return {
+			rect: lastRect,
+			changed: false
+		};
+		lastRectKey = key;
+		lastRect = r;
+		const o = refs.overlay;
+		o.style.display = "block";
+		o.style.left = r.left + "px";
+		o.style.top = r.top + "px";
+		o.style.width = r.width + "px";
+		o.style.height = r.height + "px";
+		return {
+			rect: r,
+			changed: true
+		};
+	}
 	var toastTimer;
 	function toast(msg) {
 		let t = document.getElementById("anysub-toast");
@@ -104,101 +142,89 @@
 		refs.statusEl.textContent = state.cues.length ? `已加载:${state.fileName} · ${state.cues.length} 条` : "未加载字幕";
 	}
 	var intervalId = 0, driversAttached = false;
-	var lastHtml = "", lastRectKey = "";
-	function invalidateLayout() {
-		lastRectKey = "";
+	var renderer = null;
+	var onScroll, onResize, onFs, onVis;
+	function setRenderer(r) {
+		if (renderer) renderer.destroy();
+		renderer = r;
+		if (renderer) renderer.mount();
 	}
-	function fullscreenEl() {
-		return document.fullscreenElement || document.webkitFullscreenElement || null;
+	function applyStyle() {
+		if (renderer && renderer.applyStyle) renderer.applyStyle();
 	}
-	function getHost() {
-		const fs = fullscreenEl();
-		if (fs && fs.tagName !== "VIDEO") return fs;
-		return document.body;
-	}
-	function ensureMounted(el) {
-		const host = getHost();
-		if (el.parentNode !== host) host.appendChild(el);
+	function refresh() {
+		renderTick();
 	}
 	function startRender() {
 		state.active = true;
-		if (!driversAttached) {
-			driversAttached = true;
-			window.addEventListener("scroll", renderTick, true);
-			window.addEventListener("resize", renderTick, true);
-			["fullscreenchange", "webkitfullscreenchange"].forEach((ev) => document.addEventListener(ev, () => {
-				lastRectKey = "";
-				renderTick();
-			}));
-		}
-		if (!intervalId) intervalId = setInterval(renderTick, 120);
+		attachDrivers();
+		if (!intervalId) intervalId = setInterval(renderTick, 250);
 		renderTick();
 	}
+	function stopRender() {
+		state.active = false;
+		if (intervalId) {
+			clearInterval(intervalId);
+			intervalId = 0;
+		}
+		detachDrivers();
+		hideOverlay();
+	}
+	function attachDrivers() {
+		if (driversAttached) return;
+		driversAttached = true;
+		onScroll = () => renderTick();
+		onResize = () => {
+			invalidateLayout();
+			renderTick();
+		};
+		onFs = () => {
+			invalidateLayout();
+			renderTick();
+		};
+		onVis = () => {
+			if (!document.hidden) renderTick();
+		};
+		window.addEventListener("scroll", onScroll, {
+			capture: true,
+			passive: true
+		});
+		window.addEventListener("resize", onResize, { passive: true });
+		document.addEventListener("fullscreenchange", onFs);
+		document.addEventListener("webkitfullscreenchange", onFs);
+		document.addEventListener("visibilitychange", onVis);
+	}
+	function detachDrivers() {
+		if (!driversAttached) return;
+		driversAttached = false;
+		window.removeEventListener("scroll", onScroll, { capture: true });
+		window.removeEventListener("resize", onResize);
+		document.removeEventListener("fullscreenchange", onFs);
+		document.removeEventListener("webkitfullscreenchange", onFs);
+		document.removeEventListener("visibilitychange", onVis);
+	}
 	function renderTick() {
-		if (!state.active) return;
+		if (!state.active || !renderer) return;
 		const v = state.video;
 		if (v && v.isConnected && state.cues.length) {
 			ensureMounted(refs.overlay);
 			ensureMounted(refs.uiRoot);
-			positionOverlay(v);
-			renderActiveCues(v);
-		} else refs.overlay.style.display = "none";
-	}
-	function positionOverlay(v) {
-		const r = v.getBoundingClientRect();
-		const key = `${r.left}|${r.top}|${r.width}|${r.height}`;
-		if (key === lastRectKey) return;
-		lastRectKey = key;
-		const { overlay, cueBox } = refs;
-		overlay.style.display = "block";
-		overlay.style.left = r.left + "px";
-		overlay.style.top = r.top + "px";
-		overlay.style.width = r.width + "px";
-		overlay.style.height = r.height + "px";
-		const fontPx = Math.max(10, r.height * FONT_BASE * (state.style.fontPct / 100));
-		cueBox.style.fontSize = fontPx.toFixed(1) + "px";
-		cueBox.style.bottom = r.height * state.style.bottomPct / 100 + "px";
-	}
-	function renderActiveCues(v) {
-		const t = v.currentTime - state.offset;
-		const parts = [];
-		for (const c of state.cues) if (t >= c.start && t <= c.end) parts.push(c.text);
-		const html = parts.join("<br>");
-		if (html === lastHtml) return;
-		lastHtml = html;
-		refs.cueBox.innerHTML = html;
-		refs.cueBox.style.display = html ? "inline-block" : "none";
-	}
-	function applyStyle() {
-		const s = state.style;
-		const cueBox = refs.cueBox;
-		cueBox.style.color = s.color;
-		cueBox.style.textShadow = "none";
-		cueBox.style.background = "transparent";
-		cueBox.style.padding = "0";
-		if (s.bg === "outline") cueBox.style.textShadow = outline("#000");
-		else if (s.bg === "translucent") {
-			cueBox.style.background = "rgba(0,0,0,.55)";
-			cueBox.style.padding = ".08em .4em";
-			cueBox.style.textShadow = outline("rgba(0,0,0,.5)");
-		} else if (s.bg === "solid") {
-			cueBox.style.background = "rgba(0,0,0,.92)";
-			cueBox.style.padding = ".08em .4em";
-		}
-	}
-	function outline(c) {
-		return `-2px -2px 1px ${c},2px -2px 1px ${c},-2px 2px 1px ${c},2px 2px 1px ${c},0 0 3px ${c}`;
+			const { rect, changed } = positionOverlay(v);
+			renderer.renderAt(v, rect, changed);
+		} else hideOverlay();
 	}
 	function setVideo(v) {
 		if (state.video && state.video !== v) {
 			state.video.removeEventListener("timeupdate", renderTick);
 			state.video.removeEventListener("seeking", renderTick);
+			state.video.removeEventListener("play", renderTick);
 		}
 		state.video = v;
-		lastRectKey = "";
+		invalidateLayout();
 		if (v) {
 			v.addEventListener("timeupdate", renderTick);
 			v.addEventListener("seeking", renderTick);
+			v.addEventListener("play", renderTick);
 		}
 		if (state.cues.length) startRender();
 	}
@@ -209,14 +235,11 @@
 		}
 		state.cues = [];
 		state.fileName = "";
-		state.active = false;
-		if (intervalId) {
-			clearInterval(intervalId);
-			intervalId = 0;
+		stopRender();
+		if (renderer) {
+			renderer.destroy();
+			renderer = null;
 		}
-		if (refs.overlay) refs.overlay.style.display = "none";
-		if (refs.cueBox) refs.cueBox.innerHTML = "";
-		lastHtml = "";
 		updateStatus();
 		toast("已清除字幕");
 	}
@@ -230,78 +253,104 @@
 		try {
 			return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 		} catch (_) {
+			let best = null, bestScore = Infinity;
 			for (const enc of ["gbk", "big5"]) try {
 				const text = new TextDecoder(enc).decode(bytes);
-				if (!text.includes("�")) return text;
+				const score = (text.match(/�/g) || []).length;
+				if (score < bestScore) {
+					bestScore = score;
+					best = text;
+				}
 			} catch (_) {}
+			if (best !== null) return best;
+			console.warn("[AnySub] 无法自动识别字幕编码,按 UTF-8 兜底,可能乱码;建议转成 UTF-8");
 			return new TextDecoder("utf-8").decode(bytes);
 		}
 	}
+	var TIME_RE = /(\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}|\d{1,2}:\d{2}[.,]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}|\d{1,2}:\d{2}[.,]\d{1,3})/;
 	function parseSubtitle(text, fileName) {
 		text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-		return /^﻿?WEBVTT/.test(text) || /\.vtt$/i.test(fileName || "") ? parseVtt(text) : parseSrt(text);
+		const cues = /^﻿?WEBVTT/.test(text) || /\.vtt$/i.test(fileName || "") ? parseVtt(text) : parseSrt(text);
+		cues.sort((a, b) => a.start - b.start);
+		return cues;
 	}
 	function timeToSeconds(t) {
 		t = t.trim().replace(",", ".");
-		const parts = t.split(":").map(parseFloat);
+		const parts = t.split(":");
+		if (parts.length > 3) return NaN;
 		let s = 0;
-		for (const p of parts) s = s * 60 + p;
+		for (const p of parts) {
+			const n = parseFloat(p);
+			if (!isFinite(n)) return NaN;
+			s = s * 60 + n;
+		}
 		return s;
 	}
 	function parseSrt(text) {
+		const lines = text.split("\n");
 		const cues = [];
-		const blocks = text.split(/\n{2,}/);
-		const timeRe = /(\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}|\d{1,2}:\d{2}[.,]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}|\d{1,2}:\d{2}[.,]\d{1,3})/;
-		for (const block of blocks) {
-			const lines = block.split("\n");
-			let idx = 0;
-			if (idx < lines.length && /^\d+$/.test(lines[idx].trim())) idx++;
-			if (idx >= lines.length) continue;
-			const m = lines[idx].match(timeRe);
-			if (!m) continue;
-			idx++;
-			const start = timeToSeconds(m[1]), end = timeToSeconds(m[2]);
-			const body = lines.slice(idx).join("\n").trim();
-			if (!body || end <= start) continue;
-			cues.push({
-				start,
-				end,
-				text: sanitize(body)
-			});
+		let i = 0;
+		while (i < lines.length) {
+			const m = lines[i].match(TIME_RE);
+			if (!m) {
+				i++;
+				continue;
+			}
+			i++;
+			const body = [];
+			while (i < lines.length && !TIME_RE.test(lines[i])) {
+				body.push(lines[i]);
+				i++;
+			}
+			while (body.length && body[body.length - 1].trim() === "") body.pop();
+			if (body.length && /^\d+$/.test(body[body.length - 1].trim())) body.pop();
+			while (body.length && body[body.length - 1].trim() === "") body.pop();
+			pushCue(cues, m, body);
 		}
 		return cues;
 	}
 	function parseVtt(text) {
+		const lines = text.split("\n");
 		const cues = [];
-		const timeRe = /(\d{1,2}:\d{2}:\d{2}\.\d{1,3}|\d{1,2}:\d{2}\.\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}\.\d{1,3}|\d{1,2}:\d{2}\.\d{1,3})/;
-		const blocks = text.split(/\n{2,}/);
-		for (const block of blocks) {
-			if (/^WEBVTT/.test(block) || /^NOTE/.test(block) || /^STYLE/.test(block) || /^REGION/.test(block)) continue;
-			const lines = block.split("\n");
-			let idx = 0;
-			if (idx < lines.length && !timeRe.test(lines[idx])) idx++;
-			if (idx >= lines.length) continue;
-			const m = lines[idx].match(timeRe);
-			if (!m) continue;
-			idx++;
-			const start = timeToSeconds(m[1]), end = timeToSeconds(m[2]);
-			const body = lines.slice(idx).join("\n").trim();
-			if (!body || end <= start) continue;
-			cues.push({
-				start,
-				end,
-				text: sanitize(body)
-			});
+		let i = 0;
+		while (i < lines.length) {
+			const m = lines[i].match(TIME_RE);
+			if (!m) {
+				i++;
+				continue;
+			}
+			i++;
+			const body = [];
+			while (i < lines.length && lines[i].trim() !== "" && !TIME_RE.test(lines[i])) {
+				body.push(lines[i]);
+				i++;
+			}
+			pushCue(cues, m, body);
 		}
 		return cues;
+	}
+	function pushCue(cues, m, bodyLines) {
+		const start = timeToSeconds(m[1]);
+		const end = timeToSeconds(m[2]);
+		const body = bodyLines.join("\n").trim();
+		if (!body || !isFinite(start) || !isFinite(end) || end <= start) return;
+		cues.push({
+			start,
+			end,
+			text: sanitize(body)
+		});
 	}
 	function sanitize(s) {
 		s = s.replace(/\{\\[^}]*\}/g, "");
 		s = s.replace(/\{[^}]*\}/g, "");
 		s = s.replace(/<\/?font[^>]*>/gi, "");
-		s = s.replace(/<(?!\/?(i|b|u)\b)[^>]*>/gi, "");
+		s = escapeHtml(s);
+		s = s.replace(/&lt;(\/?)(i|b|u)&gt;/gi, "<$1$2>");
 		s = s.replace(/\n/g, "<br>");
 		return s;
+	}
+	function escapeHtml(s) {
+		return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 	}
 	function collectVideos(root, acc) {
 		acc = acc || [];
@@ -337,6 +386,68 @@
 		});
 		return vids[0];
 	}
+	function createTextRenderer() {
+		let cueBox = null;
+		let lastHtml = "";
+		function outline(c) {
+			return `-2px -2px 1px ${c},2px -2px 1px ${c},-2px 2px 1px ${c},2px 2px 1px ${c},0 0 3px ${c}`;
+		}
+		return {
+			mount() {
+				cueBox = document.createElement("div");
+				cueBox.id = "anysub-cuebox";
+				refs.overlay.appendChild(cueBox);
+				lastHtml = "";
+				this.applyStyle();
+			},
+			renderAt(v, rect, layoutChanged) {
+				if (!cueBox) return;
+				if (layoutChanged && rect) {
+					const fontPx = Math.max(10, rect.height * FONT_BASE * (state.style.fontPct / 100));
+					cueBox.style.fontSize = fontPx.toFixed(1) + "px";
+					cueBox.style.bottom = rect.height * state.style.bottomPct / 100 + "px";
+				}
+				const t = v.currentTime - state.offset;
+				const parts = [];
+				for (const c of state.cues) {
+					if (c.start > t) break;
+					if (t < c.end) parts.push(c.text);
+				}
+				const html = parts.join("<br>");
+				if (html === lastHtml) return;
+				lastHtml = html;
+				cueBox.innerHTML = html;
+				cueBox.style.display = html ? "inline-block" : "none";
+			},
+			applyStyle() {
+				if (!cueBox) return;
+				const s = state.style;
+				cueBox.style.color = s.color;
+				cueBox.style.textShadow = "none";
+				cueBox.style.background = "transparent";
+				cueBox.style.padding = "0";
+				if (s.bg === "outline") cueBox.style.textShadow = outline("#000");
+				else if (s.bg === "translucent") {
+					cueBox.style.background = "rgba(0,0,0,.55)";
+					cueBox.style.padding = ".08em .4em";
+					cueBox.style.textShadow = outline("rgba(0,0,0,.5)");
+				} else if (s.bg === "solid") {
+					cueBox.style.background = "rgba(0,0,0,.92)";
+					cueBox.style.padding = ".08em .4em";
+				}
+			},
+			destroy() {
+				if (cueBox) cueBox.remove();
+				cueBox = null;
+				lastHtml = "";
+			}
+		};
+	}
+	var FORMATS = [{
+		test: () => true,
+		parse: (text, name) => ({ cues: parseSubtitle(text, name) }),
+		create: createTextRenderer
+	}];
 	function loadFile(file) {
 		if (!file) return;
 		if (!state.video || !state.video.isConnected) {
@@ -348,18 +459,20 @@
 			return;
 		}
 		readSubtitleFile(file).then((text) => {
-			const cues = parseSubtitle(text, file.name);
-			if (!cues.length) {
+			const fmt = FORMATS.find((f) => f.test(file.name, text)) || FORMATS[FORMATS.length - 1];
+			const parsed = fmt.parse(text, file.name);
+			if (!parsed.cues || !parsed.cues.length) {
 				toast("未解析出字幕(格式不支持或文件为空)");
 				return;
 			}
-			state.cues = cues;
+			state.cues = parsed.cues;
 			state.fileName = file.name;
 			invalidateLayout();
+			setRenderer(fmt.create());
 			applyStyle();
 			startRender();
 			updateStatus();
-			toast(`已挂载 ${cues.length} 条字幕`);
+			toast(`已挂载 ${parsed.cues.length} 条字幕`);
 		}).catch((err) => {
 			console.error("[AnySub]", err);
 			toast("读取字幕失败:" + err.message);
@@ -438,9 +551,7 @@
 		const overlay = document.createElement("div");
 		overlay.id = "anysub-overlay";
 		overlay.style.display = "none";
-		const cueBox = document.createElement("div");
-		cueBox.id = "anysub-cuebox";
-		overlay.appendChild(cueBox);
+		overlay.style.cssText = "display:none;position:fixed;z-index:2147483640;pointer-events:none;overflow:hidden;";
 		const fab = document.createElement("div");
 		fab.id = "anysub-fab";
 		fab.className = "dock-right";
@@ -461,13 +572,11 @@
 		document.body.appendChild(uiRoot);
 		refs.uiRoot = uiRoot;
 		refs.overlay = overlay;
-		refs.cueBox = cueBox;
 		refs.fab = fab;
 		refs.panel = panel;
 		refs.fileInput = fileInput;
 		refs.statusEl = panel.querySelector("#anysub-status");
 		wireEvents();
-		applyStyle();
 	}
 	function wireEvents() {
 		const { fab, panel, fileInput } = refs;
@@ -494,13 +603,13 @@
 		panel.querySelectorAll("[data-off]").forEach((b) => b.addEventListener("click", () => {
 			state.offset = Math.round((state.offset + parseFloat(b.dataset.off)) * 10) / 10;
 			offInput.value = state.offset.toFixed(1);
-			renderTick();
+			refresh();
 		}));
 		offInput.addEventListener("input", () => {
 			const val = parseFloat(offInput.value);
 			if (!isNaN(val)) {
 				state.offset = val;
-				renderTick();
+				refresh();
 			}
 		});
 		const fontR = panel.querySelector("#anysub-font");
@@ -508,7 +617,7 @@
 			state.style.fontPct = parseInt(fontR.value, 10);
 			panel.querySelector("#anysub-fontval").textContent = state.style.fontPct + "%";
 			invalidateLayout();
-			renderTick();
+			refresh();
 			persist();
 		});
 		const posR = panel.querySelector("#anysub-pos");
@@ -516,7 +625,7 @@
 			state.style.bottomPct = parseInt(posR.value, 10);
 			panel.querySelector("#anysub-posval").textContent = state.style.bottomPct + "%";
 			invalidateLayout();
-			renderTick();
+			refresh();
 			persist();
 		});
 		setupSeg("#anysub-bg", "bg", (val) => {
@@ -530,12 +639,11 @@
 			persist();
 		});
 		setupDrop(panel.querySelector("#anysub-drop"));
-		setupDrop(document.body);
 		makeDraggable(fab);
 		syncControls();
 	}
 	function updateFabVisibility() {
-		const hasVideo = collectVideos().length > 0;
+		const hasVideo = !!document.querySelector("video") || collectVideos().length > 0;
 		refs.fab.style.display = hasVideo ? "" : "none";
 		if (!hasVideo && refs.panel) refs.panel.style.display = "none";
 	}
@@ -697,7 +805,7 @@
 	function watchVideos() {
 		let timer = 0;
 		const react = () => {
-			if (state.video && !state.video.isConnected && state.cues.length) {
+			if (state.cues.length && state.video && (!state.video.isConnected || !isVisible(state.video))) {
 				const nv = pickBestVideo();
 				if (nv && nv !== state.video) setVideo(nv);
 			}

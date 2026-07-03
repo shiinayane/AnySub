@@ -1,7 +1,8 @@
 // 悬浮 UI:非侵入胶囊 + 面板 + 拖拽吸附 + 手动选视频
 import { state } from './state.js';
 import { refs } from './refs.js';
-import { renderTick, applyStyle, clearSubtitle, setVideo, invalidateLayout } from './render.js';
+import { refresh, applyStyle, clearSubtitle, setVideo } from './controller.js';
+import { invalidateLayout } from './overlay.js';
 import { loadFile } from './loader.js';
 import { collectVideos, isVisible } from './locator.js';
 import { toast } from './notify.js';
@@ -66,9 +67,9 @@ export function buildUI() {
   const overlay = document.createElement('div');
   overlay.id = 'anysub-overlay';
   overlay.style.display = 'none';
-  const cueBox = document.createElement('div');
-  cueBox.id = 'anysub-cuebox';
-  overlay.appendChild(cueBox);
+  // 关键定位属性内联,即使站点 CSP 剥离了注入的 <style>,覆盖层也不会遮挡/拦截页面
+  overlay.style.cssText = 'display:none;position:fixed;z-index:2147483640;pointer-events:none;overflow:hidden;';
+  // cueBox 由渲染器创建
 
   const fab = document.createElement('div');
   fab.id = 'anysub-fab';
@@ -95,14 +96,12 @@ export function buildUI() {
   // 填充共享引用
   refs.uiRoot = uiRoot;
   refs.overlay = overlay;
-  refs.cueBox = cueBox;
   refs.fab = fab;
   refs.panel = panel;
   refs.fileInput = fileInput;
   refs.statusEl = panel.querySelector('#anysub-status');
 
   wireEvents();
-  applyStyle();
 }
 
 function wireEvents() {
@@ -124,38 +123,39 @@ function wireEvents() {
   panel.querySelectorAll('[data-off]').forEach((b) => b.addEventListener('click', () => {
     state.offset = Math.round((state.offset + parseFloat(b.dataset.off)) * 10) / 10;
     offInput.value = state.offset.toFixed(1);
-    renderTick();
+    refresh();
   }));
   offInput.addEventListener('input', () => {
     const val = parseFloat(offInput.value);
-    if (!isNaN(val)) { state.offset = val; renderTick(); }
+    if (!isNaN(val)) { state.offset = val; refresh(); }
   });
 
   const fontR = panel.querySelector('#anysub-font');
   fontR.addEventListener('input', () => {
     state.style.fontPct = parseInt(fontR.value, 10);
     panel.querySelector('#anysub-fontval').textContent = state.style.fontPct + '%';
-    invalidateLayout(); renderTick(); persist();
+    invalidateLayout(); refresh(); persist();
   });
   const posR = panel.querySelector('#anysub-pos');
   posR.addEventListener('input', () => {
     state.style.bottomPct = parseInt(posR.value, 10);
     panel.querySelector('#anysub-posval').textContent = state.style.bottomPct + '%';
-    invalidateLayout(); renderTick(); persist();
+    invalidateLayout(); refresh(); persist();
   });
 
   setupSeg('#anysub-bg', 'bg', (val) => { state.style.bg = val; applyStyle(); persist(); });
   setupSeg('#anysub-color', 'color', (val) => { state.style.color = val; applyStyle(); persist(); });
 
-  setupDrop(panel.querySelector('#anysub-drop'));
-  setupDrop(document.body);
+  setupDrop(panel.querySelector('#anysub-drop')); // 仅面板区域接收拖放,避免劫持页面自身的拖放上传
   makeDraggable(fab);
   syncControls();
 }
 
-// 仅当页面存在 <video> 时才显示胶囊;无视频时连面板一起收起
+// 仅当页面存在 <video> 时才显示胶囊;无视频时连面板一起收起。
+// 先用便宜的 light-DOM 查询短路(绝大多数视频页命中),仅在无普通 video 时才深扫 Shadow DOM,
+// 避免在每次 DOM 变动时对整页做 querySelectorAll('*')。
 export function updateFabVisibility() {
-  const hasVideo = collectVideos().length > 0;
+  const hasVideo = !!document.querySelector('video') || collectVideos().length > 0;
   refs.fab.style.display = hasVideo ? '' : 'none';
   if (!hasVideo && refs.panel) refs.panel.style.display = 'none';
 }

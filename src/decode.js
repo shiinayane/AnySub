@@ -14,12 +14,17 @@ export function decodeBuffer(bytes) {
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch (_) {
+    // 非 UTF-8:在 GBK / Big5 中选「替换字符最少」者(比单纯判断有无 U+FFFD 更可靠)
+    let best = null, bestScore = Infinity;
     for (const enc of ['gbk', 'big5']) {
       try {
         const text = new TextDecoder(enc).decode(bytes);
-        if (!text.includes('�')) return text;
-      } catch (_) { /* 不支持该 legacy 编码 */ }
+        const score = (text.match(/�/g) || []).length;
+        if (score < bestScore) { bestScore = score; best = text; }
+      } catch (_) { /* 该浏览器(如 Safari)不支持此 legacy 编码 */ }
     }
+    if (best !== null) return best;
+    console.warn('[AnySub] 无法自动识别字幕编码,按 UTF-8 兜底,可能乱码;建议转成 UTF-8');
     return new TextDecoder('utf-8').decode(bytes);
   }
 }
