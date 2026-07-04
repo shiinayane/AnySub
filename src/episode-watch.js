@@ -3,7 +3,8 @@
 import { state } from './state.js';
 import { parseVideoTitle } from './title-parse.js';
 import { clearSubtitle } from './controller.js';
-import { subtitleFiles, downloadAndLoad, pickSameSource, markLoaded } from './online.js';
+import { subtitleFiles, downloadAndLoad, markLoaded } from './online.js';
+import { pickSameSource } from './match.js';
 import { showCandidates } from './search-ui.js';
 import { toast } from './notify.js';
 

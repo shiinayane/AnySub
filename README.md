@@ -69,7 +69,15 @@ Chrome / Edge / Safari / Firefox 通用。
 npm install       # 安装依赖
 npm run build     # 构建 → dist/anysub.user.js
 npm run dev       # 开发服务器:改代码自动重载 + 一键安装到脚本管理器
+npm test          # 跑单元测试(Node 内置 node:test,零额外依赖)
 ```
+
+### 测试
+
+纯逻辑模块有单元回归测试(`test/`,用 `node --test`),覆盖历次踩坑点:
+解析(XSS 转义、空行不截断、NaN/时间序)、ASS 解析、标题解析(旧字体集号)、
+注音 ruby、**切集同源匹配**(EVA/薬屋 真实文件名)、编码探测。DOM/渲染/网络
+部分靠 `demo.html` + 浏览器手动验证。
 
 ### 目录结构
 
@@ -90,7 +98,8 @@ src/
 ├── loader.js       载入流程 + 格式注册表(本地/在线共用)
 ├── anilist.js      番剧名 → AniList 候选(无鉴权)
 ├── jimaku.js       Jimaku API 客户端(需 key)
-├── online.js       在线编排:定位番剧 → 取文件 → 下载 → 同源匹配
+├── online.js       在线编排:定位番剧 → 取文件 → 下载
+├── match.js        跨集「同源」匹配(纯逻辑,有单测)
 ├── search-ui.js    在线搜索面板(候选列表)
 ├── title-parse.js  页面标题 → 番剧名 + 集数(含日文/旧字体)
 ├── episode-watch.js 切集检测 + 同源自动接续

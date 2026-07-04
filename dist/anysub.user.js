@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.11.2
+// @version      0.12.0
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -971,38 +971,6 @@
 			name: fileName
 		} : null;
 	}
-	var EP_TOK = /^(s\d{1,2}e\d{1,3}|e\d{1,3}|v\d+|\d{1,4}|[0-9a-f]{8})$/;
-	function sourceTokens(name) {
-		const out = new Set();
-		for (const t of String(name || "").toLowerCase().split(/[^a-z0-9]+/)) if (t && !EP_TOK.test(t)) out.add(t);
-		return out;
-	}
-	function fileTokens(name) {
-		return String(name || "").toLowerCase().replace(/\.(ass|ssa|srt|vtt|sub|sbv)$/i, "").split(/[^a-z0-9぀-ヿ一-鿿]+/).filter((t) => t && !EP_TOK.test(t));
-	}
-	function pickSameSource(files, refName) {
-		if (!refName) return null;
-		const refSig = sourceTokens(refName);
-		const useSig = refSig.size >= 1;
-		const refFull = new Set(fileTokens(refName));
-		let best = null, bestScore = -1, second = -1;
-		for (const f of files) {
-			const s = useSig ? jaccard(refSig, sourceTokens(f.name)) : jaccard(refFull, new Set(fileTokens(f.name)));
-			if (s > bestScore) {
-				second = bestScore;
-				bestScore = s;
-				best = f;
-			} else if (s > second) second = s;
-		}
-		if (best && (bestScore >= (useSig ? .5 : .6) || bestScore >= .34 && bestScore - second >= .34)) return best;
-		return null;
-	}
-	function jaccard(a, b) {
-		let inter = 0;
-		for (const t of a) if (b.has(t)) inter++;
-		const uni = a.size + b.size - inter;
-		return uni ? inter / uni : 0;
-	}
 	var panel, keyInput, titleInput, epInput, results;
 	var currentAnime = null;
 	var lastPrefillTitle = null;
@@ -1585,6 +1553,38 @@
 		if (!el) return false;
 		const tag = el.tagName;
 		return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+	}
+	var EP_TOK = /^(s\d{1,2}e\d{1,3}|e\d{1,3}|v\d+|\d{1,4}|[0-9a-f]{8})$/;
+	function sourceTokens(name) {
+		const out = new Set();
+		for (const t of String(name || "").toLowerCase().split(/[^a-z0-9]+/)) if (t && !EP_TOK.test(t)) out.add(t);
+		return out;
+	}
+	function fileTokens(name) {
+		return String(name || "").toLowerCase().replace(/\.(ass|ssa|srt|vtt|sub|sbv)$/i, "").split(/[^a-z0-9぀-ヿ一-鿿]+/).filter((t) => t && !EP_TOK.test(t));
+	}
+	function pickSameSource(files, refName) {
+		if (!refName) return null;
+		const refSig = sourceTokens(refName);
+		const useSig = refSig.size >= 1;
+		const refFull = new Set(fileTokens(refName));
+		let best = null, bestScore = -1, second = -1;
+		for (const f of files) {
+			const s = useSig ? jaccard(refSig, sourceTokens(f.name)) : jaccard(refFull, new Set(fileTokens(f.name)));
+			if (s > bestScore) {
+				second = bestScore;
+				bestScore = s;
+				best = f;
+			} else if (s > second) second = s;
+		}
+		if (best && (bestScore >= (useSig ? .5 : .6) || bestScore >= .34 && bestScore - second >= .34)) return best;
+		return null;
+	}
+	function jaccard(a, b) {
+		let inter = 0;
+		for (const t of a) if (b.has(t)) inter++;
+		const uni = a.size + b.size - inter;
+		return uni ? inter / uni : 0;
 	}
 	var timer = 0;
 	var busy = false;

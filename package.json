@@ -1,13 +1,14 @@
 {
   "name": "anysub",
   "private": true,
-  "version": "0.11.2",
+  "version": "0.12.0",
   "type": "module",
   "description": "给任意网站的 HTML5 视频挂载本地字幕文件的用户脚本",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test test/*.test.js"
   },
   "devDependencies": {
     "vite": "^8.1.3",
