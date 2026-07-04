@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.12.1
+// @version      0.12.3
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -1690,5 +1690,6 @@
 		if (typeof saved.showFab === "boolean") state.showFab = saved.showFab;
 		if (typeof saved.rubyParen === "boolean") state.rubyParen = saved.rubyParen;
 		if (typeof saved.jimakuKey === "string") state.jimakuKey = saved.jimakuKey;
+		if (!state.shortcutsEnabled && !state.showFab) state.showFab = true;
 	}
 })();

@@ -49,4 +49,6 @@ function restoreSettings() {
   if (typeof saved.showFab === 'boolean') state.showFab = saved.showFab;
   if (typeof saved.rubyParen === 'boolean') state.rubyParen = saved.rubyParen;
   if (typeof saved.jimakuKey === 'string') state.jimakuKey = saved.jimakuKey;
+  // 防死锁:快捷键与悬浮球都关时,用户将无从打开面板 → 强制显示悬浮球作逃生通道
+  if (!state.shortcutsEnabled && !state.showFab) state.showFab = true;
 }
