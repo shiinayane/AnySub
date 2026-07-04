@@ -60,15 +60,17 @@ const CSS = `
   }
 
   #anysub-overlay{position:fixed;z-index:2147483640;pointer-events:none;overflow:hidden;}
-  #anysub-cuebox{position:absolute;left:50%;transform:translateX(-50%);
+  .anysub-cuebox{position:absolute;left:50%;transform:translateX(-50%);
     max-width:92%;text-align:center;line-height:1.25;white-space:pre-wrap;word-break:break-word;
     font-family:-apple-system,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;
     font-weight:600;border-radius:4px;box-sizing:border-box;}
-  #anysub-cuebox ruby{ruby-align:center;}
-  #anysub-cuebox rt{font-size:.5em;font-weight:400;opacity:.9;line-height:1;}
-  #anysub-cuebox .anysub-spk{font-size:.82em;font-weight:500;opacity:.66;margin-right:.15em;}
-  #anysub-cuebox .anysub-sfx{font-style:italic;opacity:.68;}
-  #anysub-cuebox .anysub-lyric{font-style:italic;}
+  .anysub-cuebox ruby{ruby-align:center;}
+  .anysub-cuebox rt{font-size:.5em;font-weight:400;opacity:.9;line-height:1;}
+  .anysub-cuebox .anysub-spk{font-size:.82em;font-weight:500;opacity:.66;margin-right:.15em;}
+  .anysub-cuebox .anysub-sfx{font-style:italic;opacity:.68;}
+  .anysub-cuebox .anysub-voice{font-style:italic;opacity:.9;}
+  .anysub-cuebox .anysub-book{background:rgba(128,128,128,.24);border-radius:5px;padding:0 .35em;}
+  .anysub-cuebox .anysub-lyric{font-style:italic;}
   #anysub-fab{position:fixed;bottom:28%;z-index:2147483646;width:30px;height:30px;
     display:flex;align-items:center;justify-content:center;
     background:var(--as-accent2);color:#fff;border-radius:50%;

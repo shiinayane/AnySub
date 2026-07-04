@@ -10,13 +10,16 @@ const RE_LEAD = new RegExp('^[（(]([^（()）]{1,' + NAME + '})[）)]\\s*(\\S[\
 // 整行就是一个「（…）」
 const RE_ALONE = new RegExp('^[（(]([^（()）]{1,' + NAME + '})[）)]$');
 
-// 扫全部 cue,收集确定的话者名(仅取「行首（X）+台词」形态)
+// 扫全部 cue,收集确定的话者名(仅取「行首（X）+台词」形态)。
+// cue 内多行用 <br> 分隔(sanitize 把 \n 转成 <br>),故逐行扫描。
 export function buildSpeakers(cues) {
   const set = new Set();
   for (const c of cues || []) {
-    const t = (c && c.text != null ? String(c.text) : '').trim();
-    const m = RE_LEAD.exec(t);
-    if (m) set.add(m[1]);
+    const raw = (c && c.text != null) ? String(c.text) : '';
+    for (const line of raw.split('<br>')) {
+      const m = RE_LEAD.exec(line.trim());
+      if (m) set.add(m[1]);
+    }
   }
   return set;
 }
@@ -25,12 +28,18 @@ export function buildSpeakers(cues) {
 //   'dialogue' 行首话者名+台词(name=名, rest=台词)
 //   'speaker'  独立成行的话者名(name=名)
 //   'sfx'      独立括号的非语音(音效/动作/心声/旁白)
+//   'voice'    画外音/心声/电话/旁白 〈…〉／＜…＞(带声、不在场)
+//   'book'     书面/引用 《…》(书信/念白/画面读字;整行,不与注音 漢字《かな》冲突)
 //   'lyric'    歌词(行首 ♪)
 //   'plain'    普通台词(含 furigana,交给 ruby)
 export function classifyCueLine(raw, speakers) {
   const t = (raw == null ? '' : String(raw)).trim();
   if (!t) return { type: 'plain' };
   if (/^[♪♫]/.test(t)) return { type: 'lyric' };
+  // 整行被角括号包裹 → 画外音/心声;整行被双书名号包裹 → 书面引用。
+  // 注音是「漢字《かな》」(汉字紧贴、非整行),整行 《…》 不会命中,故不冲突。
+  if (/^[〈＜][\s\S]+[〉＞]$/.test(t)) return { type: 'voice' };
+  if (/^《[\s\S]+》$/.test(t)) return { type: 'book' };
 
   let m = RE_ALONE.exec(t);
   if (m) {

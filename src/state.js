@@ -10,8 +10,10 @@ export const state = {
   hidden: false,       // 字幕临时隐藏(快捷键切换,不持久化)
   showFab: false,      // 是否显示常驻悬浮球(持久化,默认关,靠快捷键唤出面板)
   rubyParen: true,     // 括号注音启发式(温厚（おんこう）→ ruby;持久化,可关。《》式始终开)
-  enhance: true,       // 语义排版:话者名淡化 / 非语音斜体 / 歌词斜体(持久化,可关)
+  enhance: true,       // 语义排版:话者名淡化 / 非语音·画外音·书面·歌词斜体等(持久化,可关)
   speakers: null,      // 当前字幕的话者名词表(载入时构建,不持久化)
+  subPos: 'bottom',    // 字幕主锚点 'bottom' | 'top'(持久化)
+  multiSplit: true,    // 多人同时:true=上下分置,false=底部叠放(持久化)
   jimakuKey: '',       // Jimaku API key(持久化,按站点)
   loadedSeries: '',    // 当前字幕对应的番剧名(取自页面标题,用于切集检测)
   loadedEpisode: '',   // 当前字幕对应的集数

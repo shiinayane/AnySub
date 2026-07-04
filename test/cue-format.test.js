@@ -34,6 +34,19 @@ test('歌词 ♪ → lyric', () => {
   assert.equal(classifyCueLine('♪～ 君の名は', spk).type, 'lyric');
 });
 
+test('画外音〈…〉／＜…＞ → voice', () => {
+  assert.equal(classifyCueLine('〈これは夢なのか〉', spk).type, 'voice');
+  assert.equal(classifyCueLine('＜もしもし 俺だ＞', spk).type, 'voice');
+});
+
+test('书面《…》整行 → book', () => {
+  assert.equal(classifyCueLine('《薬草大全 巻三より》', spk).type, 'book');
+});
+
+test('注音 漢字《かな》(非整行)不误判为 book → plain', () => {
+  assert.equal(classifyCueLine('使徒《しと》が来た', spk).type, 'plain');
+});
+
 test('普通台词 → plain', () => {
   assert.equal(classifyCueLine('ただの台詞です', spk).type, 'plain');
 });
