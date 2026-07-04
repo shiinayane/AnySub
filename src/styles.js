@@ -6,6 +6,8 @@ const CSS = `
     max-width:92%;text-align:center;line-height:1.25;white-space:pre-wrap;word-break:break-word;
     font-family:-apple-system,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;
     font-weight:600;border-radius:4px;box-sizing:border-box;}
+  #anysub-cuebox ruby{ruby-align:center;}
+  #anysub-cuebox rt{font-size:.5em;font-weight:400;opacity:.9;line-height:1;}
   #anysub-fab{position:fixed;bottom:28%;z-index:2147483646;width:30px;height:30px;
     display:flex;align-items:center;justify-content:center;
     background:#2b6cff;color:#fff;border-radius:50%;

@@ -61,6 +61,7 @@ const PANEL_HTML = `
   </div>
   <div class="anysub-row anysub-toggles">
     <button id="anysub-tg-sc" class="anysub-toggle">快捷键:开</button>
+    <button id="anysub-tg-ruby" class="anysub-toggle" title="将 温厚（おんこう) 显示为注音">注音:开</button>
     <button id="anysub-tg-fab" class="anysub-toggle">悬浮球:关</button>
   </div>
   <div class="anysub-legend">
@@ -178,6 +179,11 @@ function wireEvents() {
     state.shortcutsEnabled = !state.shortcutsEnabled;
     syncToggles(); persist();
   });
+  const rubyBtn = panel.querySelector('#anysub-tg-ruby');
+  rubyBtn.addEventListener('click', () => {
+    state.rubyParen = !state.rubyParen;
+    syncToggles(); refresh(); persist();
+  });
   const fabBtn = panel.querySelector('#anysub-tg-fab');
   fabBtn.addEventListener('click', () => {
     state.showFab = !state.showFab;
@@ -204,9 +210,12 @@ function syncVisBtn() {
 
 function syncToggles() {
   const sc = refs.panel.querySelector('#anysub-tg-sc');
+  const rb = refs.panel.querySelector('#anysub-tg-ruby');
   const fb = refs.panel.querySelector('#anysub-tg-fab');
   sc.textContent = '快捷键:' + (state.shortcutsEnabled ? '开' : '关');
   sc.classList.toggle('on', state.shortcutsEnabled);
+  rb.textContent = '注音:' + (state.rubyParen ? '开' : '关');
+  rb.classList.toggle('on', state.rubyParen);
   fb.textContent = '悬浮球:' + (state.showFab ? '开' : '关');
   fb.classList.toggle('on', state.showFab);
 }

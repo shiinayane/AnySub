@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.10.0
+// @version      0.11.0
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -21,6 +21,7 @@
 		hidden: false,
 		shortcutsEnabled: true,
 		showFab: false,
+		rubyParen: true,
 		jimakuKey: "",
 		loadedSeries: "",
 		loadedEpisode: "",
@@ -39,6 +40,8 @@
     max-width:92%;text-align:center;line-height:1.25;white-space:pre-wrap;word-break:break-word;
     font-family:-apple-system,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;
     font-weight:600;border-radius:4px;box-sizing:border-box;}
+  #anysub-cuebox ruby{ruby-align:center;}
+  #anysub-cuebox rt{font-size:.5em;font-weight:400;opacity:.9;line-height:1;}
   #anysub-fab{position:fixed;bottom:28%;z-index:2147483646;width:30px;height:30px;
     display:flex;align-items:center;justify-content:center;
     background:#2b6cff;color:#fff;border-radius:50%;
@@ -518,6 +521,20 @@
 		});
 		return vids[0];
 	}
+	var RE_AOZORA_BAR = new RegExp("｜([^｜《》]+)《([\\u3041-\\u3096\\u30a1-\\u30fa\\u30fc]+)》", "g");
+	var RE_AOZORA = new RegExp("([\\u4e00-\\u9fff\\u3400-\\u4dbf\\u3005]+)《([\\u3041-\\u3096\\u30a1-\\u30fa\\u30fc]+)》", "g");
+	var RE_PAREN = new RegExp("([\\u4e00-\\u9fff\\u3400-\\u4dbf\\u3005]+)[（(]([\\u3041-\\u3096\\u30a1-\\u30fa\\u30fc]+)[）)]", "g");
+	function applyRuby(text, allowParen) {
+		if (!text) return text;
+		if (!/[《｜]/.test(text) && !(allowParen && /[（(]/.test(text))) return text;
+		text = text.replace(RE_AOZORA_BAR, (m, base, ruby) => tag(base, ruby));
+		text = text.replace(RE_AOZORA, (m, base, ruby) => tag(base, ruby));
+		if (allowParen) text = text.replace(RE_PAREN, (m, base, ruby) => tag(base, ruby));
+		return text;
+	}
+	function tag(base, ruby) {
+		return "<ruby>" + base + "<rt>" + ruby + "</rt></ruby>";
+	}
 	function createTextRenderer() {
 		let cueBox = null;
 		let lastHtml = "";
@@ -556,7 +573,7 @@
 					if (c.start > t) break;
 					if (t < c.end) parts.push(c.text);
 				}
-				const html = parts.join("<br>");
+				const html = parts.map((x) => applyRuby(x, state.rubyParen)).join("<br>");
 				if (html === lastHtml) return;
 				lastHtml = html;
 				cueBox.innerHTML = html;
@@ -849,6 +866,7 @@
 			color: s.color,
 			shortcutsEnabled: state.shortcutsEnabled,
 			showFab: state.showFab,
+			rubyParen: state.rubyParen,
 			jimakuKey: state.jimakuKey
 		});
 	}
@@ -1192,6 +1210,7 @@
   </div>
   <div class="anysub-row anysub-toggles">
     <button id="anysub-tg-sc" class="anysub-toggle">快捷键:开</button>
+    <button id="anysub-tg-ruby" class="anysub-toggle" title="将 温厚（おんこう) 显示为注音">注音:开</button>
     <button id="anysub-tg-fab" class="anysub-toggle">悬浮球:关</button>
   </div>
   <div class="anysub-legend">
@@ -1319,6 +1338,12 @@
 			syncToggles();
 			persist();
 		});
+		panel.querySelector("#anysub-tg-ruby").addEventListener("click", () => {
+			state.rubyParen = !state.rubyParen;
+			syncToggles();
+			refresh();
+			persist();
+		});
 		panel.querySelector("#anysub-tg-fab").addEventListener("click", () => {
 			state.showFab = !state.showFab;
 			syncToggles();
@@ -1344,9 +1369,12 @@
 	}
 	function syncToggles() {
 		const sc = refs.panel.querySelector("#anysub-tg-sc");
+		const rb = refs.panel.querySelector("#anysub-tg-ruby");
 		const fb = refs.panel.querySelector("#anysub-tg-fab");
 		sc.textContent = "快捷键:" + (state.shortcutsEnabled ? "开" : "关");
 		sc.classList.toggle("on", state.shortcutsEnabled);
+		rb.textContent = "注音:" + (state.rubyParen ? "开" : "关");
+		rb.classList.toggle("on", state.rubyParen);
 		fb.textContent = "悬浮球:" + (state.showFab ? "开" : "关");
 		fb.classList.toggle("on", state.showFab);
 	}
@@ -1630,6 +1658,7 @@
 		if (typeof saved.color === "string") s.color = saved.color;
 		if (typeof saved.shortcutsEnabled === "boolean") state.shortcutsEnabled = saved.shortcutsEnabled;
 		if (typeof saved.showFab === "boolean") state.showFab = saved.showFab;
+		if (typeof saved.rubyParen === "boolean") state.rubyParen = saved.rubyParen;
 		if (typeof saved.jimakuKey === "string") state.jimakuKey = saved.jimakuKey;
 	}
 })();

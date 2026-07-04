@@ -47,5 +47,6 @@ function restoreSettings() {
   if (typeof saved.color === 'string') s.color = saved.color;
   if (typeof saved.shortcutsEnabled === 'boolean') state.shortcutsEnabled = saved.shortcutsEnabled;
   if (typeof saved.showFab === 'boolean') state.showFab = saved.showFab;
+  if (typeof saved.rubyParen === 'boolean') state.rubyParen = saved.rubyParen;
   if (typeof saved.jimakuKey === 'string') state.jimakuKey = saved.jimakuKey;
 }

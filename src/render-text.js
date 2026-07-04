@@ -2,6 +2,7 @@
 // 实现统一 renderer 接口:{ mount, renderAt(v, rect, layoutChanged), applyStyle, destroy }
 import { state, FONT_BASE } from './state.js';
 import { refs } from './refs.js';
+import { applyRuby } from './ruby.js';
 
 export function createTextRenderer() {
   let cueBox = null;
@@ -43,7 +44,7 @@ export function createTextRenderer() {
         if (c.start > t) break;
         if (t < c.end) parts.push(c.text); // end 独占,避免相邻 cue 边界瞬间双显
       }
-      const html = parts.join('<br>');
+      const html = parts.map((x) => applyRuby(x, state.rubyParen)).join('<br>');
       if (html === lastHtml) return;
       lastHtml = html;
       cueBox.innerHTML = html;
