@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.11.0
+// @version      0.11.1
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -995,6 +995,7 @@
 	}
 	var panel, keyInput, titleInput, epInput, results;
 	var currentAnime = null;
+	var lastPrefillTitle = null;
 	var HTML = `
   <div class="anysub-row anysub-head"><span>在线字幕 · Jimaku</span><span id="anysub-sc-close">✕</span></div>
   <div class="anysub-row">
@@ -1033,10 +1034,13 @@
 		if (refs.panel) refs.panel.style.display = "none";
 		panel.style.display = "block";
 		keyInput.value = state.jimakuKey || "";
-		if (!titleInput.value && !epInput.value) {
-			const { series, episode } = parseVideoTitle(document.title);
+		const curTitle = document.title;
+		if (!titleInput.value && !epInput.value || curTitle !== lastPrefillTitle) {
+			const { series, episode } = parseVideoTitle(curTitle);
 			titleInput.value = series;
-			if (episode) epInput.value = episode;
+			epInput.value = episode || "";
+			lastPrefillTitle = curTitle;
+			setResults("<div class=\"anysub-empty\">输入番剧名后点搜索</div>");
 		}
 		(state.jimakuKey ? titleInput : keyInput).focus();
 	}
@@ -1106,6 +1110,7 @@
 		panel.style.display = "block";
 		keyInput.value = state.jimakuKey || "";
 		if (seriesTitle) titleInput.value = seriesTitle;
+		lastPrefillTitle = document.title;
 		renderFiles({
 			title: seriesTitle,
 			anilistId: state.lastOnline && state.lastOnline.anilistId

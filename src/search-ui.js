@@ -8,7 +8,8 @@ import { animeCandidates, subtitleFiles, downloadAndLoad, markLoaded } from './o
 import { parseVideoTitle } from './title-parse.js';
 
 let panel, keyInput, titleInput, epInput, results;
-let currentAnime = null; // 当前展开文件列表的番剧(供记录来源)
+let currentAnime = null;   // 当前展开文件列表的番剧(供记录来源)
+let lastPrefillTitle = null; // 上次预填所依据的页面标题(用于检测切集后刷新预填)
 
 const HTML = `
   <div class="anysub-row anysub-head"><span>在线字幕 · Jimaku</span><span id="anysub-sc-close">✕</span></div>
@@ -48,11 +49,17 @@ export function openSearch() {
   if (refs.panel) refs.panel.style.display = 'none';
   panel.style.display = 'block';
   keyInput.value = state.jimakuKey || '';
-  // 从页面标题预填「番剧名 + 集数」(用户没手动填过才填,避免覆盖)
-  if (!titleInput.value && !epInput.value) {
-    const { series, episode } = parseVideoTitle(document.title);
+  // 从页面标题预填「番剧名 + 集数」。
+  // 首次为空时填;此后仅当页面标题变化(=切集/换番)才刷新预填并清空旧结果,
+  // 同一集内保留用户的手动修改。
+  const curTitle = document.title;
+  const first = !titleInput.value && !epInput.value;
+  if (first || curTitle !== lastPrefillTitle) {
+    const { series, episode } = parseVideoTitle(curTitle);
     titleInput.value = series;
-    if (episode) epInput.value = episode;
+    epInput.value = episode || '';
+    lastPrefillTitle = curTitle;
+    setResults('<div class="anysub-empty">输入番剧名后点搜索</div>');
   }
   (state.jimakuKey ? titleInput : keyInput).focus();
 }
@@ -113,6 +120,7 @@ export function showCandidates(seriesTitle, files) {
   panel.style.display = 'block';
   keyInput.value = state.jimakuKey || '';
   if (seriesTitle) titleInput.value = seriesTitle;
+  lastPrefillTitle = document.title; // 视为已按当前页预填,避免重开时被覆盖
   const anilistId = state.lastOnline && state.lastOnline.anilistId;
   renderFiles({ title: seriesTitle, anilistId }, files);
 }
