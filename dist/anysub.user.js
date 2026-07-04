@@ -26,7 +26,6 @@
 		enhance: true,
 		speakers: null,
 		subPos: "bottom",
-		multiSplit: true,
 		jimakuKey: "",
 		loadedSeries: "",
 		loadedEpisode: "",
@@ -1005,12 +1004,12 @@
 				const c = stepCueLine(line, state.speakers, st);
 				st = c.state;
 				const html = state.enhance ? typedHtml(line, c) : applyRuby(line, state.rubyParen);
-				const sfx = state.enhance && c.type === "sfx";
-				const turnStart = c.type === "dialogue" || c.type === "speaker" || sfx;
+				const nonspeech = state.enhance && (c.type === "sfx" || c.type === "book");
+				const turnStart = c.type === "dialogue" || c.type === "speaker" || nonspeech;
 				if (cur === null || turnStart) {
 					cur = {
 						lines: [html],
-						nonspeech: sfx
+						nonspeech
 					};
 					segs.push(cur);
 				} else cur.lines.push(html);
@@ -1096,32 +1095,16 @@
 					if (c.start > t) break;
 					if (t < c.end) active.push(c);
 				}
-				const key = (state.rubyParen ? "1" : "0") + (state.enhance ? "1" : "0") + (state.multiSplit ? "1" : "0") + state.subPos + "|" + active.map((c) => (c._spanIn ? c._spanIn.span + (c._spanIn.lyric ? "L" : "") : "") + ":" + c.text).join(String.fromCharCode(1));
+				const key = (state.rubyParen ? "1" : "0") + (state.enhance ? "1" : "0") + state.subPos + "|" + active.map((c) => (c._spanIn ? c._spanIn.span + (c._spanIn.lyric ? "L" : "") : "") + ":" + c.text).join(String.fromCharCode(1));
 				if (key === lastKey) return;
 				lastKey = key;
 				const segs = buildSegments(active);
-				let primary, secondary;
-				if (state.multiSplit) {
-					const speech = segs.filter((s) => !s.nonspeech).map((s) => s.html);
-					const sfx = segs.filter((s) => s.nonspeech).map((s) => s.html);
-					if (sfx.length && speech.length) {
-						primary = speech.length >= 2 ? [speech[speech.length - 1]] : speech;
-						secondary = speech.slice(0, Math.max(0, speech.length - 1)).concat(sfx);
-					} else if (speech.length >= 2) {
-						primary = [speech[speech.length - 1]];
-						secondary = speech.slice(0, -1);
-					} else {
-						primary = segs.map((s) => s.html);
-						secondary = [];
-					}
-				} else {
-					primary = segs.map((s) => s.html);
-					secondary = [];
-				}
+				const speech = segs.filter((s) => !s.nonspeech).map((s) => s.html);
+				const meta = segs.filter((s) => s.nonspeech).map((s) => s.html);
 				const pBox = state.subPos === "top" ? boxTop : boxBottom;
 				const sBox = state.subPos === "top" ? boxBottom : boxTop;
-				const pHtml = primary.join("<br>");
-				const sHtml = secondary.join("<br>");
+				const pHtml = speech.join("<br>");
+				const sHtml = meta.join("<br>");
 				pBox.innerHTML = pHtml;
 				pBox.style.display = pHtml ? "inline-block" : "none";
 				sBox.innerHTML = sHtml;
@@ -1412,7 +1395,6 @@
 			enhance: state.enhance,
 			jimakuKey: state.jimakuKey,
 			subPos: state.subPos,
-			multiSplit: state.multiSplit,
 			offsets: state.offsets
 		});
 	}
@@ -1820,18 +1802,10 @@
   </div>
 
   <div class="as-field">
-    <label class="as-label">字幕位置</label>
+    <label class="as-label">说话位置</label>
     <div class="as-seg" id="anysub-anchor">
       <button data-pos="bottom" class="on">底部</button>
       <button data-pos="top">顶部</button>
-    </div>
-  </div>
-
-  <div class="as-field">
-    <label class="as-label">多人同时</label>
-    <div class="as-seg" id="anysub-multi">
-      <button data-multi="split" class="on">上下分置</button>
-      <button data-multi="stack">底部叠放</button>
     </div>
   </div>
 
@@ -2017,11 +1991,6 @@
 			refresh();
 			persist();
 		});
-		setupSeg("#anysub-multi", "multi", (val) => {
-			state.multiSplit = val === "split";
-			refresh();
-			persist();
-		});
 		panel.querySelector("#anysub-tg-ruby").addEventListener("click", () => {
 			state.rubyParen = !state.rubyParen;
 			syncToggles();
@@ -2080,7 +2049,6 @@
 		setSegActive("#anysub-bg", "bg", s.bg);
 		setSegActive("#anysub-color", "color", s.color);
 		setSegActive("#anysub-anchor", "pos", state.subPos);
-		setSegActive("#anysub-multi", "multi", state.multiSplit ? "split" : "stack");
 		syncToggles();
 		syncVisBtn();
 	}
@@ -2377,7 +2345,6 @@
 		if (typeof saved.rubyParen === "boolean") state.rubyParen = saved.rubyParen;
 		if (typeof saved.enhance === "boolean") state.enhance = saved.enhance;
 		if (saved.subPos === "top" || saved.subPos === "bottom") state.subPos = saved.subPos;
-		if (typeof saved.multiSplit === "boolean") state.multiSplit = saved.multiSplit;
 		if (typeof saved.jimakuKey === "string") state.jimakuKey = saved.jimakuKey;
 		if (saved.offsets && typeof saved.offsets === "object" && !Array.isArray(saved.offsets)) {
 			const clean = {};

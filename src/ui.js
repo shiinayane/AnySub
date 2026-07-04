@@ -69,18 +69,10 @@ const PANEL_HTML = `
   </div>
 
   <div class="as-field">
-    <label class="as-label">字幕位置</label>
+    <label class="as-label">说话位置</label>
     <div class="as-seg" id="anysub-anchor">
       <button data-pos="bottom" class="on">底部</button>
       <button data-pos="top">顶部</button>
-    </div>
-  </div>
-
-  <div class="as-field">
-    <label class="as-label">多人同时</label>
-    <div class="as-seg" id="anysub-multi">
-      <button data-multi="split" class="on">上下分置</button>
-      <button data-multi="stack">底部叠放</button>
     </div>
   </div>
 
@@ -257,7 +249,6 @@ function wireEvents() {
   setupSeg('#anysub-bg', 'bg', (val) => { state.style.bg = val; applyStyle(); persist(); });
   setupSeg('#anysub-color', 'color', (val) => { state.style.color = val; applyStyle(); persist(); });
   setupSeg('#anysub-anchor', 'pos', (val) => { state.subPos = val; refresh(); persist(); });
-  setupSeg('#anysub-multi', 'multi', (val) => { state.multiSplit = val === 'split'; refresh(); persist(); });
 
   const rubyBtn = panel.querySelector('#anysub-tg-ruby');
   rubyBtn.addEventListener('click', () => {
@@ -318,7 +309,6 @@ function syncControls() {
   setSegActive('#anysub-bg', 'bg', s.bg);
   setSegActive('#anysub-color', 'color', s.color);
   setSegActive('#anysub-anchor', 'pos', state.subPos);
-  setSegActive('#anysub-multi', 'multi', state.multiSplit ? 'split' : 'stack');
   syncToggles();
   syncVisBtn();
 }

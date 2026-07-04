@@ -1,7 +1,7 @@
 // 文本字幕渲染器(SRT / VTT):把当前时刻的 cue 渲染进覆盖层。
-// 双锚点(底部盒 + 顶部盒)+ 按「话者段」分置:
-//   段边界 = cue 边界 或 行首话者名（名前）。多人同时(≥2 段)时最新一段留主锚点、其余移对侧,
-//   避免底部堆高挡画面。普通折行(无话者名)不拆。跨行/跨 cue 的画外音·书面·歌曲由 _spanIn 连续。
+// 双锚点(底部盒 + 顶部盒):说话(台词/话者/画外音/歌词)放主锚点(默认底部),
+//   非语音(独立音效/书面)恒放对侧(默认顶部)——底部永远是"说话的地方",心智统一。
+//   多说话人不上下拆分,一律主锚点叠放靠话者名区分。跨行/跨 cue 的画外音·书面·歌曲由 _spanIn 连续。
 import { state, FONT_BASE } from './state.js';
 import { refs } from './refs.js';
 import { applyRuby } from './ruby.js';
@@ -31,9 +31,9 @@ function buildSegments(active) {
       const c = stepCueLine(line, state.speakers, st);
       st = c.state;
       const html = state.enhance ? typedHtml(line, c) : applyRuby(line, state.rubyParen);
-      const sfx = state.enhance && c.type === 'sfx';
-      const turnStart = c.type === 'dialogue' || c.type === 'speaker' || sfx;
-      if (cur === null || turnStart) { cur = { lines: [html], nonspeech: sfx }; segs.push(cur); }
+      const nonspeech = state.enhance && (c.type === 'sfx' || c.type === 'book'); // 非语音:音效/书面
+      const turnStart = c.type === 'dialogue' || c.type === 'speaker' || nonspeech;
+      if (cur === null || turnStart) { cur = { lines: [html], nonspeech }; segs.push(cur); }
       else cur.lines.push(html);
     }
   }
@@ -110,36 +110,21 @@ export function createTextRenderer() {
         if (t < c.end) active.push(c); // end 独占,避免相邻 cue 边界瞬间双显
       }
       // 内容+开关指纹去重:cue/开关未变则跳过重排与 DOM 写入(不在每个渲染 tick 重跑注音)
-      const key = (state.rubyParen ? '1' : '0') + (state.enhance ? '1' : '0') +
-        (state.multiSplit ? '1' : '0') + state.subPos + '|' +
+      const key = (state.rubyParen ? '1' : '0') + (state.enhance ? '1' : '0') + state.subPos + '|' +
         active.map((c) => (c._spanIn ? c._spanIn.span + (c._spanIn.lyric ? 'L' : '') : '') + ':' + c.text)
           .join(String.fromCharCode(1));
       if (key === lastKey) return;
       lastKey = key;
 
+      // 说话(台词/话者/画外音/歌词)→ 主锚点(默认底部);非语音(音效/书面)→ 对侧(默认顶部)。
+      // 多说话人不再上下拆分,一律在主锚点叠放,靠话者名区分。
       const segs = buildSegments(active);
-      let primary, secondary;
-      if (state.multiSplit) {
-        const speech = segs.filter((s) => !s.nonspeech).map((s) => s.html);
-        const sfx = segs.filter((s) => s.nonspeech).map((s) => s.html);
-        if (sfx.length && speech.length) {
-          // 音效与台词同屏:音效移对侧避让;台词留主锚点(多说话人再把较早的也移对侧)
-          primary = speech.length >= 2 ? [speech[speech.length - 1]] : speech;
-          secondary = speech.slice(0, Math.max(0, speech.length - 1)).concat(sfx);
-        } else if (speech.length >= 2) {
-          primary = [speech[speech.length - 1]]; // 多说话人:最新一段留主锚点
-          secondary = speech.slice(0, -1);
-        } else {
-          // 只有台词、或只有音效(独处)→ 全留主锚点(独立音效不孤零零飘顶部)
-          primary = segs.map((s) => s.html); secondary = [];
-        }
-      } else {
-        primary = segs.map((s) => s.html); secondary = []; // 叠放:全留主锚点
-      }
+      const speech = segs.filter((s) => !s.nonspeech).map((s) => s.html);
+      const meta = segs.filter((s) => s.nonspeech).map((s) => s.html);
       const pBox = state.subPos === 'top' ? boxTop : boxBottom;
       const sBox = state.subPos === 'top' ? boxBottom : boxTop;
-      const pHtml = primary.join('<br>');
-      const sHtml = secondary.join('<br>');
+      const pHtml = speech.join('<br>');
+      const sHtml = meta.join('<br>');
       pBox.innerHTML = pHtml; pBox.style.display = pHtml ? 'inline-block' : 'none';
       sBox.innerHTML = sHtml; sBox.style.display = sHtml ? 'inline-block' : 'none';
     },
