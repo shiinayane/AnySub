@@ -20,7 +20,8 @@ function typedHtml(text, c) {
   }
 }
 
-// 把当前活动 cue 拆成「话者段」(html 串数组)。新段起于:每条 cue 的首行、或行首带话者名的行。
+// 把当前活动 cue 拆成「段」。新段起于:每条 cue 的首行、行首带话者名的行、或(启用语义时)独立音效行。
+// 每段带 nonspeech 标记(独立（…）音效),供分置时把它移到对侧、避让台词。
 function buildSegments(active) {
   const segs = [];
   for (const cue of active) {
@@ -30,12 +31,13 @@ function buildSegments(active) {
       const c = stepCueLine(line, state.speakers, st);
       st = c.state;
       const html = state.enhance ? typedHtml(line, c) : applyRuby(line, state.rubyParen);
-      const turnStart = c.type === 'dialogue' || c.type === 'speaker'; // 带话者名 → 新说话人
-      if (cur === null || turnStart) { cur = [html]; segs.push(cur); }
-      else cur.push(html);
+      const sfx = state.enhance && c.type === 'sfx';
+      const turnStart = c.type === 'dialogue' || c.type === 'speaker' || sfx;
+      if (cur === null || turnStart) { cur = { lines: [html], nonspeech: sfx }; segs.push(cur); }
+      else cur.lines.push(html);
     }
   }
-  return segs.map((lines) => lines.join('<br>'));
+  return segs.map((s) => ({ html: s.lines.join('<br>'), nonspeech: s.nonspeech }));
 }
 
 export function createTextRenderer() {
@@ -116,10 +118,23 @@ export function createTextRenderer() {
       lastKey = key;
 
       const segs = buildSegments(active);
-      let primary = segs, secondary = [];
-      if (state.multiSplit && segs.length >= 2) {
-        primary = [segs[segs.length - 1]];   // 最新一段留主锚点(视线停留处)
-        secondary = segs.slice(0, -1);        // 其余移对侧
+      let primary, secondary;
+      if (state.multiSplit) {
+        const speech = segs.filter((s) => !s.nonspeech).map((s) => s.html);
+        const sfx = segs.filter((s) => s.nonspeech).map((s) => s.html);
+        if (sfx.length && speech.length) {
+          // 音效与台词同屏:音效移对侧避让;台词留主锚点(多说话人再把较早的也移对侧)
+          primary = speech.length >= 2 ? [speech[speech.length - 1]] : speech;
+          secondary = speech.slice(0, Math.max(0, speech.length - 1)).concat(sfx);
+        } else if (speech.length >= 2) {
+          primary = [speech[speech.length - 1]]; // 多说话人:最新一段留主锚点
+          secondary = speech.slice(0, -1);
+        } else {
+          // 只有台词、或只有音效(独处)→ 全留主锚点(独立音效不孤零零飘顶部)
+          primary = segs.map((s) => s.html); secondary = [];
+        }
+      } else {
+        primary = segs.map((s) => s.html); secondary = []; // 叠放:全留主锚点
       }
       const pBox = state.subPos === 'top' ? boxTop : boxBottom;
       const sBox = state.subPos === 'top' ? boxBottom : boxTop;

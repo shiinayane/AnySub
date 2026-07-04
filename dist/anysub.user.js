@@ -1005,14 +1005,21 @@
 				const c = stepCueLine(line, state.speakers, st);
 				st = c.state;
 				const html = state.enhance ? typedHtml(line, c) : applyRuby(line, state.rubyParen);
-				const turnStart = c.type === "dialogue" || c.type === "speaker";
+				const sfx = state.enhance && c.type === "sfx";
+				const turnStart = c.type === "dialogue" || c.type === "speaker" || sfx;
 				if (cur === null || turnStart) {
-					cur = [html];
+					cur = {
+						lines: [html],
+						nonspeech: sfx
+					};
 					segs.push(cur);
-				} else cur.push(html);
+				} else cur.lines.push(html);
 			}
 		}
-		return segs.map((lines) => lines.join("<br>"));
+		return segs.map((s) => ({
+			html: s.lines.join("<br>"),
+			nonspeech: s.nonspeech
+		}));
 	}
 	function createTextRenderer() {
 		let boxTop = null, boxBottom = null;
@@ -1093,10 +1100,23 @@
 				if (key === lastKey) return;
 				lastKey = key;
 				const segs = buildSegments(active);
-				let primary = segs, secondary = [];
-				if (state.multiSplit && segs.length >= 2) {
-					primary = [segs[segs.length - 1]];
-					secondary = segs.slice(0, -1);
+				let primary, secondary;
+				if (state.multiSplit) {
+					const speech = segs.filter((s) => !s.nonspeech).map((s) => s.html);
+					const sfx = segs.filter((s) => s.nonspeech).map((s) => s.html);
+					if (sfx.length && speech.length) {
+						primary = speech.length >= 2 ? [speech[speech.length - 1]] : speech;
+						secondary = speech.slice(0, Math.max(0, speech.length - 1)).concat(sfx);
+					} else if (speech.length >= 2) {
+						primary = [speech[speech.length - 1]];
+						secondary = speech.slice(0, -1);
+					} else {
+						primary = segs.map((s) => s.html);
+						secondary = [];
+					}
+				} else {
+					primary = segs.map((s) => s.html);
+					secondary = [];
 				}
 				const pBox = state.subPos === "top" ? boxTop : boxBottom;
 				const sBox = state.subPos === "top" ? boxBottom : boxTop;
