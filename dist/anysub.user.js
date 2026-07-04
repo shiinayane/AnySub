@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.9.0
+// @version      0.9.1
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -560,6 +560,7 @@
 			(document.head || document.documentElement).appendChild(s);
 		});
 	}
+	var Z = "2147483640";
 	function createAssRenderer(assText) {
 		const textRenderer = createTextRenderer();
 		let octopus = null;
@@ -580,6 +581,7 @@
 						}
 						usingLibass = true;
 						textRenderer.destroy();
+						hardenCanvas();
 						if (state.hidden) setCanvasDisplay("none");
 						toast("已启用 ASS 高保真渲染");
 					},
@@ -592,6 +594,17 @@
 				toast("ASS 按文本显示(高保真渲染不可用)");
 			});
 		}
+		function hardenCanvas() {
+			const p = octopus && octopus.canvasParent;
+			if (p) {
+				p.style.zIndex = Z;
+				p.style.pointerEvents = "none";
+			}
+			if (octopus && octopus.canvas) octopus.canvas.style.pointerEvents = "none";
+		}
+		function setCanvasDisplay(val) {
+			if (octopus && octopus.canvas) octopus.canvas.style.display = val;
+		}
 		function safeDispose() {
 			if (octopus) {
 				try {
@@ -599,10 +612,6 @@
 				} catch (_) {}
 				octopus = null;
 			}
-		}
-		function setCanvasDisplay(val) {
-			const cv = octopus && octopus.canvas;
-			if (cv) cv.style.display = val;
 		}
 		return {
 			mount() {
