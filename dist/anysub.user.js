@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.9.1
+// @version      0.9.2
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -560,17 +560,22 @@
 			(document.head || document.documentElement).appendChild(s);
 		});
 	}
-	var Z = "2147483640";
 	function createAssRenderer(assText) {
 		const textRenderer = createTextRenderer();
 		let octopus = null;
+		let assCanvas = null;
 		let usingLibass = false;
 		let disposed = false;
+		let lastSizeKey = "";
 		function tryLibass() {
 			loadOctopus().then(({ Octopus, workerUrl, fallbackFont }) => {
-				if (disposed || !state.video) return;
+				if (disposed) return;
+				assCanvas = document.createElement("canvas");
+				assCanvas.id = "anysub-ass-canvas";
+				assCanvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:block;";
+				refs.overlay.appendChild(assCanvas);
 				octopus = new Octopus({
-					video: state.video,
+					canvas: assCanvas,
 					subContent: assText,
 					workerUrl,
 					fallbackFont,
@@ -581,8 +586,10 @@
 						}
 						usingLibass = true;
 						textRenderer.destroy();
-						hardenCanvas();
-						if (state.hidden) setCanvasDisplay("none");
+						lastSizeKey = "";
+						sizeCanvas();
+						drive();
+						if (state.hidden) assCanvas.style.display = "none";
 						toast("已启用 ASS 高保真渲染");
 					},
 					onError: (e) => {
@@ -594,16 +601,24 @@
 				toast("ASS 按文本显示(高保真渲染不可用)");
 			});
 		}
-		function hardenCanvas() {
-			const p = octopus && octopus.canvasParent;
-			if (p) {
-				p.style.zIndex = Z;
-				p.style.pointerEvents = "none";
-			}
-			if (octopus && octopus.canvas) octopus.canvas.style.pointerEvents = "none";
+		function sizeCanvas() {
+			if (!octopus || !assCanvas) return;
+			const w = refs.overlay.clientWidth, h = refs.overlay.clientHeight;
+			if (!w || !h) return;
+			const dpr = window.devicePixelRatio || 1;
+			const bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+			const key = bw + "x" + bh;
+			if (key === lastSizeKey) return;
+			lastSizeKey = key;
+			try {
+				octopus.resize(bw, bh, 0, 0);
+			} catch (_) {}
 		}
-		function setCanvasDisplay(val) {
-			if (octopus && octopus.canvas) octopus.canvas.style.display = val;
+		function drive() {
+			if (!octopus || !state.video) return;
+			try {
+				octopus.setCurrentTime(Math.max(0, state.video.currentTime - state.offset));
+			} catch (_) {}
 		}
 		function safeDispose() {
 			if (octopus) {
@@ -612,6 +627,10 @@
 				} catch (_) {}
 				octopus = null;
 			}
+			if (assCanvas) {
+				assCanvas.remove();
+				assCanvas = null;
+			}
 		}
 		return {
 			mount() {
@@ -619,11 +638,17 @@
 				tryLibass();
 			},
 			renderAt(v, rect, layoutChanged) {
-				if (!usingLibass) textRenderer.renderAt(v, rect, layoutChanged);
+				if (!usingLibass) {
+					textRenderer.renderAt(v, rect, layoutChanged);
+					return;
+				}
+				if (layoutChanged) sizeCanvas();
+				drive();
 			},
-			setVisible(v) {
-				if (usingLibass) setCanvasDisplay(v ? "" : "none");
-				else textRenderer.setVisible(v);
+			setVisible(vis) {
+				if (usingLibass) {
+					if (assCanvas) assCanvas.style.display = vis ? "" : "none";
+				} else textRenderer.setVisible(vis);
 			},
 			applyStyle() {
 				if (!usingLibass) textRenderer.applyStyle();
