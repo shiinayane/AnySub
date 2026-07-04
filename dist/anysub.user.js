@@ -1004,7 +1004,7 @@
 				const c = stepCueLine(line, state.speakers, st);
 				st = c.state;
 				const html = state.enhance ? typedHtml(line, c) : applyRuby(line, state.rubyParen);
-				const nonspeech = state.enhance && (c.type === "sfx" || c.type === "book");
+				const nonspeech = state.enhance && c.type === "sfx";
 				const turnStart = c.type === "dialogue" || c.type === "speaker" || nonspeech;
 				if (cur === null || turnStart) {
 					cur = {
