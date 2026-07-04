@@ -8,7 +8,10 @@ Chrome / Edge / Safari / Firefox 通用。
 
 - 🔍 **在线字幕**([Jimaku](https://jimaku.cc)):`Alt+Shift+F` 搜番剧 → 选番剧 → 选文件 → 一键挂载(动画向)
   - 半自动、候选列表让你选,绝不静默加载错字幕;番剧名经 AniList 定位,ASS 优先
+  - 搜索框从页面标题**智能预填**番剧名+集数(第X話/#X、汉数字含旧字体 第壱話→1)
   - 需 Jimaku API key(账号页生成,仅存本机);全程 `@grant none` 直连,不碰 GM 特权
+- ⏭️ **切集自动接续**:SPA 换集(页面标题集数变化)→ 自动清除旧字幕 → **同源优先**
+  自动加载下一集(跨集匹配同一字幕组/压制源);找不到同源才弹候选。追番零手工
 - 📂 本地字幕文件挂载(选择 / 拖拽 / **清除**),**文件不出本机**(SRT/VTT 全程离线)
 - 🎬 支持 **SRT / VTT / ASS / SSA**
 - ✨ **ASS/SSA 高保真渲染**:懒加载 [libass-wasm](https://github.com/libass/JavascriptSubtitlesOctopus),
@@ -85,8 +88,10 @@ src/
 ├── loader.js       载入流程 + 格式注册表(本地/在线共用)
 ├── anilist.js      番剧名 → AniList 候选(无鉴权)
 ├── jimaku.js       Jimaku API 客户端(需 key)
-├── online.js       在线编排:定位番剧 → 取文件 → 下载载入
+├── online.js       在线编排:定位番剧 → 取文件 → 下载 → 同源匹配
 ├── search-ui.js    在线搜索面板(候选列表)
+├── title-parse.js  页面标题 → 番剧名 + 集数(含日文/旧字体)
+├── episode-watch.js 切集检测 + 同源自动接续
 ├── ui.js           设置面板 + 悬浮球 + 拖拽 + 选视频
 ├── shortcuts.js    键盘快捷键(Alt+Shift,capture 拦截)
 ├── watcher.js      DOM 观察器按需生命周期(空闲断开)
@@ -114,7 +119,7 @@ npm run build && python3 -m http.server 8000
 - [x] ~~设置持久化(字号 / 位置 / 背景 / 颜色)~~(v0.4.0)
 - [x] ~~ASS/SSA 高保真渲染(libass-wasm),失败降级纯文本~~(v0.7.0)
 - [x] ~~在线字幕搜索(Jimaku,半自动候选)~~(v0.9.0)
-- [ ] DMM TV 自动识别番剧+集数(预填搜索,进一步省手工)
+- [x] ~~标题智能预填 + 切集自动接续(同源优先)~~(v0.10.0)
 - [ ] 跨域 iframe 内视频支持
 - [ ] 更多格式(SUB/SBV/LRC/SMI/TTML)
 - [ ] ASS 自定义字体(内嵌 / 用户提供,改善冷门字体还原)

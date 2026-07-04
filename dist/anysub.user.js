@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.9.3
+// @version      0.10.0
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -22,6 +22,9 @@
 		shortcutsEnabled: true,
 		showFab: false,
 		jimakuKey: "",
+		loadedSeries: "",
+		loadedEpisode: "",
+		lastOnline: null,
 		style: {
 			fontPct: 100,
 			bg: "translucent",
@@ -169,7 +172,7 @@
 		if (!refs.statusEl) return;
 		refs.statusEl.textContent = state.cues.length ? `已加载:${state.fileName} · ${state.cues.length} 条` : "未加载字幕";
 	}
-	var mo = null, timer = 0, onReact = () => {};
+	var mo = null, timer$1 = 0, onReact = () => {};
 	function setReactHandler(fn) {
 		onReact = fn;
 	}
@@ -177,8 +180,8 @@
 		const need = state.showFab || state.cues.length > 0;
 		if (need && !mo) {
 			mo = new MutationObserver(() => {
-				clearTimeout(timer);
-				timer = setTimeout(() => onReact(), 300);
+				clearTimeout(timer$1);
+				timer$1 = setTimeout(() => onReact(), 300);
 			});
 			mo.observe(document.documentElement, {
 				childList: true,
@@ -187,7 +190,7 @@
 		} else if (!need && mo) {
 			mo.disconnect();
 			mo = null;
-			clearTimeout(timer);
+			clearTimeout(timer$1);
 		}
 	}
 	var intervalId = 0, driversAttached = false;
@@ -417,6 +420,69 @@
 	}
 	function escapeHtml(s) {
 		return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	}
+	var KANJI = {
+		"〇": 0,
+		"零": 0,
+		"一": 1,
+		"二": 2,
+		"三": 3,
+		"四": 4,
+		"五": 5,
+		"六": 6,
+		"七": 7,
+		"八": 8,
+		"九": 9,
+		"壱": 1,
+		"弐": 2,
+		"参": 3,
+		"肆": 4,
+		"伍": 5,
+		"陸": 6,
+		"漆": 7,
+		"捌": 8,
+		"玖": 9
+	};
+	var UNITS = {
+		"十": 10,
+		"拾": 10,
+		"百": 100,
+		"千": 1e3
+	};
+	function toHalfDigits(s) {
+		return s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248));
+	}
+	function jpNumToInt(s) {
+		if (/^[0-9０-９]+$/.test(s)) return parseInt(toHalfDigits(s), 10);
+		let total = 0, cur = 0, seen = false;
+		for (const ch of s) if (ch in KANJI) {
+			cur = KANJI[ch];
+			seen = true;
+		} else if (ch in UNITS) {
+			total += (cur || 1) * UNITS[ch];
+			cur = 0;
+			seen = true;
+		}
+		total += cur;
+		return seen ? total : NaN;
+	}
+	function parseVideoTitle(raw) {
+		let t = (raw || "").trim();
+		t = t.split(/[|｜]/)[0].trim();
+		t = t.replace(/\s*[(（【\[][^)）】\]]*[)）】\]]\s*$/g, "").trim();
+		let episode = "";
+		let m = t.match(/第\s*([0-9０-９〇零一二三四五六七八九十百千壱弐参肆伍陸漆捌玖拾]+)\s*[話话回]/);
+		if (!m) m = t.match(/(?:#|＃|Ep\.?\s*|Episode\s*|EP\s*)([0-9０-９]+)/i);
+		if (m) {
+			const n = jpNumToInt(m[1]);
+			if (isFinite(n)) episode = String(n);
+			t = t.slice(0, m.index).trim();
+		}
+		t = t.replace(/[\s\-–—・:：~〜]+$/g, "").trim();
+		return {
+			series: t.slice(0, 60),
+			episode
+		};
 	}
 	function collectVideos(root, acc) {
 		acc = acc || [];
@@ -760,6 +826,10 @@
 		}
 		state.cues = parsed.cues;
 		state.fileName = name;
+		const p = parseVideoTitle(document.title);
+		state.loadedSeries = p.series;
+		state.loadedEpisode = p.episode;
+		state.lastOnline = null;
 		invalidateLayout();
 		setRenderer(fmt.create(parsed));
 		applyStyle();
@@ -874,70 +944,39 @@
 		if (!res.ok) throw new Error("下载失败 " + res.status);
 		return loadFromBuffer(await res.arrayBuffer(), name);
 	}
-	var KANJI = {
-		"〇": 0,
-		"零": 0,
-		"一": 1,
-		"二": 2,
-		"三": 3,
-		"四": 4,
-		"五": 5,
-		"六": 6,
-		"七": 7,
-		"八": 8,
-		"九": 9,
-		"壱": 1,
-		"弐": 2,
-		"参": 3,
-		"肆": 4,
-		"伍": 5,
-		"陸": 6,
-		"漆": 7,
-		"捌": 8,
-		"玖": 9
-	};
-	var UNITS = {
-		"十": 10,
-		"拾": 10,
-		"百": 100,
-		"千": 1e3
-	};
-	function toHalfDigits(s) {
-		return s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248));
+	function markLoaded(anilistId, fileName) {
+		const p = parseVideoTitle(document.title);
+		state.loadedSeries = p.series;
+		state.loadedEpisode = p.episode;
+		state.lastOnline = anilistId != null ? {
+			anilistId,
+			tokens: fileTokens(fileName)
+		} : null;
 	}
-	function jpNumToInt(s) {
-		if (/^[0-9０-９]+$/.test(s)) return parseInt(toHalfDigits(s), 10);
-		let total = 0, cur = 0, seen = false;
-		for (const ch of s) if (ch in KANJI) {
-			cur = KANJI[ch];
-			seen = true;
-		} else if (ch in UNITS) {
-			total += (cur || 1) * UNITS[ch];
-			cur = 0;
-			seen = true;
-		}
-		total += cur;
-		return seen ? total : NaN;
+	function fileTokens(name) {
+		return String(name || "").toLowerCase().replace(/\.(ass|ssa|srt|vtt|sub|sbv)$/i, "").split(/[^a-z0-9぀-ヿ一-鿿]+/).filter((t) => t && !/^\d{1,3}$/.test(t) && !/^v\d+$/.test(t) && !/^s\d{1,2}e\d{1,3}$/.test(t) && !/^e\d{1,3}$/.test(t));
 	}
-	function parseVideoTitle(raw) {
-		let t = (raw || "").trim();
-		t = t.split(/[|｜]/)[0].trim();
-		t = t.replace(/\s*[(（【\[][^)）】\]]*[)）】\]]\s*$/g, "").trim();
-		let episode = "";
-		let m = t.match(/第\s*([0-9０-９〇零一二三四五六七八九十百千壱弐参肆伍陸漆捌玖拾]+)\s*[話话回]/);
-		if (!m) m = t.match(/(?:#|＃|Ep\.?\s*|Episode\s*|EP\s*)([0-9０-９]+)/i);
-		if (m) {
-			const n = jpNumToInt(m[1]);
-			if (isFinite(n)) episode = String(n);
-			t = t.slice(0, m.index).trim();
+	function pickSameSource(files, refTokens) {
+		if (!refTokens || !refTokens.length) return null;
+		const ref = new Set(refTokens);
+		let best = null, bestScore = 0;
+		for (const f of files) {
+			const s = jaccard(ref, new Set(fileTokens(f.name)));
+			if (s > bestScore) {
+				bestScore = s;
+				best = f;
+			}
 		}
-		t = t.replace(/[\s\-–—・:：~〜]+$/g, "").trim();
-		return {
-			series: t.slice(0, 60),
-			episode
-		};
+		return bestScore >= .6 ? best : null;
+	}
+	function jaccard(a, b) {
+		let inter = 0;
+		for (const t of a) if (b.has(t)) inter++;
+		const uni = a.size + b.size - inter;
+		return uni ? inter / uni : 0;
 	}
 	var panel, keyInput, titleInput, epInput, results;
+	var currentAnime = null;
 	var HTML = `
   <div class="anysub-row anysub-head"><span>在线字幕 · Jimaku</span><span id="anysub-sc-close">✕</span></div>
   <div class="anysub-row">
@@ -1044,7 +1083,18 @@
 			wireBack();
 		}
 	}
+	function showCandidates(seriesTitle, files) {
+		if (refs.panel) refs.panel.style.display = "none";
+		panel.style.display = "block";
+		keyInput.value = state.jimakuKey || "";
+		if (seriesTitle) titleInput.value = seriesTitle;
+		renderFiles({
+			title: seriesTitle,
+			anilistId: state.lastOnline && state.lastOnline.anilistId
+		}, files);
+	}
 	function renderFiles(anime, files) {
+		currentAnime = anime;
 		results.innerHTML = "";
 		const back = document.createElement("div");
 		back.className = "anysub-back";
@@ -1068,6 +1118,7 @@
 		row.classList.add("loading");
 		try {
 			if (await downloadAndLoad(f.url, f.name)) {
+				markLoaded(currentAnime && currentAnime.anilistId, f.name);
 				toast("已挂载:" + f.name);
 				close();
 			}
@@ -1492,6 +1543,59 @@
 		const tag = el.tagName;
 		return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
 	}
+	var timer = 0;
+	var busy = false;
+	function initEpisodeWatch() {
+		const titleEl = document.querySelector("title");
+		if (!titleEl) return;
+		new MutationObserver(() => {
+			clearTimeout(timer);
+			timer = setTimeout(onTitleChange, 500);
+		}).observe(titleEl, {
+			childList: true,
+			characterData: true,
+			subtree: true
+		});
+	}
+	function onTitleChange() {
+		if (busy || !state.cues.length) return;
+		const { series, episode } = parseVideoTitle(document.title);
+		if (episode === "") return;
+		if (series === state.loadedSeries && String(episode) === String(state.loadedEpisode)) return;
+		const sameShow = series === state.loadedSeries && state.lastOnline;
+		clearSubtitle();
+		if (sameShow) autoContinue(state.lastOnline, series, episode);
+		else {
+			state.loadedSeries = "";
+			state.loadedEpisode = "";
+			toast("已切集,已清除旧字幕");
+		}
+	}
+	async function autoContinue(ctx, series, episode) {
+		busy = true;
+		toast(`检测到切集,正在找第 ${episode} 集字幕…`);
+		try {
+			const files = await subtitleFiles(ctx.anilistId, episode);
+			if (!files.length) {
+				toast(`第 ${episode} 集暂无字幕`);
+				return;
+			}
+			const best = pickSameSource(files, ctx.tokens);
+			if (best) {
+				if (await downloadAndLoad(best.url, best.name)) {
+					markLoaded(ctx.anilistId, best.name);
+					toast(`已自动加载第 ${episode} 集字幕`);
+				}
+			} else {
+				toast("未找到同源字幕,请从候选中选择");
+				showCandidates(series, files);
+			}
+		} catch (err) {
+			toast("自动找字幕失败:" + (err && err.message));
+		} finally {
+			busy = false;
+		}
+	}
 	if (!window.__ANYSUB_LOADED__) {
 		window.__ANYSUB_LOADED__ = true;
 		init();
@@ -1505,6 +1609,7 @@
 		injectStyle();
 		buildUI();
 		initShortcuts();
+		initEpisodeWatch();
 		setReactHandler(react);
 		updateFabVisibility();
 		updateWatcher();

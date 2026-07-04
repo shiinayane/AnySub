@@ -7,6 +7,7 @@ import { setVideo } from './controller.js';
 import { loadSettings } from './storage.js';
 import { initShortcuts } from './shortcuts.js';
 import { setReactHandler, updateWatcher } from './watcher.js';
+import { initEpisodeWatch } from './episode-watch.js';
 
 // 避免在同一 window 重复注入
 if (!window.__ANYSUB_LOADED__) {
@@ -20,6 +21,7 @@ function init() {
   injectStyle();
   buildUI();
   initShortcuts();
+  initEpisodeWatch();
   setReactHandler(react);
   updateFabVisibility();
   updateWatcher(); // 按需连接:仅当开了悬浮球或已加载字幕才观察 DOM

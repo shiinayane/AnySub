@@ -2,6 +2,7 @@
 import { state } from './state.js';
 import { readSubtitleFile, decodeBuffer } from './decode.js';
 import { parseSubtitle } from './parse.js';
+import { parseVideoTitle } from './title-parse.js';
 import { pickBestVideo } from './locator.js';
 import { setVideo, startRender, setRenderer, applyStyle } from './controller.js';
 import { invalidateLayout } from './overlay.js';
@@ -53,6 +54,11 @@ export function loadFromText(text, name) {
   }
   state.cues = parsed.cues;
   state.fileName = name;
+  // 记录当前番剧/集数(用于切集检测);在线来源由在线路径随后设置,这里先清空
+  const p = parseVideoTitle(document.title);
+  state.loadedSeries = p.series;
+  state.loadedEpisode = p.episode;
+  state.lastOnline = null;
   invalidateLayout();
   setRenderer(fmt.create(parsed));
   applyStyle();

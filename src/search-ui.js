@@ -4,10 +4,11 @@ import { state } from './state.js';
 import { refs } from './refs.js';
 import { toast } from './notify.js';
 import { saveState } from './storage.js';
-import { animeCandidates, subtitleFiles, downloadAndLoad } from './online.js';
+import { animeCandidates, subtitleFiles, downloadAndLoad, markLoaded } from './online.js';
 import { parseVideoTitle } from './title-parse.js';
 
 let panel, keyInput, titleInput, epInput, results;
+let currentAnime = null; // 当前展开文件列表的番剧(供记录来源)
 
 const HTML = `
   <div class="anysub-row anysub-head"><span>在线字幕 · Jimaku</span><span id="anysub-sc-close">✕</span></div>
@@ -106,7 +107,18 @@ async function loadFilesFor(anime) {
   }
 }
 
+// 直接展示某番剧的文件候选(切集找不到同源时回退用)
+export function showCandidates(seriesTitle, files) {
+  if (refs.panel) refs.panel.style.display = 'none';
+  panel.style.display = 'block';
+  keyInput.value = state.jimakuKey || '';
+  if (seriesTitle) titleInput.value = seriesTitle;
+  const anilistId = state.lastOnline && state.lastOnline.anilistId;
+  renderFiles({ title: seriesTitle, anilistId }, files);
+}
+
 function renderFiles(anime, files) {
+  currentAnime = anime;
   results.innerHTML = '';
   const back = document.createElement('div');
   back.className = 'anysub-back';
@@ -131,7 +143,11 @@ async function pickFile(f, row) {
   row.classList.add('loading');
   try {
     const ok = await downloadAndLoad(f.url, f.name);
-    if (ok) { toast('已挂载:' + f.name); close(); }
+    if (ok) {
+      markLoaded(currentAnime && currentAnime.anilistId, f.name); // 记录来源,供切集自动接续
+      toast('已挂载:' + f.name);
+      close();
+    }
   } catch (err) {
     toast('下载失败:' + err.message);
   } finally {
