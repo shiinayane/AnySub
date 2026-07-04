@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.12.3
+// @version      0.13.0
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -19,7 +19,6 @@
 		fileName: "",
 		active: false,
 		hidden: false,
-		shortcutsEnabled: true,
 		showFab: false,
 		rubyParen: true,
 		jimakuKey: "",
@@ -864,7 +863,6 @@
 			bottomPct: s.bottomPct,
 			bg: s.bg,
 			color: s.color,
-			shortcutsEnabled: state.shortcutsEnabled,
 			showFab: state.showFab,
 			rubyParen: state.rubyParen,
 			jimakuKey: state.jimakuKey
@@ -1192,7 +1190,6 @@
     </div>
   </div>
   <div class="anysub-row anysub-toggles">
-    <button id="anysub-tg-sc" class="anysub-toggle">快捷键:开</button>
     <button id="anysub-tg-ruby" class="anysub-toggle" title="将 温厚（おんこう) 显示为注音">注音:开</button>
     <button id="anysub-tg-fab" class="anysub-toggle">悬浮球:关</button>
   </div>
@@ -1316,11 +1313,6 @@
 			applyStyle();
 			persist();
 		});
-		panel.querySelector("#anysub-tg-sc").addEventListener("click", () => {
-			state.shortcutsEnabled = !state.shortcutsEnabled;
-			syncToggles();
-			persist();
-		});
 		panel.querySelector("#anysub-tg-ruby").addEventListener("click", () => {
 			state.rubyParen = !state.rubyParen;
 			syncToggles();
@@ -1351,11 +1343,8 @@
 		if (b) b.textContent = state.hidden ? "显示字幕" : "隐藏字幕";
 	}
 	function syncToggles() {
-		const sc = refs.panel.querySelector("#anysub-tg-sc");
 		const rb = refs.panel.querySelector("#anysub-tg-ruby");
 		const fb = refs.panel.querySelector("#anysub-tg-fab");
-		sc.textContent = "快捷键:" + (state.shortcutsEnabled ? "开" : "关");
-		sc.classList.toggle("on", state.shortcutsEnabled);
 		rb.textContent = "注音:" + (state.rubyParen ? "开" : "关");
 		rb.classList.toggle("on", state.rubyParen);
 		fb.textContent = "悬浮球:" + (state.showFab ? "开" : "关");
@@ -1539,7 +1528,6 @@
 		window.addEventListener("keydown", onKey, true);
 	}
 	function onKey(e) {
-		if (!state.shortcutsEnabled) return;
 		if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) return;
 		if (isTyping()) return;
 		const run = MAP[e.code];
@@ -1686,10 +1674,8 @@
 		if (typeof saved.bottomPct === "number") s.bottomPct = saved.bottomPct;
 		if (typeof saved.bg === "string") s.bg = saved.bg;
 		if (typeof saved.color === "string") s.color = saved.color;
-		if (typeof saved.shortcutsEnabled === "boolean") state.shortcutsEnabled = saved.shortcutsEnabled;
 		if (typeof saved.showFab === "boolean") state.showFab = saved.showFab;
 		if (typeof saved.rubyParen === "boolean") state.rubyParen = saved.rubyParen;
 		if (typeof saved.jimakuKey === "string") state.jimakuKey = saved.jimakuKey;
-		if (!state.shortcutsEnabled && !state.showFab) state.showFab = true;
 	}
 })();

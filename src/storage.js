@@ -9,8 +9,7 @@ export function saveState() {
   const s = state.style;
   saveSettings({
     fontPct: s.fontPct, bottomPct: s.bottomPct, bg: s.bg, color: s.color,
-    shortcutsEnabled: state.shortcutsEnabled, showFab: state.showFab,
-    rubyParen: state.rubyParen, jimakuKey: state.jimakuKey,
+    showFab: state.showFab, rubyParen: state.rubyParen, jimakuKey: state.jimakuKey,
   });
 }
 

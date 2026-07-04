@@ -1,7 +1,6 @@
 // 键盘快捷键:统一 Alt+Shift + <键>,几乎不与站点单键冲突。
 // capture 阶段拦截,仅吞我们占用的组合(preventDefault + stopImmediatePropagation),
 // 不影响站点其它按键;输入框/可编辑区内不响应。按 event.code(物理键)判定,跨布局/Mac 稳定。
-import { state } from './state.js';
 import { togglePanel, openFilePicker, adjustOffset, openSearch } from './ui.js';
 import { toggleSubtitles } from './controller.js';
 
@@ -22,7 +21,7 @@ export function initShortcuts() {
 }
 
 function onKey(e) {
-  if (!state.shortcutsEnabled) return;
+  // 快捷键恒启用(不提供关闭开关,避免与「无悬浮球」叠加造成无法打开面板的死锁)
   // 必须恰好是 Alt+Shift(排除再叠加 Ctrl/Meta 的组合,避免误吞系统快捷键)
   if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) return;
   if (isTyping()) return;

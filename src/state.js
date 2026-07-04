@@ -6,7 +6,6 @@ export const state = {
   fileName: '',
   active: false,       // 渲染循环是否运行
   hidden: false,       // 字幕临时隐藏(快捷键切换,不持久化)
-  shortcutsEnabled: true, // 快捷键总开关(持久化)
   showFab: false,      // 是否显示常驻悬浮球(持久化,默认关,靠快捷键唤出面板)
   rubyParen: true,     // 括号注音启发式(温厚（おんこう）→ ruby;持久化,可关。《》式始终开)
   jimakuKey: '',       // Jimaku API key(持久化,按站点)

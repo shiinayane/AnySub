@@ -45,10 +45,7 @@ function restoreSettings() {
   if (typeof saved.bottomPct === 'number') s.bottomPct = saved.bottomPct;
   if (typeof saved.bg === 'string') s.bg = saved.bg;
   if (typeof saved.color === 'string') s.color = saved.color;
-  if (typeof saved.shortcutsEnabled === 'boolean') state.shortcutsEnabled = saved.shortcutsEnabled;
   if (typeof saved.showFab === 'boolean') state.showFab = saved.showFab;
   if (typeof saved.rubyParen === 'boolean') state.rubyParen = saved.rubyParen;
   if (typeof saved.jimakuKey === 'string') state.jimakuKey = saved.jimakuKey;
-  // 防死锁:快捷键与悬浮球都关时,用户将无从打开面板 → 强制显示悬浮球作逃生通道
-  if (!state.shortcutsEnabled && !state.showFab) state.showFab = true;
 }
