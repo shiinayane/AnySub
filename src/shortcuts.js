@@ -2,6 +2,7 @@
 // capture 阶段拦截,仅吞我们占用的组合(preventDefault + stopImmediatePropagation),
 // 不影响站点其它按键;输入框/可编辑区内不响应。按 event.code(物理键)判定,跨布局/Mac 稳定。
 import { state } from './state.js';
+import { refs } from './refs.js';
 import { togglePanel, openFilePicker, adjustOffset, openSearch } from './ui.js';
 import { toggleSubtitles } from './controller.js';
 
@@ -28,6 +29,7 @@ function onKey(e) {
   if (isTyping()) return;
   const run = MAP[e.code];
   if (!run) return;
+  if (!refs.panel) return; // UI 尚未构建(document-start 到 body 就绪之间),忽略
   e.preventDefault();
   e.stopImmediatePropagation();
   run();
