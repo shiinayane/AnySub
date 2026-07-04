@@ -19,7 +19,10 @@ export function toast(msg) {
 
 export function updateStatus() {
   if (!refs.statusEl) return;
-  refs.statusEl.textContent = state.cues.length
-    ? `已加载:${state.fileName} · ${state.cues.length} 条`
+  const loaded = state.cues.length > 0;
+  refs.statusEl.textContent = loaded
+    ? `${state.fileName} · ${state.cues.length} 条`
     : '未加载字幕';
+  refs.statusEl.classList.toggle('as-loaded', loaded);
+  refs.statusEl.title = loaded ? state.fileName : ''; // 悬停看全名(状态行会省略)
 }

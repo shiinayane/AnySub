@@ -12,62 +12,96 @@ import { buildSearchUI, openSearch } from './search-ui.js';
 
 const persist = saveState;
 
+// 内联 SVG 图标(stroke 用 currentColor,随文字色走;16px 视觉)
+const SVG = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const ICON = {
+  file: SVG('<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/>'),
+  search: SVG('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>'),
+  video: SVG('<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>'),
+  eye: SVG('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'),
+  eyeOff: SVG('<path d="M10 5.1A9.9 9.9 0 0 1 12 5c6.4 0 10 7 10 7a15 15 0 0 1-2.2 2.9M6.5 6.5A15 15 0 0 0 2 12s3.6 7 10 7a9.8 9.8 0 0 0 3.5-.6"/><path d="m3 3 18 18"/>'),
+  trash: SVG('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>'),
+  upload: SVG('<path d="M12 15V4M8 8l4-4 4 4M5 20h14"/>'),
+};
+
 const PANEL_HTML = `
-  <div class="anysub-row anysub-head"><span>AnySub 字幕</span><span id="anysub-close">✕</span></div>
-  <div class="anysub-row">
-    <button id="anysub-choose">选择文件</button>
-    <button id="anysub-online">🔍 在线字幕</button>
-    <button id="anysub-pickvid" title="页面多个视频时,点此再点视频画面指定">选视频</button>
+  <div class="as-head">
+    <div class="as-brand"><span class="as-logo">字</span><span>AnySub</span></div>
+    <button id="anysub-close" class="as-x" title="关闭 (Ctrl/Alt+Shift+S)">✕</button>
   </div>
-  <div class="anysub-row">
-    <button id="anysub-vis">隐藏字幕</button>
-    <button id="anysub-clear">清除</button>
+
+  <div class="as-actions">
+    <button id="anysub-choose" class="as-btn as-btn-primary">${ICON.file}<span>选择文件</span></button>
+    <button id="anysub-online" class="as-btn as-btn-primary">${ICON.search}<span>在线字幕</span></button>
   </div>
-  <div class="anysub-row anysub-drop" id="anysub-drop">或将字幕文件拖到这里</div>
-  <div class="anysub-row">
-    <label>偏移</label>
-    <button data-off="-1">−1</button><button data-off="-0.1">−0.1</button>
-    <input type="number" id="anysub-offset" value="0.0" step="0.1" title="可手动输入,单位秒">
-    <span class="anysub-unit">s</span>
-    <button data-off="0.1">+0.1</button><button data-off="1">+1</button>
+  <div class="as-drop" id="anysub-drop">${ICON.upload}<span>拖字幕文件到这里</span></div>
+
+  <div class="as-status-row">
+    <span class="as-status" id="anysub-status">未加载字幕</span>
+    <div class="as-status-actions">
+      <button id="anysub-pickvid" class="as-icon-btn" title="选视频(页面多视频时指定)">${ICON.video}</button>
+      <button id="anysub-vis" class="as-icon-btn" title="隐藏字幕"><span class="as-eye">${ICON.eye}</span><span class="as-eye-off">${ICON.eyeOff}</span></button>
+      <button id="anysub-clear" class="as-icon-btn" title="清除字幕">${ICON.trash}</button>
+    </div>
   </div>
-  <div class="anysub-row">
-    <label>字号</label>
-    <input type="range" id="anysub-font" min="50" max="250" value="100" step="5">
-    <span id="anysub-fontval">100%</span>
+
+  <div class="as-divider"></div>
+
+  <div class="as-field">
+    <label class="as-label">时间偏移</label>
+    <div class="as-offset">
+      <button data-off="-1" class="as-step">−1</button>
+      <button data-off="-0.1" class="as-step">−.1</button>
+      <input type="number" id="anysub-offset" value="0.0" step="0.1" title="可手动输入,单位秒">
+      <button data-off="0.1" class="as-step">+.1</button>
+      <button data-off="1" class="as-step">+1</button>
+    </div>
   </div>
-  <div class="anysub-row">
-    <label>位置</label>
-    <input type="range" id="anysub-pos" min="2" max="40" value="8" step="1">
-    <span id="anysub-posval">8%</span>
+
+  <div class="as-field">
+    <label class="as-label">字号 <span class="as-val" id="anysub-fontval">100%</span></label>
+    <input type="range" id="anysub-font" class="as-range" min="50" max="250" value="100" step="5">
   </div>
-  <div class="anysub-row">
-    <label>背景</label>
-    <div class="anysub-seg" id="anysub-bg">
+
+  <div class="as-field">
+    <label class="as-label">位置 <span class="as-val" id="anysub-posval">8%</span></label>
+    <input type="range" id="anysub-pos" class="as-range" min="2" max="40" value="8" step="1">
+  </div>
+
+  <div class="as-field">
+    <label class="as-label">背景</label>
+    <div class="as-seg" id="anysub-bg">
       <button data-bg="outline">描边</button>
       <button data-bg="translucent" class="on">半透</button>
       <button data-bg="solid">黑底</button>
       <button data-bg="none">无</button>
     </div>
   </div>
-  <div class="anysub-row">
-    <label>颜色</label>
-    <div class="anysub-seg" id="anysub-color">
-      <button data-color="#ffffff" class="on" style="color:#fff">白</button>
-      <button data-color="#ffe100" style="color:#ffe100">黄</button>
-      <button data-color="#00e5ff" style="color:#00e5ff">青</button>
-      <button data-color="#7CFC00" style="color:#7CFC00">绿</button>
+
+  <div class="as-field">
+    <label class="as-label">颜色</label>
+    <div class="as-swatches" id="anysub-color">
+      <button data-color="#ffffff" class="on" style="--sw:#ffffff" title="白"></button>
+      <button data-color="#ffe100" style="--sw:#ffe100" title="黄"></button>
+      <button data-color="#00e5ff" style="--sw:#00e5ff" title="青"></button>
+      <button data-color="#7CFC00" style="--sw:#7cfc00" title="绿"></button>
     </div>
   </div>
-  <div class="anysub-row anysub-toggles">
-    <button id="anysub-tg-ruby" class="anysub-toggle" title="将 温厚（おんこう) 显示为注音">注音:开</button>
-    <button id="anysub-tg-fab" class="anysub-toggle">悬浮球:关</button>
+
+  <div class="as-divider"></div>
+
+  <div class="as-switch-row">
+    <span class="as-switch-label">日文注音</span>
+    <button id="anysub-tg-ruby" class="as-switch" role="switch" title="将 温厚（おんこう) 显示为注音"><span class="as-knob"></span></button>
   </div>
-  <div class="anysub-legend">
-    <div>Ctrl/Alt+Shift + S 面板 · F 在线 · V 显隐 · O 本地</div>
-    <div>Ctrl/Alt+Shift + ← / → 偏移 ∓0.1s</div>
+  <div class="as-switch-row">
+    <span class="as-switch-label">悬浮球</span>
+    <button id="anysub-tg-fab" class="as-switch" role="switch" title="页面右侧常驻小球"><span class="as-knob"></span></button>
   </div>
-  <div class="anysub-row anysub-status" id="anysub-status">未加载字幕</div>
+
+  <div class="as-hints">
+    <kbd>Ctrl/Alt</kbd>+<kbd>Shift</kbd> 加 <kbd>S</kbd> 面板 · <kbd>F</kbd> 在线 · <kbd>V</kbd> 显隐 · <kbd>O</kbd> 本地 · <kbd>←/→</kbd> 偏移
+  </div>
 `;
 
 export function buildUI() {
@@ -126,6 +160,7 @@ export function togglePanel() {
     if (inp) inp.value = state.offset.toFixed(1); // 偏移可能在加载时被记忆恢复
     syncVisBtn();
     positionPanel();
+    p.classList.remove('as-in'); void p.offsetWidth; p.classList.add('as-in'); // 重放入场动画(小面板,reflow 廉价)
   }
 }
 
@@ -223,16 +258,18 @@ export function updateFabVisibility() {
 
 function syncVisBtn() {
   const b = refs.panel.querySelector('#anysub-vis');
-  if (b) b.textContent = state.hidden ? '显示字幕' : '隐藏字幕';
+  if (!b) return;
+  b.classList.toggle('off', state.hidden); // 图标切 eye/eye-off,不改结构
+  b.title = state.hidden ? '显示字幕' : '隐藏字幕';
 }
 
 function syncToggles() {
   const rb = refs.panel.querySelector('#anysub-tg-ruby');
   const fb = refs.panel.querySelector('#anysub-tg-fab');
-  rb.textContent = '注音:' + (state.rubyParen ? '开' : '关');
   rb.classList.toggle('on', state.rubyParen);
-  fb.textContent = '悬浮球:' + (state.showFab ? '开' : '关');
+  rb.setAttribute('aria-checked', String(state.rubyParen));
   fb.classList.toggle('on', state.showFab);
+  fb.setAttribute('aria-checked', String(state.showFab));
 }
 
 // 用(可能已从持久化恢复的)state 同步各控件初始显示
@@ -264,8 +301,12 @@ function setupSeg(sel, attr, cb) {
 }
 
 function setupDrop(el) {
-  el.addEventListener('dragover', (e) => { e.preventDefault(); });
+  const on = () => el.classList.add('as-dragover');
+  const off = () => el.classList.remove('as-dragover');
+  el.addEventListener('dragover', (e) => { e.preventDefault(); on(); });
+  el.addEventListener('dragleave', off);
   el.addEventListener('drop', (e) => {
+    off();
     if (!e.dataTransfer || !e.dataTransfer.files.length) return;
     const f = e.dataTransfer.files[0];
     if (/\.(srt|vtt|ass|ssa|sub|sbv|txt)$/i.test(f.name)) { e.preventDefault(); loadFile(f); }
@@ -316,8 +357,9 @@ function positionPanel() {
   const { fab, panel } = refs;
   const W = window.innerWidth || document.documentElement.clientWidth || 1;
   const H = window.innerHeight || document.documentElement.clientHeight || 800;
-  panel.style.left = ''; panel.style.right = ''; panel.style.top = ''; panel.style.bottom = '';
-  const ph = panel.offsetHeight || 460, pw = panel.offsetWidth || 270;
+  // bottom 显式 auto:否则回落到 CSS 的 bottom:54px,与下面设的 top 同时生效会把面板纵向拉伸
+  panel.style.left = ''; panel.style.right = ''; panel.style.top = ''; panel.style.bottom = 'auto';
+  const ph = panel.offsetHeight || 500, pw = panel.offsetWidth || 300;
   if (state.showFab) {
     const fr = fab.getBoundingClientRect();
     const onRight = fr.left + fr.width / 2 >= W / 2;

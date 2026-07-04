@@ -56,30 +56,96 @@
   #anysub-fab.dock-left:not(.dragging){transform:translateX(-32%);}
   #anysub-fab.dock-right:hover,#anysub-fab.dock-left:hover{transform:translateX(0);}
   #anysub-fab.dragging{transition:none;cursor:grabbing;}
-  #anysub-panel{position:fixed;right:16px;bottom:54px;z-index:2147483647;width:270px;
-    background:#1e1e1e;color:#eee;border-radius:10px;padding:10px;
-    font:13px/1.4 -apple-system,system-ui,sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.5);}
-  #anysub-panel .anysub-row{display:flex;align-items:center;gap:6px;margin:8px 0;flex-wrap:wrap;}
-  #anysub-panel .anysub-head{justify-content:space-between;font-weight:600;margin-top:0;}
-  #anysub-close{cursor:pointer;opacity:.6;}#anysub-close:hover{opacity:1;}
-  #anysub-panel button{background:#333;color:#eee;border:1px solid #555;border-radius:6px;
-    padding:5px 8px;cursor:pointer;font-size:12px;}
-  #anysub-panel button:hover{background:#444;}
-  #anysub-panel button.on{background:#2b6cff;border-color:#2b6cff;color:#fff;}
-  #anysub-panel label{opacity:.7;min-width:32px;}
-  #anysub-panel .anysub-seg{display:flex;gap:4px;flex:1;flex-wrap:wrap;}
-  #anysub-panel .anysub-seg button{flex:1;min-width:40px;}
-  #anysub-panel .anysub-drop{justify-content:center;border:1px dashed #555;border-radius:6px;padding:10px;opacity:.6;font-size:12px;}
-  #anysub-offset{width:48px;text-align:center;background:#2a2a2a;color:#eee;
-    border:1px solid #555;border-radius:6px;padding:4px 2px;font-size:12px;-moz-appearance:textfield;}
+  /* ── 设置面板(重构:实心深色,无 backdrop-filter 以免每帧重绘视频区) ── */
+  #anysub-panel{position:fixed;right:16px;bottom:54px;z-index:2147483647;width:300px;box-sizing:border-box;
+    color:#eaeef6;font:13px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+    background:linear-gradient(180deg,#20242c,#171a20);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:12px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05);
+    -webkit-font-smoothing:antialiased;}
+  #anysub-panel *{box-sizing:border-box;}
+  #anysub-panel.as-in{animation:as-pop .13s cubic-bezier(.2,.7,.3,1);}
+  @keyframes as-pop{from{opacity:0;transform:translateY(5px) scale(.985);}to{opacity:1;transform:none;}}
+  #anysub-panel button{font-family:inherit;color:#eaeef6;cursor:pointer;border:1px solid rgba(255,255,255,.1);
+    background:rgba(255,255,255,.05);border-radius:8px;transition:background .15s,border-color .15s,transform .05s;}
+  #anysub-panel button:active{transform:translateY(.5px);}
+
+  #anysub-panel .as-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
+  #anysub-panel .as-brand{display:flex;align-items:center;gap:8px;font-weight:650;letter-spacing:.01em;font-size:13.5px;}
+  #anysub-panel .as-logo{width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#4c8dff,#2b6cff);color:#fff;font-size:13px;font-weight:700;box-shadow:0 2px 6px rgba(43,108,255,.45);}
+  #anysub-panel .as-x{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:0;background:transparent;
+    color:#9aa3b2;border-radius:7px;font-size:14px;line-height:1;transition:background .15s,color .15s;}
+  #anysub-panel .as-x:hover{background:rgba(255,255,255,.08);color:#fff;}
+
+  #anysub-panel .as-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  #anysub-panel .as-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 8px;font-size:12.5px;font-weight:550;}
+  #anysub-panel .as-btn svg{width:16px;height:16px;flex:none;opacity:.9;}
+  #anysub-panel .as-btn-primary{background:linear-gradient(180deg,rgba(76,141,255,.24),rgba(43,108,255,.14));
+    border-color:rgba(90,150,255,.42);color:#dce9ff;}
+  #anysub-panel .as-btn-primary:hover{background:linear-gradient(180deg,rgba(76,141,255,.36),rgba(43,108,255,.24));border-color:rgba(120,170,255,.62);}
+
+  #anysub-panel .as-drop{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;
+    border:1px dashed rgba(255,255,255,.18);border-radius:9px;padding:9px;color:#8b93a3;font-size:11.5px;
+    transition:border-color .15s,color .15s,background .15s;}
+  #anysub-panel .as-drop svg{width:15px;height:15px;opacity:.8;flex:none;}
+  #anysub-panel .as-drop.as-dragover{border-color:rgba(90,150,255,.7);color:#cfe0ff;background:rgba(76,141,255,.1);}
+
+  #anysub-panel .as-status-row{display:flex;align-items:center;gap:8px;margin-top:10px;}
+  #anysub-panel .as-status{flex:1;min-width:0;color:#98a0b0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #anysub-panel .as-status.as-loaded{color:#7fd18b;}
+  #anysub-panel .as-status-actions{display:flex;gap:4px;flex:none;}
+  #anysub-panel .as-icon-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;padding:0;}
+  #anysub-panel .as-icon-btn svg{width:15px;height:15px;opacity:.85;}
+  #anysub-panel .as-icon-btn:hover{background:rgba(255,255,255,.1);}
+  #anysub-panel #anysub-vis.off{color:#8b93a3;}
+  #anysub-panel #anysub-vis .as-eye-off{display:none;}
+  #anysub-panel #anysub-vis.off .as-eye{display:none;}
+  #anysub-panel #anysub-vis.off .as-eye-off{display:flex;}
+  #anysub-panel #anysub-clear:hover{background:rgba(255,90,90,.16);border-color:rgba(255,90,90,.4);color:#ff9b9b;}
+
+  #anysub-panel .as-divider{height:1px;background:rgba(255,255,255,.07);margin:12px 0;}
+  #anysub-panel .as-field{margin:10px 0;}
+  #anysub-panel .as-label{display:flex;align-items:center;justify-content:space-between;color:#9aa3b2;font-size:11.5px;font-weight:550;margin-bottom:7px;}
+  #anysub-panel .as-val{color:#cfd6e2;font-variant-numeric:tabular-nums;font-weight:600;}
+
+  #anysub-panel .as-offset{display:flex;align-items:center;gap:5px;}
+  #anysub-panel .as-step{flex:1;padding:6px 0;font-size:12px;font-variant-numeric:tabular-nums;}
+  #anysub-panel .as-step:hover{background:rgba(255,255,255,.1);}
+  #anysub-offset{width:56px;flex:none;text-align:center;background:rgba(0,0,0,.28);color:#fff;font-weight:600;
+    border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 2px;font-size:12.5px;-moz-appearance:textfield;font-variant-numeric:tabular-nums;}
+  #anysub-offset:focus{outline:none;border-color:rgba(90,150,255,.7);background:rgba(0,0,0,.4);}
   #anysub-offset::-webkit-outer-spin-button,#anysub-offset::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
-  #anysub-panel .anysub-unit{opacity:.6;font-size:12px;margin-left:-2px;}
-  #anysub-font,#anysub-pos{flex:1;}
-  #anysub-panel .anysub-toggles{gap:6px;}
-  #anysub-panel .anysub-toggle{flex:1;}
-  #anysub-panel .anysub-legend{margin:6px 0 2px;padding:6px 8px;background:#262626;border-radius:6px;
-    font-size:11px;line-height:1.6;opacity:.7;}
-  #anysub-panel .anysub-status{opacity:.6;font-size:12px;word-break:break-all;}
+
+  #anysub-panel .as-range{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:3px;background:rgba(255,255,255,.13);outline:none;cursor:pointer;}
+  #anysub-panel .as-range::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#fff;border:0;
+    box-shadow:0 1px 4px rgba(0,0,0,.5),0 0 0 3px rgba(76,141,255,.9);cursor:grab;margin-top:-5px;}
+  #anysub-panel .as-range::-webkit-slider-thumb:active{cursor:grabbing;}
+  #anysub-panel .as-range::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:#fff;border:0;box-shadow:0 0 0 3px rgba(76,141,255,.9);cursor:grab;}
+  #anysub-panel .as-range::-moz-range-track{height:5px;border-radius:3px;background:rgba(255,255,255,.13);}
+
+  #anysub-panel .as-seg{display:flex;gap:3px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:3px;}
+  #anysub-panel .as-seg button{flex:1;border:0;background:transparent;color:#aab2c0;padding:6px 4px;border-radius:6px;font-size:12px;}
+  #anysub-panel .as-seg button:hover{background:rgba(255,255,255,.06);color:#e7ebf3;}
+  #anysub-panel .as-seg button.on{background:rgba(76,141,255,.92);color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+
+  #anysub-panel .as-swatches{display:flex;gap:12px;align-items:center;padding:2px 0;}
+  #anysub-panel .as-swatches button{width:24px;height:24px;padding:0;border:0;border-radius:50%;background:var(--sw);
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.3);transition:transform .1s,box-shadow .12s;}
+  #anysub-panel .as-swatches button:hover{transform:scale(1.14);}
+  #anysub-panel .as-swatches button.on{box-shadow:0 0 0 2px #20242c,0 0 0 4px rgba(76,141,255,.95),inset 0 0 0 1px rgba(0,0,0,.3);}
+
+  #anysub-panel .as-switch-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;}
+  #anysub-panel .as-switch-label{color:#d3d9e3;font-size:12.5px;}
+  #anysub-panel .as-switch{width:38px;height:22px;padding:0;border-radius:999px;flex:none;position:relative;
+    background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.08);transition:background .18s;}
+  #anysub-panel .as-switch .as-knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.4);transition:transform .18s;}
+  #anysub-panel .as-switch.on{background:linear-gradient(180deg,#4c8dff,#2b6cff);border-color:transparent;}
+  #anysub-panel .as-switch.on .as-knob{transform:translateX(16px);}
+
+  #anysub-panel .as-hints{margin-top:11px;color:#7b8394;font-size:10.5px;line-height:1.9;}
+  #anysub-panel .as-hints kbd{display:inline-block;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
+    border-bottom-width:2px;border-radius:4px;padding:0 4px;margin:0 1px;font:600 10px ui-monospace,SFMono-Regular,Menlo,monospace;color:#c3cad6;}
   #anysub-search{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;
     width:340px;max-width:92vw;max-height:80vh;overflow:auto;background:#1e1e1e;color:#eee;border-radius:10px;
     padding:10px;font:13px/1.4 -apple-system,system-ui,sans-serif;box-shadow:0 4px 24px rgba(0,0,0,.6);}
@@ -174,7 +240,10 @@
 	}
 	function updateStatus() {
 		if (!refs.statusEl) return;
-		refs.statusEl.textContent = state.cues.length ? `已加载:${state.fileName} · ${state.cues.length} 条` : "未加载字幕";
+		const loaded = state.cues.length > 0;
+		refs.statusEl.textContent = loaded ? `${state.fileName} · ${state.cues.length} 条` : "未加载字幕";
+		refs.statusEl.classList.toggle("as-loaded", loaded);
+		refs.statusEl.title = loaded ? state.fileName : "";
 	}
 	var mo = null, timer$1 = 0, onReact = () => {};
 	function setReactHandler(fn) {
@@ -1306,62 +1375,94 @@
 		return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 	}
 	var persist = saveState;
+	var SVG = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+	var ICON = {
+		file: SVG("<path d=\"M14 3v4a1 1 0 0 0 1 1h4\"/><path d=\"M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z\"/>"),
+		search: SVG("<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.2-3.2\"/>"),
+		video: SVG("<rect x=\"3\" y=\"5\" width=\"18\" height=\"12\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>"),
+		eye: SVG("<path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>"),
+		eyeOff: SVG("<path d=\"M10 5.1A9.9 9.9 0 0 1 12 5c6.4 0 10 7 10 7a15 15 0 0 1-2.2 2.9M6.5 6.5A15 15 0 0 0 2 12s3.6 7 10 7a9.8 9.8 0 0 0 3.5-.6\"/><path d=\"m3 3 18 18\"/>"),
+		trash: SVG("<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3\"/>"),
+		upload: SVG("<path d=\"M12 15V4M8 8l4-4 4 4M5 20h14\"/>")
+	};
 	var PANEL_HTML = `
-  <div class="anysub-row anysub-head"><span>AnySub 字幕</span><span id="anysub-close">✕</span></div>
-  <div class="anysub-row">
-    <button id="anysub-choose">选择文件</button>
-    <button id="anysub-online">🔍 在线字幕</button>
-    <button id="anysub-pickvid" title="页面多个视频时,点此再点视频画面指定">选视频</button>
+  <div class="as-head">
+    <div class="as-brand"><span class="as-logo">字</span><span>AnySub</span></div>
+    <button id="anysub-close" class="as-x" title="关闭 (Ctrl/Alt+Shift+S)">✕</button>
   </div>
-  <div class="anysub-row">
-    <button id="anysub-vis">隐藏字幕</button>
-    <button id="anysub-clear">清除</button>
+
+  <div class="as-actions">
+    <button id="anysub-choose" class="as-btn as-btn-primary">${ICON.file}<span>选择文件</span></button>
+    <button id="anysub-online" class="as-btn as-btn-primary">${ICON.search}<span>在线字幕</span></button>
   </div>
-  <div class="anysub-row anysub-drop" id="anysub-drop">或将字幕文件拖到这里</div>
-  <div class="anysub-row">
-    <label>偏移</label>
-    <button data-off="-1">−1</button><button data-off="-0.1">−0.1</button>
-    <input type="number" id="anysub-offset" value="0.0" step="0.1" title="可手动输入,单位秒">
-    <span class="anysub-unit">s</span>
-    <button data-off="0.1">+0.1</button><button data-off="1">+1</button>
+  <div class="as-drop" id="anysub-drop">${ICON.upload}<span>拖字幕文件到这里</span></div>
+
+  <div class="as-status-row">
+    <span class="as-status" id="anysub-status">未加载字幕</span>
+    <div class="as-status-actions">
+      <button id="anysub-pickvid" class="as-icon-btn" title="选视频(页面多视频时指定)">${ICON.video}</button>
+      <button id="anysub-vis" class="as-icon-btn" title="隐藏字幕"><span class="as-eye">${ICON.eye}</span><span class="as-eye-off">${ICON.eyeOff}</span></button>
+      <button id="anysub-clear" class="as-icon-btn" title="清除字幕">${ICON.trash}</button>
+    </div>
   </div>
-  <div class="anysub-row">
-    <label>字号</label>
-    <input type="range" id="anysub-font" min="50" max="250" value="100" step="5">
-    <span id="anysub-fontval">100%</span>
+
+  <div class="as-divider"></div>
+
+  <div class="as-field">
+    <label class="as-label">时间偏移</label>
+    <div class="as-offset">
+      <button data-off="-1" class="as-step">−1</button>
+      <button data-off="-0.1" class="as-step">−.1</button>
+      <input type="number" id="anysub-offset" value="0.0" step="0.1" title="可手动输入,单位秒">
+      <button data-off="0.1" class="as-step">+.1</button>
+      <button data-off="1" class="as-step">+1</button>
+    </div>
   </div>
-  <div class="anysub-row">
-    <label>位置</label>
-    <input type="range" id="anysub-pos" min="2" max="40" value="8" step="1">
-    <span id="anysub-posval">8%</span>
+
+  <div class="as-field">
+    <label class="as-label">字号 <span class="as-val" id="anysub-fontval">100%</span></label>
+    <input type="range" id="anysub-font" class="as-range" min="50" max="250" value="100" step="5">
   </div>
-  <div class="anysub-row">
-    <label>背景</label>
-    <div class="anysub-seg" id="anysub-bg">
+
+  <div class="as-field">
+    <label class="as-label">位置 <span class="as-val" id="anysub-posval">8%</span></label>
+    <input type="range" id="anysub-pos" class="as-range" min="2" max="40" value="8" step="1">
+  </div>
+
+  <div class="as-field">
+    <label class="as-label">背景</label>
+    <div class="as-seg" id="anysub-bg">
       <button data-bg="outline">描边</button>
       <button data-bg="translucent" class="on">半透</button>
       <button data-bg="solid">黑底</button>
       <button data-bg="none">无</button>
     </div>
   </div>
-  <div class="anysub-row">
-    <label>颜色</label>
-    <div class="anysub-seg" id="anysub-color">
-      <button data-color="#ffffff" class="on" style="color:#fff">白</button>
-      <button data-color="#ffe100" style="color:#ffe100">黄</button>
-      <button data-color="#00e5ff" style="color:#00e5ff">青</button>
-      <button data-color="#7CFC00" style="color:#7CFC00">绿</button>
+
+  <div class="as-field">
+    <label class="as-label">颜色</label>
+    <div class="as-swatches" id="anysub-color">
+      <button data-color="#ffffff" class="on" style="--sw:#ffffff" title="白"></button>
+      <button data-color="#ffe100" style="--sw:#ffe100" title="黄"></button>
+      <button data-color="#00e5ff" style="--sw:#00e5ff" title="青"></button>
+      <button data-color="#7CFC00" style="--sw:#7cfc00" title="绿"></button>
     </div>
   </div>
-  <div class="anysub-row anysub-toggles">
-    <button id="anysub-tg-ruby" class="anysub-toggle" title="将 温厚（おんこう) 显示为注音">注音:开</button>
-    <button id="anysub-tg-fab" class="anysub-toggle">悬浮球:关</button>
+
+  <div class="as-divider"></div>
+
+  <div class="as-switch-row">
+    <span class="as-switch-label">日文注音</span>
+    <button id="anysub-tg-ruby" class="as-switch" role="switch" title="将 温厚（おんこう) 显示为注音"><span class="as-knob"></span></button>
   </div>
-  <div class="anysub-legend">
-    <div>Ctrl/Alt+Shift + S 面板 · F 在线 · V 显隐 · O 本地</div>
-    <div>Ctrl/Alt+Shift + ← / → 偏移 ∓0.1s</div>
+  <div class="as-switch-row">
+    <span class="as-switch-label">悬浮球</span>
+    <button id="anysub-tg-fab" class="as-switch" role="switch" title="页面右侧常驻小球"><span class="as-knob"></span></button>
   </div>
-  <div class="anysub-row anysub-status" id="anysub-status">未加载字幕</div>
+
+  <div class="as-hints">
+    <kbd>Ctrl/Alt</kbd>+<kbd>Shift</kbd> 加 <kbd>S</kbd> 面板 · <kbd>F</kbd> 在线 · <kbd>V</kbd> 显隐 · <kbd>O</kbd> 本地 · <kbd>←/→</kbd> 偏移
+  </div>
 `;
 	function buildUI() {
 		const uiRoot = document.createElement("div");
@@ -1406,6 +1507,9 @@
 			if (inp) inp.value = state.offset.toFixed(1);
 			syncVisBtn();
 			positionPanel();
+			p.classList.remove("as-in");
+			p.offsetWidth;
+			p.classList.add("as-in");
 		}
 	}
 	function openFilePicker() {
@@ -1522,15 +1626,17 @@
 	}
 	function syncVisBtn() {
 		const b = refs.panel.querySelector("#anysub-vis");
-		if (b) b.textContent = state.hidden ? "显示字幕" : "隐藏字幕";
+		if (!b) return;
+		b.classList.toggle("off", state.hidden);
+		b.title = state.hidden ? "显示字幕" : "隐藏字幕";
 	}
 	function syncToggles() {
 		const rb = refs.panel.querySelector("#anysub-tg-ruby");
 		const fb = refs.panel.querySelector("#anysub-tg-fab");
-		rb.textContent = "注音:" + (state.rubyParen ? "开" : "关");
 		rb.classList.toggle("on", state.rubyParen);
-		fb.textContent = "悬浮球:" + (state.showFab ? "开" : "关");
+		rb.setAttribute("aria-checked", String(state.rubyParen));
 		fb.classList.toggle("on", state.showFab);
+		fb.setAttribute("aria-checked", String(state.showFab));
 	}
 	function syncControls() {
 		const { panel } = refs;
@@ -1556,10 +1662,15 @@
 		}));
 	}
 	function setupDrop(el) {
+		const on = () => el.classList.add("as-dragover");
+		const off = () => el.classList.remove("as-dragover");
 		el.addEventListener("dragover", (e) => {
 			e.preventDefault();
+			on();
 		});
+		el.addEventListener("dragleave", off);
 		el.addEventListener("drop", (e) => {
+			off();
 			if (!e.dataTransfer || !e.dataTransfer.files.length) return;
 			const f = e.dataTransfer.files[0];
 			if (/\.(srt|vtt|ass|ssa|sub|sbv|txt)$/i.test(f.name)) {
@@ -1619,8 +1730,8 @@
 		panel.style.left = "";
 		panel.style.right = "";
 		panel.style.top = "";
-		panel.style.bottom = "";
-		const ph = panel.offsetHeight || 460, pw = panel.offsetWidth || 270;
+		panel.style.bottom = "auto";
+		const ph = panel.offsetHeight || 500, pw = panel.offsetWidth || 300;
 		if (state.showFab) {
 			const fr = fab.getBoundingClientRect();
 			if (fr.left + fr.width / 2 >= W / 2) panel.style.right = "12px";
