@@ -4,12 +4,19 @@
 //      独立（X）若 X 在词表 → 话者名,否则 → 非语音。
 //   2) 画外音〈…〉/书面《…》/歌曲 ♪…♪ 可能跨行、跨 cue 断成几句:用状态机跟踪未闭合的跨度——
 //      未闭合的 〈 / 《 会把后续行也标成同类直到闭合;♪ 用奇偶切换。跨 cue 仅在相邻不重叠时延续。
-const NAME = 16; // 括号内长度上限(话者名/短音效);过长不认,避免吞掉正文
-
-const RE_LEAD = new RegExp('^[（(]([^（()）]{1,' + NAME + '})[）)]\\s*(\\S[\\s\\S]*)$');
-const RE_ALONE = new RegExp('^[（(]([^（()）]{1,' + NAME + '})[）)]$');
+const NAME = 20; // 名字/音效单元数上限;过长不认,避免吞掉正文
+// 名字内容单元:非括号字符,或一层嵌套括号(话者名内嵌注音,如 千束（ちさと))
+const NONP = '[^（）()]';
+const INNER = '(?:' + NONP + '|[（(]' + NONP + '*[）)])';
+const RE_LEAD = new RegExp('^[（(](' + INNER + '{1,' + NAME + '})[）)]\\s*(\\S[\\s\\S]*)$');
+const RE_ALONE = new RegExp('^[（(](' + INNER + '{1,' + NAME + '})[）)]$');
 
 const count = (s, re) => { const m = s.match(re); return m ? m.length : 0; };
+
+// 话者名归一化 key:去掉内嵌注音（かな)/《かな》,让「千束（ちさと)」与「千束」对得上词表
+export function speakerKey(name) {
+  return String(name).replace(/[（(][^（）()]*[）)]/g, '').replace(/《[^》]*》/g, '').trim();
+}
 
 // 扫全部 cue,收集确定的话者名(仅取「行首（X）+台词」形态)。cue 内多行以 <br> 分隔。
 export function buildSpeakers(cues) {
@@ -18,7 +25,7 @@ export function buildSpeakers(cues) {
     const raw = (c && c.text != null) ? String(c.text) : '';
     for (const line of raw.split('<br>')) {
       const m = RE_LEAD.exec(line.trim());
-      if (m) set.add(m[1]);
+      if (m) set.add(speakerKey(m[1]));
     }
   }
   return set;
@@ -65,7 +72,7 @@ export function stepCueLine(raw, speakers, st) {
   let m = RE_ALONE.exec(t);
   if (m) {
     const inner = m[1];
-    if (speakers && speakers.has(inner)) return { type: 'speaker', name: inner, state: next };
+    if (speakers && speakers.has(speakerKey(inner))) return { type: 'speaker', name: inner, state: next };
     return { type: 'sfx', state: next };
   }
   m = RE_LEAD.exec(t);

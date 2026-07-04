@@ -14,8 +14,8 @@ function typedHtml(text, c) {
     case 'voice': return `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
     case 'book': return `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
     case 'lyric': return `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
-    case 'speaker': return `<span class="anysub-spk">${text}</span>`;
-    case 'dialogue': return `<span class="anysub-spk">（${c.name}）</span>${applyRuby(c.rest, state.rubyParen)}`;
+    case 'speaker': return `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
+    case 'dialogue': return `<span class="anysub-spk">（${applyRuby(c.name, state.rubyParen)}）</span>${applyRuby(c.rest, state.rubyParen)}`;
     default: return applyRuby(text, state.rubyParen);
   }
 }

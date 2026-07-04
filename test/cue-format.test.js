@@ -31,6 +31,18 @@ test('独立括号:名字在词表 → speaker', () => {
   assert.deepEqual(classifyCueLine('（マオマオ）', spk), { type: 'speaker', name: 'マオマオ' });
 });
 
+test('话者名内嵌注音 （千束（ちさと))台词 → dialogue,name 保留注音', () => {
+  assert.deepEqual(classifyCueLine('（千束（ちさと））今日の天気もいいな', new Set()),
+    { type: 'dialogue', name: '千束（ちさと）', rest: '今日の天気もいいな' });
+});
+
+test('buildSpeakers 对内嵌注音话者名去注音归一化,独立形/无注音形都命中', () => {
+  const s = buildSpeakers([{ text: '（千束（ちさと））おはよう' }]);
+  assert.ok(s.has('千束'));
+  assert.equal(classifyCueLine('（千束（ちさと））', s).type, 'speaker');
+  assert.equal(classifyCueLine('（千束）', s).type, 'speaker');
+});
+
 test('独立括号:不在词表 → sfx(非语音)', () => {
   assert.deepEqual(classifyCueLine('（ドアが開く音）', spk), { type: 'sfx' });
   assert.deepEqual(classifyCueLine('（ざわざわ）', spk), { type: 'sfx' });

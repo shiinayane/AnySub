@@ -705,19 +705,22 @@
 		const uni = a.size + b.size - inter;
 		return uni ? inter / uni : 0;
 	}
-	var RE_LEAD = new RegExp("^[（(]([^（()）]{1,16})[）)]\\s*(\\S[\\s\\S]*)$");
-	var RE_ALONE = new RegExp("^[（(]([^（()）]{1,16})[）)]$");
+	var RE_LEAD = new RegExp("^[（(]((?:[^（）()]|[（(][^（）()]*[）)]){1,20})[）)]\\s*(\\S[\\s\\S]*)$");
+	var RE_ALONE = new RegExp("^[（(]((?:[^（）()]|[（(][^（）()]*[）)]){1,20})[）)]$");
 	var count = (s, re) => {
 		const m = s.match(re);
 		return m ? m.length : 0;
 	};
+	function speakerKey(name) {
+		return String(name).replace(/[（(][^（）()]*[）)]/g, "").replace(/《[^》]*》/g, "").trim();
+	}
 	function buildSpeakers(cues) {
 		const set = new Set();
 		for (const c of cues || []) {
 			const raw = c && c.text != null ? String(c.text) : "";
 			for (const line of raw.split("<br>")) {
 				const m = RE_LEAD.exec(line.trim());
-				if (m) set.add(m[1]);
+				if (m) set.add(speakerKey(m[1]));
 			}
 		}
 		return set;
@@ -786,7 +789,7 @@
 		let m = RE_ALONE.exec(t);
 		if (m) {
 			const inner = m[1];
-			if (speakers && speakers.has(inner)) return {
+			if (speakers && speakers.has(speakerKey(inner))) return {
 				type: "speaker",
 				name: inner,
 				state: next
@@ -990,8 +993,8 @@
 			case "voice": return `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
 			case "book": return `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
 			case "lyric": return `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
-			case "speaker": return `<span class="anysub-spk">${text}</span>`;
-			case "dialogue": return `<span class="anysub-spk">（${c.name}）</span>${applyRuby(c.rest, state.rubyParen)}`;
+			case "speaker": return `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
+			case "dialogue": return `<span class="anysub-spk">（${applyRuby(c.name, state.rubyParen)}）</span>${applyRuby(c.rest, state.rubyParen)}`;
 			default: return applyRuby(text, state.rubyParen);
 		}
 	}
