@@ -2,14 +2,15 @@
 // capture 阶段拦截,仅吞我们占用的组合(preventDefault + stopImmediatePropagation),
 // 不影响站点其它按键;输入框/可编辑区内不响应。按 event.code(物理键)判定,跨布局/Mac 稳定。
 import { state } from './state.js';
-import { togglePanel, openFilePicker, adjustOffset } from './ui.js';
+import { togglePanel, openFilePicker, adjustOffset, openSearch } from './ui.js';
 import { toggleSubtitles } from './controller.js';
 
 // code → 动作。这是「默认键位」,展示在面板图例里。
 export const SHORTCUTS = [
   { code: 'KeyS', label: 'Alt+Shift+S', desc: '打开/关闭面板', run: () => togglePanel() },
+  { code: 'KeyF', label: 'Alt+Shift+F', desc: '在线找字幕', run: () => openSearch() },
   { code: 'KeyV', label: 'Alt+Shift+V', desc: '显示/隐藏字幕', run: () => toggleSubtitles() },
-  { code: 'KeyO', label: 'Alt+Shift+O', desc: '打开字幕文件', run: () => openFilePicker() },
+  { code: 'KeyO', label: 'Alt+Shift+O', desc: '打开本地文件', run: () => openFilePicker() },
   { code: 'ArrowLeft', label: 'Alt+Shift+←', desc: '偏移 −0.1s', run: () => adjustOffset(-0.1) },
   { code: 'ArrowRight', label: 'Alt+Shift+→', desc: '偏移 +0.1s', run: () => adjustOffset(0.1) },
 ];

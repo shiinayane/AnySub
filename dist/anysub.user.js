@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.8.1
+// @version      0.9.0
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -21,6 +21,7 @@
 		hidden: false,
 		shortcutsEnabled: true,
 		showFab: false,
+		jimakuKey: "",
 		style: {
 			fontPct: 100,
 			bg: "translucent",
@@ -72,6 +73,26 @@
   #anysub-panel .anysub-legend{margin:6px 0 2px;padding:6px 8px;background:#262626;border-radius:6px;
     font-size:11px;line-height:1.6;opacity:.7;}
   #anysub-panel .anysub-status{opacity:.6;font-size:12px;word-break:break-all;}
+  #anysub-search{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;
+    width:340px;max-width:92vw;max-height:80vh;overflow:auto;background:#1e1e1e;color:#eee;border-radius:10px;
+    padding:10px;font:13px/1.4 -apple-system,system-ui,sans-serif;box-shadow:0 4px 24px rgba(0,0,0,.6);}
+  #anysub-search .anysub-row{display:flex;align-items:center;gap:6px;margin:8px 0;}
+  #anysub-search .anysub-head{justify-content:space-between;font-weight:600;}
+  #anysub-search input{flex:1;background:#2a2a2a;color:#eee;border:1px solid #555;border-radius:6px;padding:6px 8px;font-size:12px;min-width:0;}
+  #anysub-search #anysub-ep{flex:0 0 44px;text-align:center;}
+  #anysub-search button{background:#333;color:#eee;border:1px solid #555;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;}
+  #anysub-search button:hover{background:#444;}
+  #anysub-sc-close{cursor:pointer;opacity:.6;}#anysub-sc-close:hover{opacity:1;}
+  #anysub-search .anysub-key-hint{font-size:11px;opacity:.5;margin:-4px 0 4px;}
+  .anysub-results{margin-top:6px;}
+  .anysub-results .anysub-sec{font-size:12px;opacity:.6;margin:6px 2px;}
+  .anysub-results .anysub-empty{opacity:.5;font-size:12px;padding:14px;text-align:center;}
+  .anysub-results .anysub-item{padding:7px 9px;border-radius:6px;cursor:pointer;background:#262626;margin:5px 0;}
+  .anysub-results .anysub-item:hover{background:#333;}
+  .anysub-results .anysub-item.loading{opacity:.5;pointer-events:none;}
+  .anysub-results .anysub-item-t{font-size:12.5px;word-break:break-all;}
+  .anysub-results .anysub-item-s{font-size:11px;opacity:.55;margin-top:2px;}
+  .anysub-results .anysub-back{color:#2b6cff;cursor:pointer;font-size:12px;margin:6px 2px;}
   .anysub-vidpick{position:fixed;z-index:2147483647;border:3px solid #2b6cff;background:rgba(43,108,255,.15);cursor:pointer;box-sizing:border-box;}
   #anysub-toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:2147483647;
     background:rgba(0,0,0,.85);color:#fff;padding:8px 16px;border-radius:6px;
@@ -294,7 +315,12 @@
 			return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 		} catch (_) {
 			let best = null, bestScore = Infinity;
-			for (const enc of ["gbk", "big5"]) try {
+			for (const enc of [
+				"shift_jis",
+				"euc-jp",
+				"gbk",
+				"big5"
+			]) try {
 				const text = new TextDecoder(enc).decode(bytes);
 				const score = (text.match(/�/g) || []).length;
 				if (score < bestScore) {
@@ -672,36 +698,53 @@
 	}];
 	function loadFile(file) {
 		if (!file) return;
+		readSubtitleFile(file).then((text) => loadFromText(text, file.name)).catch((err) => {
+			console.error("[AnySub]", err);
+			toast("读取字幕失败:" + err.message);
+		});
+	}
+	function loadFromBuffer(buffer, name) {
+		return loadFromText(decodeBuffer(new Uint8Array(buffer)), name);
+	}
+	function loadFromText(text, name) {
 		if (!state.video || !state.video.isConnected) {
 			const v = pickBestVideo();
 			if (v) setVideo(v);
 		}
 		if (!state.video) {
 			toast("未在页面找到视频元素");
-			return;
+			return false;
 		}
-		readSubtitleFile(file).then((text) => {
-			const fmt = FORMATS.find((f) => f.test(file.name, text)) || FORMATS[FORMATS.length - 1];
-			const parsed = fmt.parse(text, file.name);
-			if (!parsed.cues || !parsed.cues.length) {
-				toast("未解析出字幕(格式不支持或文件为空)");
-				return;
-			}
-			state.cues = parsed.cues;
-			state.fileName = file.name;
-			invalidateLayout();
-			setRenderer(fmt.create(parsed));
-			applyStyle();
-			startRender();
-			updateWatcher();
-			updateStatus();
-			toast(`已挂载 ${parsed.cues.length} 条字幕`);
-		}).catch((err) => {
-			console.error("[AnySub]", err);
-			toast("读取字幕失败:" + err.message);
-		});
+		const fmt = FORMATS.find((f) => f.test(name, text)) || FORMATS[FORMATS.length - 1];
+		const parsed = fmt.parse(text, name);
+		if (!parsed.cues || !parsed.cues.length) {
+			toast("未解析出字幕(格式不支持或文件为空)");
+			return false;
+		}
+		state.cues = parsed.cues;
+		state.fileName = name;
+		invalidateLayout();
+		setRenderer(fmt.create(parsed));
+		applyStyle();
+		startRender();
+		updateWatcher();
+		updateStatus();
+		toast(`已挂载 ${parsed.cues.length} 条字幕`);
+		return true;
 	}
 	var KEY = "anysub:settings:v1";
+	function saveState() {
+		const s = state.style;
+		saveSettings({
+			fontPct: s.fontPct,
+			bottomPct: s.bottomPct,
+			bg: s.bg,
+			color: s.color,
+			shortcutsEnabled: state.shortcutsEnabled,
+			showFab: state.showFab,
+			jimakuKey: state.jimakuKey
+		});
+	}
 	function loadSettings() {
 		try {
 			return JSON.parse(localStorage.getItem(KEY)) || {};
@@ -714,21 +757,245 @@
 			localStorage.setItem(KEY, JSON.stringify(obj));
 		} catch (_) {}
 	}
-	function persist() {
-		const s = state.style;
-		saveSettings({
-			fontPct: s.fontPct,
-			bottomPct: s.bottomPct,
-			bg: s.bg,
-			color: s.color,
-			shortcutsEnabled: state.shortcutsEnabled,
-			showFab: state.showFab
+	var ENDPOINT = "https://graphql.anilist.co";
+	var QUERY = `query($s:String){Page(perPage:6){media(search:$s,type:ANIME){id title{romaji native english} episodes format startDate{year}}}}`;
+	async function searchAnime(title) {
+		const res = await fetch(ENDPOINT, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "application/json"
+			},
+			body: JSON.stringify({
+				query: QUERY,
+				variables: { s: title }
+			})
+		});
+		if (res.status === 429) throw new Error("AniList 请求过于频繁,请稍后再试");
+		if (!res.ok) throw new Error("AniList 查询失败 " + res.status);
+		const data = await res.json();
+		return (data && data.data && data.data.Page && data.data.Page.media || []).map((m) => ({
+			anilistId: m.id,
+			title: m.title.native || m.title.romaji || m.title.english || String(m.id),
+			romaji: m.title.romaji || "",
+			episodes: m.episodes || 0,
+			format: m.format || "",
+			year: m.startDate && m.startDate.year || ""
+		}));
+	}
+	var BASE = "https://jimaku.cc/api";
+	function auth() {
+		const key = state.jimakuKey;
+		if (!key) throw new Error("未设置 Jimaku API key");
+		return { Authorization: key };
+	}
+	async function get(path) {
+		const res = await fetch(BASE + path, { headers: auth() });
+		if (res.status === 401) throw new Error("Jimaku API key 无效");
+		if (res.status === 429) throw new Error("Jimaku 请求过于频繁,请稍后再试");
+		if (!res.ok) throw new Error("Jimaku 请求失败 " + res.status);
+		return res.json();
+	}
+	function searchByAnilist(anilistId) {
+		return get("/entries/search?anilist_id=" + encodeURIComponent(anilistId));
+	}
+	function getFiles(entryId, episode) {
+		let p = "/entries/" + encodeURIComponent(entryId) + "/files";
+		if (episode != null && episode !== "") p += "?episode=" + encodeURIComponent(episode);
+		return get(p);
+	}
+	var SUB_RE = /\.(ass|ssa|srt|vtt|sub|sbv)$/i;
+	function animeCandidates(title) {
+		return searchAnime(title);
+	}
+	async function subtitleFiles(anilistId, episode) {
+		const entries = await searchByAnilist(anilistId);
+		if (!entries.length) return [];
+		const out = [];
+		for (const e of entries) {
+			const files = await getFiles(e.id, episode);
+			for (const f of files) {
+				if (!SUB_RE.test(f.name)) continue;
+				out.push({
+					name: f.name,
+					url: f.url,
+					size: f.size,
+					entryName: e.japanese_name || e.name
+				});
+			}
+		}
+		out.sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name));
+		return out;
+	}
+	function rank(n) {
+		if (/\.(ass|ssa)$/i.test(n)) return 0;
+		if (/\.srt$/i.test(n)) return 1;
+		return 2;
+	}
+	async function downloadAndLoad(url, name) {
+		const res = await fetch(url);
+		if (!res.ok) throw new Error("下载失败 " + res.status);
+		return loadFromBuffer(await res.arrayBuffer(), name);
+	}
+	var panel, keyInput, titleInput, epInput, results;
+	var HTML = `
+  <div class="anysub-row anysub-head"><span>在线字幕 · Jimaku</span><span id="anysub-sc-close">✕</span></div>
+  <div class="anysub-row">
+    <input id="anysub-key" type="password" placeholder="Jimaku API key" autocomplete="off">
+    <button id="anysub-key-save">保存</button>
+  </div>
+  <div class="anysub-key-hint">key 在 jimaku.cc 登录后账号页生成,仅存于本机</div>
+  <div class="anysub-row">
+    <input id="anysub-title" placeholder="番剧名(日文最准)">
+    <input id="anysub-ep" placeholder="集" title="集数">
+    <button id="anysub-do-search">搜索</button>
+  </div>
+  <div id="anysub-results" class="anysub-results"><div class="anysub-empty">输入番剧名后点搜索</div></div>
+`;
+	function buildSearchUI() {
+		panel = document.createElement("div");
+		panel.id = "anysub-search";
+		panel.style.display = "none";
+		panel.innerHTML = HTML;
+		refs.uiRoot.appendChild(panel);
+		keyInput = panel.querySelector("#anysub-key");
+		titleInput = panel.querySelector("#anysub-title");
+		epInput = panel.querySelector("#anysub-ep");
+		results = panel.querySelector("#anysub-results");
+		panel.querySelector("#anysub-sc-close").addEventListener("click", close);
+		panel.querySelector("#anysub-key-save").addEventListener("click", saveKey);
+		panel.querySelector("#anysub-do-search").addEventListener("click", doSearch);
+		titleInput.addEventListener("keydown", (e) => {
+			if (e.key === "Enter") doSearch();
+		});
+		epInput.addEventListener("keydown", (e) => {
+			if (e.key === "Enter") doSearch();
 		});
 	}
+	function openSearch() {
+		if (refs.panel) refs.panel.style.display = "none";
+		panel.style.display = "block";
+		keyInput.value = state.jimakuKey || "";
+		if (!titleInput.value) titleInput.value = guessTitle();
+		(state.jimakuKey ? titleInput : keyInput).focus();
+	}
+	function close() {
+		panel.style.display = "none";
+	}
+	function saveKey() {
+		state.jimakuKey = keyInput.value.trim();
+		saveState();
+		toast(state.jimakuKey ? "API key 已保存" : "API key 已清空");
+	}
+	function guessTitle() {
+		return (document.title || "").split(/[|｜\-–—]/)[0].trim().slice(0, 40);
+	}
+	async function doSearch() {
+		const title = titleInput.value.trim();
+		if (!state.jimakuKey) {
+			toast("请先填写并保存 Jimaku API key");
+			keyInput.focus();
+			return;
+		}
+		if (!title) {
+			toast("请输入番剧名");
+			return;
+		}
+		setResults("<div class=\"anysub-empty\">搜索中…</div>");
+		try {
+			const list = await animeCandidates(title);
+			if (!list.length) {
+				setResults("<div class=\"anysub-empty\">未找到番剧,换个写法试试</div>");
+				return;
+			}
+			renderAnime(list);
+		} catch (err) {
+			setResults(`<div class="anysub-empty">出错:${esc(err.message)}</div>`);
+		}
+	}
+	function renderAnime(list) {
+		results.innerHTML = "";
+		const hint = document.createElement("div");
+		hint.className = "anysub-sec";
+		hint.textContent = "选择番剧:";
+		results.appendChild(hint);
+		for (const a of list) {
+			const row = document.createElement("div");
+			row.className = "anysub-item";
+			row.innerHTML = `<div class="anysub-item-t">${esc(a.title)}</div>
+      <div class="anysub-item-s">${esc(a.romaji)} · ${esc(a.format)} ${a.year || ""} · ${a.episodes || "?"}话</div>`;
+			row.addEventListener("click", () => loadFilesFor(a));
+			results.appendChild(row);
+		}
+	}
+	async function loadFilesFor(anime) {
+		setResults("<div class=\"anysub-empty\">获取字幕文件中…</div>");
+		try {
+			const files = await subtitleFiles(anime.anilistId, epInput.value.trim());
+			if (!files.length) {
+				setResults(`<div class="anysub-empty">${esc(anime.title)} 暂无字幕${epInput.value ? "(第" + esc(epInput.value) + "集)" : ""}</div><div class="anysub-back">← 返回</div>`);
+				wireBack();
+				return;
+			}
+			renderFiles(anime, files);
+		} catch (err) {
+			setResults(`<div class="anysub-empty">出错:${esc(err.message)}</div><div class="anysub-back">← 返回</div>`);
+			wireBack();
+		}
+	}
+	function renderFiles(anime, files) {
+		results.innerHTML = "";
+		const back = document.createElement("div");
+		back.className = "anysub-back";
+		back.textContent = "← 返回番剧列表";
+		back.addEventListener("click", doSearch);
+		results.appendChild(back);
+		const hint = document.createElement("div");
+		hint.className = "anysub-sec";
+		hint.textContent = `${anime.title} · 选择字幕文件(${files.length}):`;
+		results.appendChild(hint);
+		for (const f of files) {
+			const row = document.createElement("div");
+			row.className = "anysub-item";
+			row.innerHTML = `<div class="anysub-item-t">${esc(f.name)}</div>
+      <div class="anysub-item-s">${fmtSize(f.size)}${f.entryName ? " · " + esc(f.entryName) : ""}</div>`;
+			row.addEventListener("click", () => pickFile(f, row));
+			results.appendChild(row);
+		}
+	}
+	async function pickFile(f, row) {
+		row.classList.add("loading");
+		try {
+			if (await downloadAndLoad(f.url, f.name)) {
+				toast("已挂载:" + f.name);
+				close();
+			}
+		} catch (err) {
+			toast("下载失败:" + err.message);
+		} finally {
+			row.classList.remove("loading");
+		}
+	}
+	function wireBack() {
+		const b = results.querySelector(".anysub-back");
+		if (b) b.addEventListener("click", doSearch);
+	}
+	function setResults(html) {
+		results.innerHTML = html;
+	}
+	function fmtSize(n) {
+		if (!n) return "";
+		return n > 1e6 ? (n / 1e6).toFixed(1) + "MB" : Math.round(n / 1024) + "KB";
+	}
+	function esc(s) {
+		return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	}
+	var persist = saveState;
 	var PANEL_HTML = `
   <div class="anysub-row anysub-head"><span>AnySub 字幕</span><span id="anysub-close">✕</span></div>
   <div class="anysub-row">
-    <button id="anysub-choose">选择字幕文件</button>
+    <button id="anysub-choose">选择文件</button>
+    <button id="anysub-online">🔍 在线字幕</button>
     <button id="anysub-pickvid" title="页面多个视频时,点此再点视频画面指定">选视频</button>
   </div>
   <div class="anysub-row">
@@ -776,7 +1043,7 @@
     <button id="anysub-tg-fab" class="anysub-toggle">悬浮球:关</button>
   </div>
   <div class="anysub-legend">
-    <div>Alt+Shift+S 面板 · V 显隐 · O 打开</div>
+    <div>Alt+Shift+S 面板 · F 在线找 · V 显隐 · O 本地</div>
     <div>Alt+Shift+← / → 偏移 ∓0.1s</div>
   </div>
   <div class="anysub-row anysub-status" id="anysub-status">未加载字幕</div>
@@ -812,6 +1079,7 @@
 		refs.panel = panel;
 		refs.fileInput = fileInput;
 		refs.statusEl = panel.querySelector("#anysub-status");
+		buildSearchUI();
 		wireEvents();
 	}
 	function togglePanel() {
@@ -846,6 +1114,7 @@
 			panel.style.display = "none";
 		});
 		panel.querySelector("#anysub-choose").addEventListener("click", openFilePicker);
+		panel.querySelector("#anysub-online").addEventListener("click", openSearch);
 		fileInput.addEventListener("change", () => {
 			if (fileInput.files[0]) loadFile(fileInput.files[0]);
 			fileInput.value = "";
@@ -1073,6 +1342,12 @@
 			run: () => togglePanel()
 		},
 		{
+			code: "KeyF",
+			label: "Alt+Shift+F",
+			desc: "在线找字幕",
+			run: () => openSearch()
+		},
+		{
 			code: "KeyV",
 			label: "Alt+Shift+V",
 			desc: "显示/隐藏字幕",
@@ -1081,7 +1356,7 @@
 		{
 			code: "KeyO",
 			label: "Alt+Shift+O",
-			desc: "打开字幕文件",
+			desc: "打开本地文件",
 			run: () => openFilePicker()
 		},
 		{
@@ -1149,5 +1424,6 @@
 		if (typeof saved.color === "string") s.color = saved.color;
 		if (typeof saved.shortcutsEnabled === "boolean") state.shortcutsEnabled = saved.shortcutsEnabled;
 		if (typeof saved.showFab === "boolean") state.showFab = saved.showFab;
+		if (typeof saved.jimakuKey === "string") state.jimakuKey = saved.jimakuKey;
 	}
 })();

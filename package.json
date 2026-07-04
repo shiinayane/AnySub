@@ -1,7 +1,7 @@
 {
   "name": "anysub",
   "private": true,
-  "version": "0.8.1",
+  "version": "0.9.0",
   "type": "module",
   "description": "给任意网站的 HTML5 视频挂载本地字幕文件的用户脚本",
   "scripts": {

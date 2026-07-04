@@ -14,9 +14,9 @@ export function decodeBuffer(bytes) {
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch (_) {
-    // 非 UTF-8:在 GBK / Big5 中选「替换字符最少」者(比单纯判断有无 U+FFFD 更可靠)
+    // 非 UTF-8:在常见 CJK 编码中选「替换字符最少」者(动画字幕常见 Shift-JIS / EUC-JP)
     let best = null, bestScore = Infinity;
-    for (const enc of ['gbk', 'big5']) {
+    for (const enc of ['shift_jis', 'euc-jp', 'gbk', 'big5']) {
       try {
         const text = new TextDecoder(enc).decode(bytes);
         const score = (text.match(/�/g) || []).length;

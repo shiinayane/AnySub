@@ -6,22 +6,17 @@ import { invalidateLayout } from './overlay.js';
 import { loadFile } from './loader.js';
 import { collectVideos, isVisible } from './locator.js';
 import { toast } from './notify.js';
-import { saveSettings } from './storage.js';
+import { saveState } from './storage.js';
 import { updateWatcher } from './watcher.js';
+import { buildSearchUI, openSearch } from './search-ui.js';
 
-// 持久化偏好(偏移与临时隐藏不入库)
-function persist() {
-  const s = state.style;
-  saveSettings({
-    fontPct: s.fontPct, bottomPct: s.bottomPct, bg: s.bg, color: s.color,
-    shortcutsEnabled: state.shortcutsEnabled, showFab: state.showFab,
-  });
-}
+const persist = saveState;
 
 const PANEL_HTML = `
   <div class="anysub-row anysub-head"><span>AnySub 字幕</span><span id="anysub-close">✕</span></div>
   <div class="anysub-row">
-    <button id="anysub-choose">选择字幕文件</button>
+    <button id="anysub-choose">选择文件</button>
+    <button id="anysub-online">🔍 在线字幕</button>
     <button id="anysub-pickvid" title="页面多个视频时,点此再点视频画面指定">选视频</button>
   </div>
   <div class="anysub-row">
@@ -69,7 +64,7 @@ const PANEL_HTML = `
     <button id="anysub-tg-fab" class="anysub-toggle">悬浮球:关</button>
   </div>
   <div class="anysub-legend">
-    <div>Alt+Shift+S 面板 · V 显隐 · O 打开</div>
+    <div>Alt+Shift+S 面板 · F 在线找 · V 显隐 · O 本地</div>
     <div>Alt+Shift+← / → 偏移 ∓0.1s</div>
   </div>
   <div class="anysub-row anysub-status" id="anysub-status">未加载字幕</div>
@@ -114,8 +109,12 @@ export function buildUI() {
   refs.fileInput = fileInput;
   refs.statusEl = panel.querySelector('#anysub-status');
 
+  buildSearchUI();
   wireEvents();
 }
+
+// 供快捷键调用:打开在线搜索
+export { openSearch };
 
 // ── 供快捷键调用的动作 ──
 export function togglePanel() {
@@ -144,6 +143,7 @@ function wireEvents() {
   });
   panel.querySelector('#anysub-close').addEventListener('click', () => { panel.style.display = 'none'; });
   panel.querySelector('#anysub-choose').addEventListener('click', openFilePicker);
+  panel.querySelector('#anysub-online').addEventListener('click', openSearch);
   fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); fileInput.value = ''; });
   panel.querySelector('#anysub-pickvid').addEventListener('click', startPickVideo);
   panel.querySelector('#anysub-clear').addEventListener('click', () => { clearSubtitle(); syncVisBtn(); });

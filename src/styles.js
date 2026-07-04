@@ -43,6 +43,26 @@ const CSS = `
   #anysub-panel .anysub-legend{margin:6px 0 2px;padding:6px 8px;background:#262626;border-radius:6px;
     font-size:11px;line-height:1.6;opacity:.7;}
   #anysub-panel .anysub-status{opacity:.6;font-size:12px;word-break:break-all;}
+  #anysub-search{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;
+    width:340px;max-width:92vw;max-height:80vh;overflow:auto;background:#1e1e1e;color:#eee;border-radius:10px;
+    padding:10px;font:13px/1.4 -apple-system,system-ui,sans-serif;box-shadow:0 4px 24px rgba(0,0,0,.6);}
+  #anysub-search .anysub-row{display:flex;align-items:center;gap:6px;margin:8px 0;}
+  #anysub-search .anysub-head{justify-content:space-between;font-weight:600;}
+  #anysub-search input{flex:1;background:#2a2a2a;color:#eee;border:1px solid #555;border-radius:6px;padding:6px 8px;font-size:12px;min-width:0;}
+  #anysub-search #anysub-ep{flex:0 0 44px;text-align:center;}
+  #anysub-search button{background:#333;color:#eee;border:1px solid #555;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;}
+  #anysub-search button:hover{background:#444;}
+  #anysub-sc-close{cursor:pointer;opacity:.6;}#anysub-sc-close:hover{opacity:1;}
+  #anysub-search .anysub-key-hint{font-size:11px;opacity:.5;margin:-4px 0 4px;}
+  .anysub-results{margin-top:6px;}
+  .anysub-results .anysub-sec{font-size:12px;opacity:.6;margin:6px 2px;}
+  .anysub-results .anysub-empty{opacity:.5;font-size:12px;padding:14px;text-align:center;}
+  .anysub-results .anysub-item{padding:7px 9px;border-radius:6px;cursor:pointer;background:#262626;margin:5px 0;}
+  .anysub-results .anysub-item:hover{background:#333;}
+  .anysub-results .anysub-item.loading{opacity:.5;pointer-events:none;}
+  .anysub-results .anysub-item-t{font-size:12.5px;word-break:break-all;}
+  .anysub-results .anysub-item-s{font-size:11px;opacity:.55;margin-top:2px;}
+  .anysub-results .anysub-back{color:#2b6cff;cursor:pointer;font-size:12px;margin:6px 2px;}
   .anysub-vidpick{position:fixed;z-index:2147483647;border:3px solid #2b6cff;background:rgba(43,108,255,.15);cursor:pointer;box-sizing:border-box;}
   #anysub-toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:2147483647;
     background:rgba(0,0,0,.85);color:#fff;padding:8px 16px;border-radius:6px;
