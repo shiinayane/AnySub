@@ -4,7 +4,7 @@
 
 Chrome / Edge / Safari / Firefox 通用。
 
-## 功能(v0.7.0)
+## 功能(v0.8.0)
 
 - 📂 本地字幕文件挂载(选择 / 拖拽 / **清除**),**文件不出本机**(SRT/VTT 全程离线)
 - 🎬 支持 **SRT / VTT / ASS / SSA**
@@ -20,7 +20,11 @@ Chrome / Edge / Safari / Firefox 通用。
 - ⏱️ **时间轴偏移**:±0.1 / ±1 步进按钮,或**手动输入**任意秒数
 - 🔎 **穿透 Shadow DOM** 定位视频;页面多个视频时可手动「选视频」
 - 🔄 `MutationObserver` 监听,SPA 切换视频后自动重新挂载
-- 🫧 **非侵入式 UI**:**仅在有视频的页面显示**胶囊(含 Shadow DOM、动态出现);吸附到最近边缘并半藏、可拖动
+- ⌨️ **键盘快捷键**(`Alt+Shift` 组合,几乎不与站点单键冲突):
+  - `Alt+Shift+S` 打开/关闭面板 · `Alt+Shift+V` 显示/隐藏字幕 · `Alt+Shift+O` 打开文件
+  - `Alt+Shift+←/→` 偏移 ∓0.1s
+  - 输入框内不响应;capture 阶段只吞自己的组合、不破坏站点快捷键;可整体开关
+- 🫧 **极简 UI**:默认无常驻悬浮球,快捷键唤出面板(可在面板里开启悬浮球);首次在视频页提示一次
 - 💾 **设置持久化**:字号 / 位置 / 背景 / 颜色偏好自动记住(localStorage,按站点)
 - ⚙️ 渲染**事件驱动 + 定时兜底**(不依赖 rAF),后台标签/PiP 也稳定
 
@@ -75,7 +79,8 @@ src/
 ├── octopus-loader.js  懒加载 libass-wasm(blob worker + CDN wasm/字体)
 ├── controller.js   渲染循环 + 视频生命周期 + 当前渲染器
 ├── loader.js       载入流程 + 格式注册表(分派渲染器)
-├── ui.js           面板 + 胶囊 + 拖拽吸附 + 选视频
+├── ui.js           设置面板 + 悬浮球 + 拖拽 + 选视频
+├── shortcuts.js    键盘快捷键(Alt+Shift,capture 拦截)
 ├── styles.js       注入 CSS
 ├── storage.js      设置持久化(localStorage)
 └── notify.js       toast + 状态栏
@@ -102,6 +107,7 @@ npm run build && python3 -m http.server 8000
 - [ ] 跨域 iframe 内视频支持
 - [ ] 更多格式(SUB/SBV/LRC/SMI/TTML)与在线字幕搜索
 - [ ] ASS 自定义字体(内嵌 / 用户提供,改善冷门字体还原)
+- [ ] 快捷键自定义重绑(撞键时可改;目前固定 Alt+Shift 组合 + 总开关)
 
 ## 设计说明
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.7.0
+// @version      0.8.0
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -18,6 +18,9 @@
 		offset: 0,
 		fileName: "",
 		active: false,
+		hidden: false,
+		shortcutsEnabled: true,
+		showFab: false,
 		style: {
 			fontPct: 100,
 			bg: "translucent",
@@ -64,6 +67,10 @@
   #anysub-offset::-webkit-outer-spin-button,#anysub-offset::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   #anysub-panel .anysub-unit{opacity:.6;font-size:12px;margin-left:-2px;}
   #anysub-font,#anysub-pos{flex:1;}
+  #anysub-panel .anysub-toggles{gap:6px;}
+  #anysub-panel .anysub-toggle{flex:1;}
+  #anysub-panel .anysub-legend{margin:6px 0 2px;padding:6px 8px;background:#262626;border-radius:6px;
+    font-size:11px;line-height:1.6;opacity:.7;}
   #anysub-panel .anysub-status{opacity:.6;font-size:12px;word-break:break-all;}
   .anysub-vidpick{position:fixed;z-index:2147483647;border:3px solid #2b6cff;background:rgba(43,108,255,.15);cursor:pointer;box-sizing:border-box;}
   #anysub-toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:2147483647;
@@ -228,6 +235,17 @@
 		}
 		if (state.cues.length) startRender();
 	}
+	function toggleSubtitles() {
+		if (!state.cues.length) {
+			toast("未加载字幕");
+			return;
+		}
+		state.hidden = !state.hidden;
+		if (renderer && renderer.setVisible) renderer.setVisible(!state.hidden);
+		renderTick();
+		toast(state.hidden ? "字幕已隐藏" : "字幕已显示");
+		return state.hidden;
+	}
 	function clearSubtitle() {
 		if (!state.cues.length) {
 			toast("当前没有字幕");
@@ -389,6 +407,7 @@
 	function createTextRenderer() {
 		let cueBox = null;
 		let lastHtml = "";
+		let visible = true;
 		function outline(c) {
 			return `-2px -2px 1px ${c},2px -2px 1px ${c},-2px 2px 1px ${c},2px 2px 1px ${c},0 0 3px ${c}`;
 		}
@@ -400,8 +419,18 @@
 				lastHtml = "";
 				this.applyStyle();
 			},
+			setVisible(v) {
+				visible = v;
+				if (!cueBox) return;
+				if (!v) cueBox.style.display = "none";
+				else lastHtml = "";
+			},
 			renderAt(v, rect, layoutChanged) {
 				if (!cueBox) return;
+				if (!visible) {
+					cueBox.style.display = "none";
+					return;
+				}
 				if (layoutChanged && rect) {
 					const fontPx = Math.max(10, rect.height * FONT_BASE * (state.style.fontPct / 100));
 					cueBox.style.fontSize = fontPx.toFixed(1) + "px";
@@ -503,6 +532,7 @@
 						}
 						usingLibass = true;
 						textRenderer.destroy();
+						if (state.hidden) setCanvasDisplay("none");
 						toast("已启用 ASS 高保真渲染");
 					},
 					onError: (e) => {
@@ -522,6 +552,10 @@
 				octopus = null;
 			}
 		}
+		function setCanvasDisplay(val) {
+			const cv = octopus && octopus.canvas;
+			if (cv) cv.style.display = val;
+		}
 		return {
 			mount() {
 				textRenderer.mount();
@@ -529,6 +563,10 @@
 			},
 			renderAt(v, rect, layoutChanged) {
 				if (!usingLibass) textRenderer.renderAt(v, rect, layoutChanged);
+			},
+			setVisible(v) {
+				if (usingLibass) setCanvasDisplay(v ? "" : "none");
+				else textRenderer.setVisible(v);
 			},
 			applyStyle() {
 				if (!usingLibass) textRenderer.applyStyle();
@@ -659,7 +697,9 @@
 			fontPct: s.fontPct,
 			bottomPct: s.bottomPct,
 			bg: s.bg,
-			color: s.color
+			color: s.color,
+			shortcutsEnabled: state.shortcutsEnabled,
+			showFab: state.showFab
 		});
 	}
 	var PANEL_HTML = `
@@ -667,6 +707,9 @@
   <div class="anysub-row">
     <button id="anysub-choose">选择字幕文件</button>
     <button id="anysub-pickvid" title="页面多个视频时,点此再点视频画面指定">选视频</button>
+  </div>
+  <div class="anysub-row">
+    <button id="anysub-vis">隐藏字幕</button>
     <button id="anysub-clear">清除</button>
   </div>
   <div class="anysub-row anysub-drop" id="anysub-drop">或将字幕文件拖到这里</div>
@@ -705,6 +748,14 @@
       <button data-color="#7CFC00" style="color:#7CFC00">绿</button>
     </div>
   </div>
+  <div class="anysub-row anysub-toggles">
+    <button id="anysub-tg-sc" class="anysub-toggle">快捷键:开</button>
+    <button id="anysub-tg-fab" class="anysub-toggle">悬浮球:关</button>
+  </div>
+  <div class="anysub-legend">
+    <div>Alt+Shift+S 面板 · V 显隐 · O 打开</div>
+    <div>Alt+Shift+← / → 偏移 ∓0.1s</div>
+  </div>
   <div class="anysub-row anysub-status" id="anysub-status">未加载字幕</div>
 `;
 	function buildUI() {
@@ -712,13 +763,13 @@
 		uiRoot.id = "anysub-root";
 		const overlay = document.createElement("div");
 		overlay.id = "anysub-overlay";
-		overlay.style.display = "none";
 		overlay.style.cssText = "display:none;position:fixed;z-index:2147483640;pointer-events:none;overflow:hidden;";
 		const fab = document.createElement("div");
 		fab.id = "anysub-fab";
 		fab.className = "dock-right";
 		fab.textContent = "字";
-		fab.title = "AnySub · 点击打开字幕面板(可拖动,松手吸附到最近边缘)";
+		fab.title = "AnySub · 点击打开字幕面板(可拖动)";
+		fab.style.display = "none";
 		const panel = document.createElement("div");
 		panel.id = "anysub-panel";
 		panel.style.display = "none";
@@ -740,6 +791,35 @@
 		refs.statusEl = panel.querySelector("#anysub-status");
 		wireEvents();
 	}
+	function togglePanel() {
+		const p = refs.panel;
+		const show = p.style.display === "none" || !p.style.display;
+		p.style.display = show ? "block" : "none";
+		if (show) {
+			syncVisBtn();
+			positionPanel();
+		}
+	}
+	function openFilePicker() {
+		refs.fileInput.click();
+	}
+	function adjustOffset(delta) {
+		state.offset = Math.round((state.offset + delta) * 10) / 10;
+		const inp = refs.panel && refs.panel.querySelector("#anysub-offset");
+		if (inp) inp.value = state.offset.toFixed(1);
+		refresh();
+		toast("偏移 " + state.offset.toFixed(1) + "s");
+	}
+	var hintShown = false;
+	function maybeFirstRunHint() {
+		if (hintShown || state.showFab) return;
+		hintShown = true;
+		try {
+			if (localStorage.getItem("anysub:hinted") === "1") return;
+			localStorage.setItem("anysub:hinted", "1");
+		} catch (_) {}
+		toast("AnySub 已就绪 · 按 Alt+Shift+S 打开字幕面板");
+	}
 	function wireEvents() {
 		const { fab, panel, fileInput } = refs;
 		fab.addEventListener("click", () => {
@@ -747,28 +827,28 @@
 				fab.__dragged = false;
 				return;
 			}
-			const show = panel.style.display === "none";
-			panel.style.display = show ? "block" : "none";
-			if (show) positionPanel();
+			togglePanel();
 		});
 		panel.querySelector("#anysub-close").addEventListener("click", () => {
 			panel.style.display = "none";
 		});
-		panel.querySelector("#anysub-choose").addEventListener("click", () => fileInput.click());
+		panel.querySelector("#anysub-choose").addEventListener("click", openFilePicker);
 		fileInput.addEventListener("change", () => {
 			if (fileInput.files[0]) loadFile(fileInput.files[0]);
 			fileInput.value = "";
 		});
 		panel.querySelector("#anysub-pickvid").addEventListener("click", startPickVideo);
-		panel.querySelector("#anysub-clear").addEventListener("click", clearSubtitle);
-		const offInput = panel.querySelector("#anysub-offset");
-		panel.querySelectorAll("[data-off]").forEach((b) => b.addEventListener("click", () => {
-			state.offset = Math.round((state.offset + parseFloat(b.dataset.off)) * 10) / 10;
-			offInput.value = state.offset.toFixed(1);
-			refresh();
-		}));
-		offInput.addEventListener("input", () => {
-			const val = parseFloat(offInput.value);
+		panel.querySelector("#anysub-clear").addEventListener("click", () => {
+			clearSubtitle();
+			syncVisBtn();
+		});
+		panel.querySelector("#anysub-vis").addEventListener("click", () => {
+			toggleSubtitles();
+			syncVisBtn();
+		});
+		panel.querySelectorAll("[data-off]").forEach((b) => b.addEventListener("click", () => adjustOffset(parseFloat(b.dataset.off))));
+		panel.querySelector("#anysub-offset").addEventListener("input", (e) => {
+			const val = parseFloat(e.target.value);
 			if (!isNaN(val)) {
 				state.offset = val;
 				refresh();
@@ -800,26 +880,50 @@
 			applyStyle();
 			persist();
 		});
+		panel.querySelector("#anysub-tg-sc").addEventListener("click", () => {
+			state.shortcutsEnabled = !state.shortcutsEnabled;
+			syncToggles();
+			persist();
+		});
+		panel.querySelector("#anysub-tg-fab").addEventListener("click", () => {
+			state.showFab = !state.showFab;
+			syncToggles();
+			updateFabVisibility();
+			persist();
+		});
 		setupDrop(panel.querySelector("#anysub-drop"));
 		makeDraggable(fab);
 		syncControls();
 	}
 	function updateFabVisibility() {
 		const hasVideo = !!document.querySelector("video") || collectVideos().length > 0;
-		refs.fab.style.display = hasVideo ? "" : "none";
+		refs.fab.style.display = state.showFab && hasVideo ? "" : "none";
 		if (!hasVideo && refs.panel) refs.panel.style.display = "none";
+		if (hasVideo) maybeFirstRunHint();
+	}
+	function syncVisBtn() {
+		const b = refs.panel.querySelector("#anysub-vis");
+		if (b) b.textContent = state.hidden ? "显示字幕" : "隐藏字幕";
+	}
+	function syncToggles() {
+		const sc = refs.panel.querySelector("#anysub-tg-sc");
+		const fb = refs.panel.querySelector("#anysub-tg-fab");
+		sc.textContent = "快捷键:" + (state.shortcutsEnabled ? "开" : "关");
+		sc.classList.toggle("on", state.shortcutsEnabled);
+		fb.textContent = "悬浮球:" + (state.showFab ? "开" : "关");
+		fb.classList.toggle("on", state.showFab);
 	}
 	function syncControls() {
 		const { panel } = refs;
 		const s = state.style;
-		const fontR = panel.querySelector("#anysub-font");
-		fontR.value = s.fontPct;
+		panel.querySelector("#anysub-font").value = s.fontPct;
 		panel.querySelector("#anysub-fontval").textContent = s.fontPct + "%";
-		const posR = panel.querySelector("#anysub-pos");
-		posR.value = s.bottomPct;
+		panel.querySelector("#anysub-pos").value = s.bottomPct;
 		panel.querySelector("#anysub-posval").textContent = s.bottomPct + "%";
 		setSegActive("#anysub-bg", "bg", s.bg);
 		setSegActive("#anysub-color", "color", s.color);
+		syncToggles();
+		syncVisBtn();
 	}
 	function setSegActive(sel, attr, val) {
 		refs.panel.querySelectorAll(`${sel} button`).forEach((b) => b.classList.toggle("on", b.dataset[attr] === val));
@@ -891,18 +995,22 @@
 	}
 	function positionPanel() {
 		const { fab, panel } = refs;
-		const fr = fab.getBoundingClientRect();
 		const W = window.innerWidth || document.documentElement.clientWidth || 1;
-		const onRight = fr.left + fr.width / 2 >= W / 2;
+		const H = window.innerHeight || document.documentElement.clientHeight || 800;
 		panel.style.left = "";
 		panel.style.right = "";
 		panel.style.top = "";
 		panel.style.bottom = "";
-		if (onRight) panel.style.right = "12px";
-		else panel.style.left = "12px";
-		const H = window.innerHeight || document.documentElement.clientHeight || 800;
-		const ph = panel.offsetHeight || 380;
-		panel.style.top = Math.max(10, Math.min(H - ph - 10, fr.top - ph / 2)) + "px";
+		const ph = panel.offsetHeight || 460, pw = panel.offsetWidth || 270;
+		if (state.showFab) {
+			const fr = fab.getBoundingClientRect();
+			if (fr.left + fr.width / 2 >= W / 2) panel.style.right = "12px";
+			else panel.style.left = "12px";
+			panel.style.top = Math.max(10, Math.min(H - ph - 10, fr.top - ph / 2)) + "px";
+		} else {
+			panel.style.left = Math.max(10, (W - pw) / 2) + "px";
+			panel.style.top = Math.max(10, (H - ph) / 2) + "px";
+		}
 	}
 	var picking = false;
 	function startPickVideo() {
@@ -941,6 +1049,57 @@
 		};
 		document.addEventListener("keydown", esc);
 	}
+	var MAP = Object.fromEntries([
+		{
+			code: "KeyS",
+			label: "Alt+Shift+S",
+			desc: "打开/关闭面板",
+			run: () => togglePanel()
+		},
+		{
+			code: "KeyV",
+			label: "Alt+Shift+V",
+			desc: "显示/隐藏字幕",
+			run: () => toggleSubtitles()
+		},
+		{
+			code: "KeyO",
+			label: "Alt+Shift+O",
+			desc: "打开字幕文件",
+			run: () => openFilePicker()
+		},
+		{
+			code: "ArrowLeft",
+			label: "Alt+Shift+←",
+			desc: "偏移 −0.1s",
+			run: () => adjustOffset(-.1)
+		},
+		{
+			code: "ArrowRight",
+			label: "Alt+Shift+→",
+			desc: "偏移 +0.1s",
+			run: () => adjustOffset(.1)
+		}
+	].map((s) => [s.code, s.run]));
+	function initShortcuts() {
+		window.addEventListener("keydown", onKey, true);
+	}
+	function onKey(e) {
+		if (!state.shortcutsEnabled) return;
+		if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) return;
+		if (isTyping()) return;
+		const run = MAP[e.code];
+		if (!run) return;
+		e.preventDefault();
+		e.stopImmediatePropagation();
+		run();
+	}
+	function isTyping() {
+		const el = document.activeElement;
+		if (!el) return false;
+		const tag = el.tagName;
+		return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+	}
 	if (!window.__ANYSUB_LOADED__) {
 		window.__ANYSUB_LOADED__ = true;
 		init();
@@ -953,6 +1112,7 @@
 		restoreSettings();
 		injectStyle();
 		buildUI();
+		initShortcuts();
 		updateFabVisibility();
 		watchVideos();
 	}
@@ -963,6 +1123,8 @@
 		if (typeof saved.bottomPct === "number") s.bottomPct = saved.bottomPct;
 		if (typeof saved.bg === "string") s.bg = saved.bg;
 		if (typeof saved.color === "string") s.color = saved.color;
+		if (typeof saved.shortcutsEnabled === "boolean") state.shortcutsEnabled = saved.shortcutsEnabled;
+		if (typeof saved.showFab === "boolean") state.showFab = saved.showFab;
 	}
 	function watchVideos() {
 		let timer = 0;

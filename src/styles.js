@@ -38,6 +38,10 @@ const CSS = `
   #anysub-offset::-webkit-outer-spin-button,#anysub-offset::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   #anysub-panel .anysub-unit{opacity:.6;font-size:12px;margin-left:-2px;}
   #anysub-font,#anysub-pos{flex:1;}
+  #anysub-panel .anysub-toggles{gap:6px;}
+  #anysub-panel .anysub-toggle{flex:1;}
+  #anysub-panel .anysub-legend{margin:6px 0 2px;padding:6px 8px;background:#262626;border-radius:6px;
+    font-size:11px;line-height:1.6;opacity:.7;}
   #anysub-panel .anysub-status{opacity:.6;font-size:12px;word-break:break-all;}
   .anysub-vidpick{position:fixed;z-index:2147483647;border:3px solid #2b6cff;background:rgba(43,108,255,.15);cursor:pointer;box-sizing:border-box;}
   #anysub-toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:2147483647;

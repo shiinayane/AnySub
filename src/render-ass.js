@@ -25,6 +25,7 @@ export function createAssRenderer(assText) {
             if (disposed) { safeDispose(); return; }
             usingLibass = true;
             textRenderer.destroy(); // 交给 canvas,撤掉文本
+            if (state.hidden) setCanvasDisplay('none'); // 保持隐藏态
             toast('已启用 ASS 高保真渲染');
           },
           onError: (e) => { console.warn('[AnySub] libass 渲染出错,保留文本', e); },
@@ -40,6 +41,11 @@ export function createAssRenderer(assText) {
     if (octopus) { try { octopus.dispose(); } catch (_) { /* ignore */ } octopus = null; }
   }
 
+  function setCanvasDisplay(val) {
+    const cv = octopus && octopus.canvas;
+    if (cv) cv.style.display = val;
+  }
+
   return {
     mount() {
       textRenderer.mount();
@@ -47,6 +53,10 @@ export function createAssRenderer(assText) {
     },
     renderAt(v, rect, layoutChanged) {
       if (!usingLibass) textRenderer.renderAt(v, rect, layoutChanged); // libass 自行随视频同步
+    },
+    setVisible(v) {
+      if (usingLibass) setCanvasDisplay(v ? '' : 'none');
+      else textRenderer.setVisible(v);
     },
     applyStyle() {
       if (!usingLibass) textRenderer.applyStyle(); // ASS 用文件自带样式,libass 阶段忽略面板样式

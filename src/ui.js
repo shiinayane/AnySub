@@ -1,17 +1,20 @@
-// 悬浮 UI:非侵入胶囊 + 面板 + 拖拽吸附 + 手动选视频
+// 悬浮 UI:设置面板(快捷键唤出)+ 可选悬浮球 + 拖拽吸附 + 手动选视频
 import { state } from './state.js';
 import { refs } from './refs.js';
-import { refresh, applyStyle, clearSubtitle, setVideo } from './controller.js';
+import { refresh, applyStyle, clearSubtitle, setVideo, toggleSubtitles } from './controller.js';
 import { invalidateLayout } from './overlay.js';
 import { loadFile } from './loader.js';
 import { collectVideos, isVisible } from './locator.js';
 import { toast } from './notify.js';
 import { saveSettings } from './storage.js';
 
-// 持久化当前样式偏好(偏移不入库)
+// 持久化偏好(偏移与临时隐藏不入库)
 function persist() {
   const s = state.style;
-  saveSettings({ fontPct: s.fontPct, bottomPct: s.bottomPct, bg: s.bg, color: s.color });
+  saveSettings({
+    fontPct: s.fontPct, bottomPct: s.bottomPct, bg: s.bg, color: s.color,
+    shortcutsEnabled: state.shortcutsEnabled, showFab: state.showFab,
+  });
 }
 
 const PANEL_HTML = `
@@ -19,6 +22,9 @@ const PANEL_HTML = `
   <div class="anysub-row">
     <button id="anysub-choose">选择字幕文件</button>
     <button id="anysub-pickvid" title="页面多个视频时,点此再点视频画面指定">选视频</button>
+  </div>
+  <div class="anysub-row">
+    <button id="anysub-vis">隐藏字幕</button>
     <button id="anysub-clear">清除</button>
   </div>
   <div class="anysub-row anysub-drop" id="anysub-drop">或将字幕文件拖到这里</div>
@@ -57,6 +63,14 @@ const PANEL_HTML = `
       <button data-color="#7CFC00" style="color:#7CFC00">绿</button>
     </div>
   </div>
+  <div class="anysub-row anysub-toggles">
+    <button id="anysub-tg-sc" class="anysub-toggle">快捷键:开</button>
+    <button id="anysub-tg-fab" class="anysub-toggle">悬浮球:关</button>
+  </div>
+  <div class="anysub-legend">
+    <div>Alt+Shift+S 面板 · V 显隐 · O 打开</div>
+    <div>Alt+Shift+← / → 偏移 ∓0.1s</div>
+  </div>
   <div class="anysub-row anysub-status" id="anysub-status">未加载字幕</div>
 `;
 
@@ -66,16 +80,15 @@ export function buildUI() {
 
   const overlay = document.createElement('div');
   overlay.id = 'anysub-overlay';
-  overlay.style.display = 'none';
   // 关键定位属性内联,即使站点 CSP 剥离了注入的 <style>,覆盖层也不会遮挡/拦截页面
   overlay.style.cssText = 'display:none;position:fixed;z-index:2147483640;pointer-events:none;overflow:hidden;';
-  // cueBox 由渲染器创建
 
   const fab = document.createElement('div');
   fab.id = 'anysub-fab';
   fab.className = 'dock-right';
   fab.textContent = '字';
-  fab.title = 'AnySub · 点击打开字幕面板(可拖动,松手吸附到最近边缘)';
+  fab.title = 'AnySub · 点击打开字幕面板(可拖动)';
+  fab.style.display = 'none'; // 默认隐藏,靠快捷键;可在面板里开启
 
   const panel = document.createElement('div');
   panel.id = 'anysub-panel';
@@ -93,7 +106,6 @@ export function buildUI() {
   uiRoot.appendChild(fileInput);
   document.body.appendChild(uiRoot);
 
-  // 填充共享引用
   refs.uiRoot = uiRoot;
   refs.overlay = overlay;
   refs.fab = fab;
@@ -104,29 +116,55 @@ export function buildUI() {
   wireEvents();
 }
 
+// ── 供快捷键调用的动作 ──
+export function togglePanel() {
+  const p = refs.panel;
+  const show = p.style.display === 'none' || !p.style.display;
+  p.style.display = show ? 'block' : 'none';
+  if (show) { syncVisBtn(); positionPanel(); }
+}
+
+export function openFilePicker() { refs.fileInput.click(); }
+
+export function adjustOffset(delta) {
+  state.offset = Math.round((state.offset + delta) * 10) / 10;
+  const inp = refs.panel && refs.panel.querySelector('#anysub-offset');
+  if (inp) inp.value = state.offset.toFixed(1);
+  refresh();
+  toast('偏移 ' + state.offset.toFixed(1) + 's');
+}
+
+// 首次在视频页且未开悬浮球时,提示一次快捷键
+let hintShown = false;
+export function maybeFirstRunHint() {
+  if (hintShown || state.showFab) return;
+  hintShown = true;
+  try {
+    if (localStorage.getItem('anysub:hinted') === '1') return;
+    localStorage.setItem('anysub:hinted', '1');
+  } catch (_) { /* 隐私模式 */ }
+  toast('AnySub 已就绪 · 按 Alt+Shift+S 打开字幕面板');
+}
+
 function wireEvents() {
   const { fab, panel, fileInput } = refs;
 
   fab.addEventListener('click', () => {
     if (fab.__dragged) { fab.__dragged = false; return; }
-    const show = panel.style.display === 'none';
-    panel.style.display = show ? 'block' : 'none';
-    if (show) positionPanel();
+    togglePanel();
   });
   panel.querySelector('#anysub-close').addEventListener('click', () => { panel.style.display = 'none'; });
-  panel.querySelector('#anysub-choose').addEventListener('click', () => fileInput.click());
+  panel.querySelector('#anysub-choose').addEventListener('click', openFilePicker);
   fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); fileInput.value = ''; });
   panel.querySelector('#anysub-pickvid').addEventListener('click', startPickVideo);
-  panel.querySelector('#anysub-clear').addEventListener('click', clearSubtitle);
+  panel.querySelector('#anysub-clear').addEventListener('click', () => { clearSubtitle(); syncVisBtn(); });
 
-  const offInput = panel.querySelector('#anysub-offset');
-  panel.querySelectorAll('[data-off]').forEach((b) => b.addEventListener('click', () => {
-    state.offset = Math.round((state.offset + parseFloat(b.dataset.off)) * 10) / 10;
-    offInput.value = state.offset.toFixed(1);
-    refresh();
-  }));
-  offInput.addEventListener('input', () => {
-    const val = parseFloat(offInput.value);
+  panel.querySelector('#anysub-vis').addEventListener('click', () => { toggleSubtitles(); syncVisBtn(); });
+
+  panel.querySelectorAll('[data-off]').forEach((b) =>
+    b.addEventListener('click', () => adjustOffset(parseFloat(b.dataset.off))));
+  panel.querySelector('#anysub-offset').addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
     if (!isNaN(val)) { state.offset = val; refresh(); }
   });
 
@@ -146,32 +184,56 @@ function wireEvents() {
   setupSeg('#anysub-bg', 'bg', (val) => { state.style.bg = val; applyStyle(); persist(); });
   setupSeg('#anysub-color', 'color', (val) => { state.style.color = val; applyStyle(); persist(); });
 
-  setupDrop(panel.querySelector('#anysub-drop')); // 仅面板区域接收拖放,避免劫持页面自身的拖放上传
+  const scBtn = panel.querySelector('#anysub-tg-sc');
+  scBtn.addEventListener('click', () => {
+    state.shortcutsEnabled = !state.shortcutsEnabled;
+    syncToggles(); persist();
+  });
+  const fabBtn = panel.querySelector('#anysub-tg-fab');
+  fabBtn.addEventListener('click', () => {
+    state.showFab = !state.showFab;
+    syncToggles(); updateFabVisibility(); persist();
+  });
+
+  setupDrop(panel.querySelector('#anysub-drop')); // 仅面板区域接收拖放,避免劫持页面拖放
   makeDraggable(fab);
   syncControls();
 }
 
-// 仅当页面存在 <video> 时才显示胶囊;无视频时连面板一起收起。
-// 先用便宜的 light-DOM 查询短路(绝大多数视频页命中),仅在无普通 video 时才深扫 Shadow DOM,
-// 避免在每次 DOM 变动时对整页做 querySelectorAll('*')。
+// 仅当页面存在 <video> 且用户开启了悬浮球时才显示;先便宜地查 light-DOM,再深扫 Shadow DOM
 export function updateFabVisibility() {
   const hasVideo = !!document.querySelector('video') || collectVideos().length > 0;
-  refs.fab.style.display = hasVideo ? '' : 'none';
+  refs.fab.style.display = (state.showFab && hasVideo) ? '' : 'none';
   if (!hasVideo && refs.panel) refs.panel.style.display = 'none';
+  if (hasVideo) maybeFirstRunHint();
 }
 
-// 用(可能已从持久化恢复的)state.style 同步各控件的初始显示
+function syncVisBtn() {
+  const b = refs.panel.querySelector('#anysub-vis');
+  if (b) b.textContent = state.hidden ? '显示字幕' : '隐藏字幕';
+}
+
+function syncToggles() {
+  const sc = refs.panel.querySelector('#anysub-tg-sc');
+  const fb = refs.panel.querySelector('#anysub-tg-fab');
+  sc.textContent = '快捷键:' + (state.shortcutsEnabled ? '开' : '关');
+  sc.classList.toggle('on', state.shortcutsEnabled);
+  fb.textContent = '悬浮球:' + (state.showFab ? '开' : '关');
+  fb.classList.toggle('on', state.showFab);
+}
+
+// 用(可能已从持久化恢复的)state 同步各控件初始显示
 function syncControls() {
   const { panel } = refs;
   const s = state.style;
-  const fontR = panel.querySelector('#anysub-font');
-  fontR.value = s.fontPct;
+  panel.querySelector('#anysub-font').value = s.fontPct;
   panel.querySelector('#anysub-fontval').textContent = s.fontPct + '%';
-  const posR = panel.querySelector('#anysub-pos');
-  posR.value = s.bottomPct;
+  panel.querySelector('#anysub-pos').value = s.bottomPct;
   panel.querySelector('#anysub-posval').textContent = s.bottomPct + '%';
   setSegActive('#anysub-bg', 'bg', s.bg);
   setSegActive('#anysub-color', 'color', s.color);
+  syncToggles();
+  syncVisBtn();
 }
 
 function setSegActive(sel, attr, val) {
@@ -227,7 +289,6 @@ function makeDraggable(el) {
   });
 }
 
-// 吸附:根据释放位置贴到最近的左/右边缘,保留竖直位置
 function snapFab(el) {
   const r = el.getBoundingClientRect();
   const W = window.innerWidth || document.documentElement.clientWidth || 1;
@@ -237,17 +298,22 @@ function snapFab(el) {
   el.classList.add(onRight ? 'dock-right' : 'dock-left');
 }
 
-// 面板贴着胶囊所在的一侧弹出
+// 面板定位:有悬浮球贴其一侧;否则屏幕居中
 function positionPanel() {
   const { fab, panel } = refs;
-  const fr = fab.getBoundingClientRect();
   const W = window.innerWidth || document.documentElement.clientWidth || 1;
-  const onRight = fr.left + fr.width / 2 >= W / 2;
-  panel.style.left = ''; panel.style.right = ''; panel.style.top = ''; panel.style.bottom = '';
-  if (onRight) panel.style.right = '12px'; else panel.style.left = '12px';
   const H = window.innerHeight || document.documentElement.clientHeight || 800;
-  const ph = panel.offsetHeight || 380;
-  panel.style.top = Math.max(10, Math.min(H - ph - 10, fr.top - ph / 2)) + 'px';
+  panel.style.left = ''; panel.style.right = ''; panel.style.top = ''; panel.style.bottom = '';
+  const ph = panel.offsetHeight || 460, pw = panel.offsetWidth || 270;
+  if (state.showFab) {
+    const fr = fab.getBoundingClientRect();
+    const onRight = fr.left + fr.width / 2 >= W / 2;
+    if (onRight) panel.style.right = '12px'; else panel.style.left = '12px';
+    panel.style.top = Math.max(10, Math.min(H - ph - 10, fr.top - ph / 2)) + 'px';
+  } else {
+    panel.style.left = Math.max(10, (W - pw) / 2) + 'px';
+    panel.style.top = Math.max(10, (H - ph) / 2) + 'px';
+  }
 }
 
 // 手动选视频

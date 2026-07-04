@@ -6,6 +6,7 @@ import { refs } from './refs.js';
 export function createTextRenderer() {
   let cueBox = null;
   let lastHtml = '';
+  let visible = true;
 
   function outline(c) {
     return `-2px -2px 1px ${c},2px -2px 1px ${c},-2px 2px 1px ${c},2px 2px 1px ${c},0 0 3px ${c}`;
@@ -20,8 +21,16 @@ export function createTextRenderer() {
       this.applyStyle();
     },
 
+    setVisible(v) {
+      visible = v;
+      if (!cueBox) return;
+      if (!v) cueBox.style.display = 'none';
+      else lastHtml = ''; // 强制下次 renderAt 重渲染并恢复 display
+    },
+
     renderAt(v, rect, layoutChanged) {
       if (!cueBox) return;
+      if (!visible) { cueBox.style.display = 'none'; return; }
       if (layoutChanged && rect) {
         const fontPx = Math.max(10, rect.height * FONT_BASE * (state.style.fontPct / 100));
         cueBox.style.fontSize = fontPx.toFixed(1) + 'px';

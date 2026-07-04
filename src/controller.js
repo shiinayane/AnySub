@@ -85,6 +85,16 @@ export function setVideo(v) {
   if (state.cues.length) startRender();
 }
 
+// 临时隐藏/显示字幕(不清除,不持久化)
+export function toggleSubtitles() {
+  if (!state.cues.length) { toast('未加载字幕'); return; }
+  state.hidden = !state.hidden;
+  if (renderer && renderer.setVisible) renderer.setVisible(!state.hidden);
+  renderTick();
+  toast(state.hidden ? '字幕已隐藏' : '字幕已显示');
+  return state.hidden;
+}
+
 export function clearSubtitle() {
   if (!state.cues.length) { toast('当前没有字幕'); return; }
   state.cues = [];

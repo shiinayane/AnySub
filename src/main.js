@@ -5,6 +5,7 @@ import { buildUI, updateFabVisibility } from './ui.js';
 import { pickBestVideo, isVisible } from './locator.js';
 import { setVideo } from './controller.js';
 import { loadSettings } from './storage.js';
+import { initShortcuts } from './shortcuts.js';
 
 // 避免在同一 window 重复注入
 if (!window.__ANYSUB_LOADED__) {
@@ -17,11 +18,12 @@ function init() {
   restoreSettings();
   injectStyle();
   buildUI();
+  initShortcuts();
   updateFabVisibility();
   watchVideos();
 }
 
-// 恢复持久化的样式偏好(仅接受已知字段,防脏数据)
+// 恢复持久化偏好(仅接受已知字段,防脏数据)
 function restoreSettings() {
   const saved = loadSettings();
   const s = state.style;
@@ -29,6 +31,8 @@ function restoreSettings() {
   if (typeof saved.bottomPct === 'number') s.bottomPct = saved.bottomPct;
   if (typeof saved.bg === 'string') s.bg = saved.bg;
   if (typeof saved.color === 'string') s.color = saved.color;
+  if (typeof saved.shortcutsEnabled === 'boolean') state.shortcutsEnabled = saved.shortcutsEnabled;
+  if (typeof saved.showFab === 'boolean') state.showFab = saved.showFab;
 }
 
 // 监听 DOM 变化:切换胶囊可见性 + SPA 换视频后自动重新挂载(防抖,避免频繁全 DOM 遍历)
