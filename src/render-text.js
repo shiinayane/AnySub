@@ -5,12 +5,10 @@
 import { state, FONT_BASE } from './state.js';
 import { refs } from './refs.js';
 import { applyRuby } from './ruby.js';
-import { classifyCueLine } from './cue-format.js';
+import { stepCueLine, INIT_SPAN } from './cue-format.js';
 
-// 单行 → HTML:语义排版(话者名/非语音/画外音/书面/歌词)+ 注音。text 已是转义安全的 HTML。
-function lineToHtml(text) {
-  if (!state.enhance) return applyRuby(text, state.rubyParen);
-  const c = classifyCueLine(text, state.speakers);
+// 单行 + 其分类 → HTML(语义排版 + 注音)。text/rest 已是转义安全的 HTML。
+function typedHtml(text, c) {
   switch (c.type) {
     case 'sfx': return `<span class="anysub-sfx">${text}</span>`;
     case 'voice': return `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
@@ -22,9 +20,19 @@ function lineToHtml(text) {
   }
 }
 
-// 一条 cue(内部多行以 <br> 分隔)→ 逐行语义排版
-function cueToHtml(text) {
-  return String(text).split('<br>').map(lineToHtml).join('<br>');
+// 一条 cue(内部多行以 <br> 分隔)→ 逐行语义排版。
+// 从该 cue 载入时预计算的跨度状态(_spanIn)起,逐行推进,让跨行的画外音/书面/歌曲连续。
+function cueToHtml(cue) {
+  const text = String(cue.text == null ? '' : cue.text);
+  if (!state.enhance) return text.split('<br>').map((l) => applyRuby(l, state.rubyParen)).join('<br>');
+  let st = cue._spanIn || INIT_SPAN;
+  const out = [];
+  for (const line of text.split('<br>')) {
+    const c = stepCueLine(line, state.speakers, st);
+    out.push(typedHtml(line, c));
+    st = c.state;
+  }
+  return out.join('<br>');
 }
 
 export function createTextRenderer() {
@@ -66,10 +74,10 @@ export function createTextRenderer() {
   // 把一组 cue 画进某个盒子;按内容+开关指纹去重,cue 未变则跳过重排与 DOM。
   function paint(box, cues) {
     const key = (state.rubyParen ? '1' : '0') + (state.enhance ? '1' : '0') + '|' +
-      cues.map((c) => c.text).join(String.fromCharCode(1));
+      cues.map((c) => (c._spanIn ? c._spanIn.span + (c._spanIn.lyric ? 'L' : '') : '') + ':' + c.text).join(String.fromCharCode(1));
     if (box.__lastKey === key) return;
     box.__lastKey = key;
-    const html = cues.map((c) => cueToHtml(c.text)).join('<br>');
+    const html = cues.map(cueToHtml).join('<br>');
     box.innerHTML = html;
     box.style.display = html ? 'inline-block' : 'none';
   }

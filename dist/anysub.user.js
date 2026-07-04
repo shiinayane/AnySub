@@ -708,6 +708,10 @@
 	}
 	var RE_LEAD = new RegExp("^[（(]([^（()）]{1,16})[）)]\\s*(\\S[\\s\\S]*)$");
 	var RE_ALONE = new RegExp("^[（(]([^（()）]{1,16})[）)]$");
+	var count = (s, re) => {
+		const m = s.match(re);
+		return m ? m.length : 0;
+	};
 	function buildSpeakers(cues) {
 		const set = new Set();
 		for (const c of cues || []) {
@@ -719,28 +723,103 @@
 		}
 		return set;
 	}
-	function classifyCueLine(raw, speakers) {
+	var INIT_SPAN = {
+		span: "none",
+		lyric: false
+	};
+	function stepCueLine(raw, speakers, st) {
+		st = st || INIT_SPAN;
 		const t = (raw == null ? "" : String(raw)).trim();
-		if (!t) return { type: "plain" };
-		if (/^[♪♫]/.test(t)) return { type: "lyric" };
-		if (/^[〈＜][\s\S]+[〉＞]$/.test(t)) return { type: "voice" };
-		if (/^《[\s\S]+》$/.test(t)) return { type: "book" };
+		const next = {
+			span: st.span,
+			lyric: st.lyric
+		};
+		if (!t) return {
+			type: "plain",
+			state: next
+		};
+		const notes = count(t, /[♪♫]/g);
+		if (st.lyric || notes > 0) {
+			if (notes % 2 === 1) next.lyric = !st.lyric;
+			return {
+				type: "lyric",
+				state: next
+			};
+		}
+		if (st.span === "voice") {
+			if (count(t, /[〉＞]/g) > count(t, /[〈＜]/g)) next.span = "none";
+			return {
+				type: "voice",
+				state: next
+			};
+		}
+		if (st.span === "book") {
+			if (count(t, /》/g) > count(t, /《/g)) next.span = "none";
+			return {
+				type: "book",
+				state: next
+			};
+		}
+		const vO = count(t, /[〈＜]/g), vC = count(t, /[〉＞]/g);
+		if (vO > vC) {
+			next.span = "voice";
+			return {
+				type: "voice",
+				state: next
+			};
+		}
+		if ((vO || vC) && /^[〈＜][\s\S]*[〉＞]$/.test(t)) return {
+			type: "voice",
+			state: next
+		};
+		const bO = count(t, /《/g), bC = count(t, /》/g);
+		if (bO > bC) {
+			next.span = "book";
+			return {
+				type: "book",
+				state: next
+			};
+		}
+		if (bO === 1 && bC === 1 && /^《[\s\S]*》$/.test(t)) return {
+			type: "book",
+			state: next
+		};
 		let m = RE_ALONE.exec(t);
 		if (m) {
 			const inner = m[1];
 			if (speakers && speakers.has(inner)) return {
 				type: "speaker",
-				name: inner
+				name: inner,
+				state: next
 			};
-			return { type: "sfx" };
+			return {
+				type: "sfx",
+				state: next
+			};
 		}
 		m = RE_LEAD.exec(t);
 		if (m) return {
 			type: "dialogue",
 			name: m[1],
-			rest: m[2]
+			rest: m[2],
+			state: next
 		};
-		return { type: "plain" };
+		return {
+			type: "plain",
+			state: next
+		};
+	}
+	function computeSpanStates(cues) {
+		let st = INIT_SPAN;
+		let prevEnd = -Infinity;
+		for (const c of cues || []) {
+			if (c.start < prevEnd - .05 || c.start - prevEnd > 2) st = INIT_SPAN;
+			c._spanIn = st;
+			let s = st;
+			for (const line of String(c.text == null ? "" : c.text).split("<br>")) s = stepCueLine(line, null, s).state;
+			st = s;
+			prevEnd = Math.max(prevEnd, c.end);
+		}
 	}
 	function collectVideos(root, acc) {
 		acc = acc || [];
@@ -906,9 +985,7 @@
 	function group(base, ruby) {
 		return "<ruby>" + base + "<rt>" + ruby + "</rt></ruby>";
 	}
-	function lineToHtml(text) {
-		if (!state.enhance) return applyRuby(text, state.rubyParen);
-		const c = classifyCueLine(text, state.speakers);
+	function typedHtml(text, c) {
 		switch (c.type) {
 			case "sfx": return `<span class="anysub-sfx">${text}</span>`;
 			case "voice": return `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
@@ -919,8 +996,17 @@
 			default: return applyRuby(text, state.rubyParen);
 		}
 	}
-	function cueToHtml(text) {
-		return String(text).split("<br>").map(lineToHtml).join("<br>");
+	function cueToHtml(cue) {
+		const text = String(cue.text == null ? "" : cue.text);
+		if (!state.enhance) return text.split("<br>").map((l) => applyRuby(l, state.rubyParen)).join("<br>");
+		let st = cue._spanIn || INIT_SPAN;
+		const out = [];
+		for (const line of text.split("<br>")) {
+			const c = stepCueLine(line, state.speakers, st);
+			out.push(typedHtml(line, c));
+			st = c.state;
+		}
+		return out.join("<br>");
 	}
 	function createTextRenderer() {
 		let boxTop = null, boxBottom = null;
@@ -957,10 +1043,10 @@
 			}
 		}
 		function paint(box, cues) {
-			const key = (state.rubyParen ? "1" : "0") + (state.enhance ? "1" : "0") + "|" + cues.map((c) => c.text).join(String.fromCharCode(1));
+			const key = (state.rubyParen ? "1" : "0") + (state.enhance ? "1" : "0") + "|" + cues.map((c) => (c._spanIn ? c._spanIn.span + (c._spanIn.lyric ? "L" : "") : "") + ":" + c.text).join(String.fromCharCode(1));
 			if (box.__lastKey === key) return;
 			box.__lastKey = key;
-			const html = cues.map((c) => cueToHtml(c.text)).join("<br>");
+			const html = cues.map(cueToHtml).join("<br>");
 			box.innerHTML = html;
 			box.style.display = html ? "inline-block" : "none";
 		}
@@ -1270,6 +1356,7 @@
 		}
 		state.cues = parsed.cues;
 		state.speakers = buildSpeakers(parsed.cues);
+		computeSpanStates(parsed.cues);
 		state.fileName = name;
 		const p = parseVideoTitle(document.title);
 		state.loadedSeries = p.series;

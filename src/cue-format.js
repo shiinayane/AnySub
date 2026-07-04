@@ -1,17 +1,17 @@
-// 动画字幕语义排版:识别「话者名 / 非语音(音效·动作·心声) / 歌词」并分别标记。
-// 纯逻辑(有单测)。只重排不删字;规则保守——仅处理「整行括号」或「行首括号+台词」,
-// 普通台词一律不动。日文 CC 里话者名与音效都用 （　），靠两遍扫描消歧:
-//   1) buildSpeakers:先把「行首（X）+台词」中的 X 收成话者名词表
-//   2) classifyCueLine:独立（X）若 X 在词表 → 话者名,否则 → 非语音
+// 动画字幕语义排版:识别「话者名 / 非语音 / 画外音 / 书面 / 歌词」并分别标记。
+// 纯逻辑(有单测)。只重排不删字。两个难点:
+//   1) 话者名与音效都用 （　）:两遍扫描消歧——buildSpeakers 先收「行首（X）+台词」的 X 成词表,
+//      独立（X）若 X 在词表 → 话者名,否则 → 非语音。
+//   2) 画外音〈…〉/书面《…》/歌曲 ♪…♪ 可能跨行、跨 cue 断成几句:用状态机跟踪未闭合的跨度——
+//      未闭合的 〈 / 《 会把后续行也标成同类直到闭合;♪ 用奇偶切换。跨 cue 仅在相邻不重叠时延续。
 const NAME = 16; // 括号内长度上限(话者名/短音效);过长不认,避免吞掉正文
 
-// 行首「（名前）」+ 其后有台词 → 这里的 X 是确定的话者名
 const RE_LEAD = new RegExp('^[（(]([^（()）]{1,' + NAME + '})[）)]\\s*(\\S[\\s\\S]*)$');
-// 整行就是一个「（…）」
 const RE_ALONE = new RegExp('^[（(]([^（()）]{1,' + NAME + '})[）)]$');
 
-// 扫全部 cue,收集确定的话者名(仅取「行首（X）+台词」形态)。
-// cue 内多行用 <br> 分隔(sanitize 把 \n 转成 <br>),故逐行扫描。
+const count = (s, re) => { const m = s.match(re); return m ? m.length : 0; };
+
+// 扫全部 cue,收集确定的话者名(仅取「行首（X）+台词」形态)。cue 内多行以 <br> 分隔。
 export function buildSpeakers(cues) {
   const set = new Set();
   for (const c of cues || []) {
@@ -24,31 +24,77 @@ export function buildSpeakers(cues) {
   return set;
 }
 
-// 分类单行。返回 { type, name?, rest? }:
-//   'dialogue' 行首话者名+台词(name=名, rest=台词)
-//   'speaker'  独立成行的话者名(name=名)
-//   'sfx'      独立括号的非语音(音效/动作/心声/旁白)
-//   'voice'    画外音/心声/电话/旁白 〈…〉／＜…＞(带声、不在场)
-//   'book'     书面/引用 《…》(书信/念白/画面读字;整行,不与注音 漢字《かな》冲突)
-//   'lyric'    歌词(行首 ♪)
-//   'plain'    普通台词(含 furigana,交给 ruby)
-export function classifyCueLine(raw, speakers) {
-  const t = (raw == null ? '' : String(raw)).trim();
-  if (!t) return { type: 'plain' };
-  if (/^[♪♫]/.test(t)) return { type: 'lyric' };
-  // 整行被角括号包裹 → 画外音/心声;整行被双书名号包裹 → 书面引用。
-  // 注音是「漢字《かな》」(汉字紧贴、非整行),整行 《…》 不会命中,故不冲突。
-  if (/^[〈＜][\s\S]+[〉＞]$/.test(t)) return { type: 'voice' };
-  if (/^《[\s\S]+》$/.test(t)) return { type: 'book' };
+export const INIT_SPAN = { span: 'none', lyric: false };
 
+// 带状态分类单行。st = { span:'none'|'voice'|'book', lyric:bool } = 进入本行前的跨度状态。
+// 返回 { type, name?, rest?, state }:state 为本行结束后的跨度状态(供下一行/下一 cue)。
+//   type: dialogue | speaker | sfx | voice | book | lyric | plain
+export function stepCueLine(raw, speakers, st) {
+  st = st || INIT_SPAN;
+  const t = (raw == null ? '' : String(raw)).trim();
+  const next = { span: st.span, lyric: st.lyric };
+  if (!t) return { type: 'plain', state: next };
+
+  // 歌曲:♪ 标记(每行前缀式)或 ♪…♪ 块(奇偶切换)。含 ♪ 或处于歌曲块内 → 歌词。
+  const notes = count(t, /[♪♫]/g);
+  if (st.lyric || notes > 0) {
+    if (notes % 2 === 1) next.lyric = !st.lyric; // 奇数个 ♪ 翻转块状态
+    return { type: 'lyric', state: next };
+  }
+
+  // 续接未闭合的画外音/书面跨度:直到某行的闭括号多于开括号才结束
+  if (st.span === 'voice') {
+    if (count(t, /[〉＞]/g) > count(t, /[〈＜]/g)) next.span = 'none';
+    return { type: 'voice', state: next };
+  }
+  if (st.span === 'book') {
+    if (count(t, /》/g) > count(t, /《/g)) next.span = 'none';
+    return { type: 'book', state: next };
+  }
+
+  // 起新跨度:开括号多于闭括号 → 未闭合,后续行延续;整行被包裹 → 自闭合。
+  const vO = count(t, /[〈＜]/g), vC = count(t, /[〉＞]/g);
+  if (vO > vC) { next.span = 'voice'; return { type: 'voice', state: next }; }
+  if ((vO || vC) && /^[〈＜][\s\S]*[〉＞]$/.test(t)) return { type: 'voice', state: next };
+  const bO = count(t, /《/g), bC = count(t, /》/g);
+  if (bO > bC) { next.span = 'book'; return { type: 'book', state: next }; }
+  // 整行 《…》 → 书面;而注音「漢字《かな》」非整行,不会命中
+  if (bO === 1 && bC === 1 && /^《[\s\S]*》$/.test(t)) return { type: 'book', state: next };
+
+  // 单行括号:话者名 / 音效
   let m = RE_ALONE.exec(t);
   if (m) {
     const inner = m[1];
-    if (speakers && speakers.has(inner)) return { type: 'speaker', name: inner };
-    return { type: 'sfx' };
+    if (speakers && speakers.has(inner)) return { type: 'speaker', name: inner, state: next };
+    return { type: 'sfx', state: next };
   }
   m = RE_LEAD.exec(t);
-  if (m) return { type: 'dialogue', name: m[1], rest: m[2] };
+  if (m) return { type: 'dialogue', name: m[1], rest: m[2], state: next };
 
-  return { type: 'plain' };
+  return { type: 'plain', state: next };
+}
+
+// 无状态分类(整行独立):供简单调用/测试。等价于从初始状态跑一行。
+export function classifyCueLine(raw, speakers) {
+  const r = stepCueLine(raw, speakers, INIT_SPAN);
+  const out = { type: r.type };
+  if (r.name !== undefined) out.name = r.name;
+  if (r.rest !== undefined) out.rest = r.rest;
+  return out;
+}
+
+// 预计算每条 cue「进入时」的跨度状态,写到 cue._spanIn。cues 需按 start 升序。
+// 跨 cue 仅在「相邻、不重叠」时延续:与前一条重叠(=多人同时)或间隔过大(>2s)则重置,
+// 避免未闭合跨度污染并行说话或不相关的后续字幕。
+export function computeSpanStates(cues) {
+  let st = INIT_SPAN;
+  let prevEnd = -Infinity;
+  for (const c of cues || []) {
+    if (c.start < prevEnd - 0.05 || (c.start - prevEnd) > 2) st = INIT_SPAN;
+    c._spanIn = st;
+    let s = st;
+    for (const line of String(c.text == null ? '' : c.text).split('<br>')) s = stepCueLine(line, null, s).state;
+    st = s;
+    prevEnd = Math.max(prevEnd, c.end);
+  }
 }
