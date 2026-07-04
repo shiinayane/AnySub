@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.11.1
+// @version      0.11.2
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -968,24 +968,34 @@
 		state.loadedEpisode = p.episode;
 		state.lastOnline = anilistId != null ? {
 			anilistId,
-			tokens: fileTokens(fileName)
+			name: fileName
 		} : null;
 	}
-	function fileTokens(name) {
-		return String(name || "").toLowerCase().replace(/\.(ass|ssa|srt|vtt|sub|sbv)$/i, "").split(/[^a-z0-9぀-ヿ一-鿿]+/).filter((t) => t && !/^\d{1,3}$/.test(t) && !/^v\d+$/.test(t) && !/^s\d{1,2}e\d{1,3}$/.test(t) && !/^e\d{1,3}$/.test(t));
+	var EP_TOK = /^(s\d{1,2}e\d{1,3}|e\d{1,3}|v\d+|\d{1,4}|[0-9a-f]{8})$/;
+	function sourceTokens(name) {
+		const out = new Set();
+		for (const t of String(name || "").toLowerCase().split(/[^a-z0-9]+/)) if (t && !EP_TOK.test(t)) out.add(t);
+		return out;
 	}
-	function pickSameSource(files, refTokens) {
-		if (!refTokens || !refTokens.length) return null;
-		const ref = new Set(refTokens);
-		let best = null, bestScore = 0;
+	function fileTokens(name) {
+		return String(name || "").toLowerCase().replace(/\.(ass|ssa|srt|vtt|sub|sbv)$/i, "").split(/[^a-z0-9぀-ヿ一-鿿]+/).filter((t) => t && !EP_TOK.test(t));
+	}
+	function pickSameSource(files, refName) {
+		if (!refName) return null;
+		const refSig = sourceTokens(refName);
+		const useSig = refSig.size >= 1;
+		const refFull = new Set(fileTokens(refName));
+		let best = null, bestScore = -1, second = -1;
 		for (const f of files) {
-			const s = jaccard(ref, new Set(fileTokens(f.name)));
+			const s = useSig ? jaccard(refSig, sourceTokens(f.name)) : jaccard(refFull, new Set(fileTokens(f.name)));
 			if (s > bestScore) {
+				second = bestScore;
 				bestScore = s;
 				best = f;
-			}
+			} else if (s > second) second = s;
 		}
-		return bestScore >= .6 ? best : null;
+		if (best && (bestScore >= (useSig ? .5 : .6) || bestScore >= .34 && bestScore - second >= .34)) return best;
+		return null;
 	}
 	function jaccard(a, b) {
 		let inter = 0;
@@ -1613,7 +1623,7 @@
 				toast(`第 ${episode} 集暂无字幕`);
 				return;
 			}
-			const best = pickSameSource(files, ctx.tokens);
+			const best = pickSameSource(files, ctx.name);
 			if (best) {
 				if (await downloadAndLoad(best.url, best.name)) {
 					markLoaded(ctx.anilistId, best.name);

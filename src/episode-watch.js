@@ -42,7 +42,7 @@ async function autoContinue(ctx, series, episode) {
   try {
     const files = await subtitleFiles(ctx.anilistId, episode);
     if (!files.length) { toast(`第 ${episode} 集暂无字幕`); return; }
-    const best = pickSameSource(files, ctx.tokens);
+    const best = pickSameSource(files, ctx.name);
     if (best) {
       const ok = await downloadAndLoad(best.url, best.name);
       if (ok) { markLoaded(ctx.anilistId, best.name); toast(`已自动加载第 ${episode} 集字幕`); }
