@@ -118,7 +118,8 @@ const CSS = `
     background:linear-gradient(180deg,#20242c,#171a20);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:14px;
     box-shadow:0 20px 60px rgba(0,0,0,.55),0 3px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.05);}
   #anysub-search *{box-sizing:border-box;}
-  #anysub-search.as-in{animation:as-pop .14s cubic-bezier(.2,.7,.3,1);}
+  #anysub-search.as-in{animation:as-pop-c .14s cubic-bezier(.2,.7,.3,1);}
+  @keyframes as-pop-c{from{opacity:0;transform:translate(-50%,-48%) scale(.985);}to{opacity:1;transform:translate(-50%,-50%);}}
   #anysub-search button{font-family:inherit;color:#eaeef6;cursor:pointer;border:1px solid rgba(255,255,255,.1);
     background:rgba(255,255,255,.05);border-radius:8px;transition:background .15s,border-color .15s,transform .05s;}
   #anysub-search button:active{transform:translateY(.5px);}
