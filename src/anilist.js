@@ -1,6 +1,6 @@
 // AniList GraphQL:番剧名 → 候选(id / 标题 / 集数 / 年份)。无需鉴权,CORS: *。
 const ENDPOINT = 'https://graphql.anilist.co';
-const QUERY = `query($s:String){Page(perPage:6){media(search:$s,type:ANIME){id title{romaji native english} episodes format startDate{year}}}}`;
+const QUERY = `query($s:String){Page(perPage:6){media(search:$s,type:ANIME){id title{romaji native english} episodes format startDate{year} coverImage{medium}}}}`;
 
 export async function searchAnime(title) {
   const res = await fetch(ENDPOINT, {
@@ -19,5 +19,6 @@ export async function searchAnime(title) {
     episodes: m.episodes || 0,
     format: m.format || '',
     year: (m.startDate && m.startDate.year) || '',
+    cover: (m.coverImage && m.coverImage.medium) || '',
   }));
 }

@@ -154,14 +154,19 @@ export { openSearch };
 export function togglePanel() {
   const p = refs.panel;
   const show = p.style.display === 'none' || !p.style.display;
-  p.style.display = show ? 'block' : 'none';
-  if (show) {
-    const inp = p.querySelector('#anysub-offset');
-    if (inp) inp.value = state.offset.toFixed(1); // 偏移可能在加载时被记忆恢复
-    syncVisBtn();
-    positionPanel();
-    p.classList.remove('as-in'); void p.offsetWidth; p.classList.add('as-in'); // 重放入场动画(小面板,reflow 廉价)
-  }
+  if (show) openPanel(); else p.style.display = 'none';
+}
+
+// 显式打开主面板(供快捷键 show 分支 + 搜索面板「返回主面板」复用)
+export function openPanel() {
+  const p = refs.panel;
+  if (refs.searchPanel) refs.searchPanel.style.display = 'none'; // 与搜索面板互斥
+  p.style.display = 'block';
+  const inp = p.querySelector('#anysub-offset');
+  if (inp) inp.value = state.offset.toFixed(1); // 偏移可能在加载时被记忆恢复
+  syncVisBtn();
+  positionPanel();
+  p.classList.remove('as-in'); void p.offsetWidth; p.classList.add('as-in'); // 重放入场动画(小面板,reflow 廉价)
 }
 
 export function openFilePicker() { refs.fileInput.click(); }

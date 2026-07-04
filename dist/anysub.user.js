@@ -146,26 +146,74 @@
   #anysub-panel .as-hints{margin-top:11px;color:#7b8394;font-size:10.5px;line-height:1.9;}
   #anysub-panel .as-hints kbd{display:inline-block;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
     border-bottom-width:2px;border-radius:4px;padding:0 4px;margin:0 1px;font:600 10px ui-monospace,SFMono-Regular,Menlo,monospace;color:#c3cad6;}
+  /* ── 在线搜索面板(A 方案:独立居中模态,与主面板同一视觉语言) ── */
   #anysub-search{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;
-    width:340px;max-width:92vw;max-height:80vh;overflow:auto;background:#1e1e1e;color:#eee;border-radius:10px;
-    padding:10px;font:13px/1.4 -apple-system,system-ui,sans-serif;box-shadow:0 4px 24px rgba(0,0,0,.6);}
-  #anysub-search .anysub-row{display:flex;align-items:center;gap:6px;margin:8px 0;}
-  #anysub-search .anysub-head{justify-content:space-between;font-weight:600;}
-  #anysub-search input{flex:1;background:#2a2a2a;color:#eee;border:1px solid #555;border-radius:6px;padding:6px 8px;font-size:12px;min-width:0;}
-  #anysub-search #anysub-ep{flex:0 0 44px;text-align:center;}
-  #anysub-search button{background:#333;color:#eee;border:1px solid #555;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;}
-  #anysub-search button:hover{background:#444;}
-  #anysub-sc-close{cursor:pointer;opacity:.6;}#anysub-sc-close:hover{opacity:1;}
-  #anysub-search .anysub-key-hint{font-size:11px;opacity:.5;margin:-4px 0 4px;}
-  .anysub-results{margin-top:6px;}
-  .anysub-results .anysub-sec{font-size:12px;opacity:.6;margin:6px 2px;}
-  .anysub-results .anysub-empty{opacity:.5;font-size:12px;padding:14px;text-align:center;}
-  .anysub-results .anysub-item{padding:7px 9px;border-radius:6px;cursor:pointer;background:#262626;margin:5px 0;}
-  .anysub-results .anysub-item:hover{background:#333;}
-  .anysub-results .anysub-item.loading{opacity:.5;pointer-events:none;}
-  .anysub-results .anysub-item-t{font-size:12.5px;word-break:break-all;}
-  .anysub-results .anysub-item-s{font-size:11px;opacity:.55;margin-top:2px;}
-  .anysub-results .anysub-back{color:#2b6cff;cursor:pointer;font-size:12px;margin:6px 2px;}
+    width:400px;max-width:92vw;max-height:82vh;display:flex;flex-direction:column;box-sizing:border-box;color:#eaeef6;
+    font:13px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+    background:linear-gradient(180deg,#20242c,#171a20);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:14px;
+    box-shadow:0 20px 60px rgba(0,0,0,.55),0 3px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.05);}
+  #anysub-search *{box-sizing:border-box;}
+  #anysub-search.as-in{animation:as-pop .14s cubic-bezier(.2,.7,.3,1);}
+  #anysub-search button{font-family:inherit;color:#eaeef6;cursor:pointer;border:1px solid rgba(255,255,255,.1);
+    background:rgba(255,255,255,.05);border-radius:8px;transition:background .15s,border-color .15s,transform .05s;}
+  #anysub-search button:active{transform:translateY(.5px);}
+  #anysub-search input{width:100%;background:rgba(0,0,0,.28);color:#eaeef6;border:1px solid rgba(255,255,255,.12);border-radius:8px;
+    padding:8px 10px;font-size:12.5px;font-family:inherit;min-width:0;}
+  #anysub-search input:focus{outline:none;border-color:rgba(90,150,255,.7);background:rgba(0,0,0,.4);}
+  #anysub-search input::placeholder{color:#6b7382;}
+
+  #anysub-search .as-sc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  #anysub-search .as-sc-back{display:flex;align-items:center;gap:5px;padding:5px 10px 5px 7px;font-size:12px;color:#c3cad6;}
+  #anysub-search .as-sc-back svg{width:15px;height:15px;}
+  #anysub-search .as-sc-back:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.16);color:#fff;}
+  #anysub-search .as-x{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:#9aa3b2;border-radius:7px;font-size:14px;transition:background .15s,color .15s;}
+  #anysub-search .as-x:hover{background:rgba(255,255,255,.08);color:#fff;}
+
+  #anysub-search .as-sc-title{display:flex;align-items:center;gap:8px;font-weight:650;font-size:14px;margin-bottom:12px;}
+  #anysub-search .as-sc-title .as-logo{width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#4c8dff,#2b6cff);color:#fff;font-size:12px;box-shadow:0 2px 6px rgba(43,108,255,.45);}
+  #anysub-search .as-sc-tag{font-weight:400;font-size:11px;color:#8b93a3;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:1px 8px;}
+
+  #anysub-search .as-sc-keyrow{display:flex;gap:7px;margin-bottom:6px;}
+  #anysub-search .as-sc-keyrow button{flex:none;padding:0 14px;font-size:12px;}
+  #anysub-search .as-sc-keyok{display:flex;align-items:center;gap:6px;color:#7fd18b;font-size:11.5px;margin-bottom:10px;}
+  #anysub-search .as-sc-keyok svg{width:14px;height:14px;flex:none;}
+  #anysub-search .as-sc-change{margin-left:auto;color:#8fb6ff;cursor:pointer;font-size:11px;}
+  #anysub-search .as-sc-change:hover{text-decoration:underline;}
+  #anysub-search .as-sc-hint{font-size:10.5px;color:#6b7382;margin:0 2px 10px;}
+
+  #anysub-search .as-sc-search{display:flex;gap:7px;margin-bottom:12px;}
+  #anysub-search .as-sc-search .as-sc-ep{flex:0 0 52px;text-align:center;}
+  #anysub-search .as-sc-search button{flex:none;padding:0 14px;font-size:12.5px;display:flex;align-items:center;gap:6px;
+    background:linear-gradient(180deg,rgba(76,141,255,.28),rgba(43,108,255,.18));border-color:rgba(90,150,255,.45);color:#dce9ff;}
+  #anysub-search .as-sc-search button:hover{background:linear-gradient(180deg,rgba(76,141,255,.4),rgba(43,108,255,.28));}
+  #anysub-search .as-sc-search button svg{width:15px;height:15px;}
+
+  #anysub-search .as-sc-results{overflow-y:auto;margin:0 -4px;padding:0 4px;flex:1;min-height:64px;}
+  #anysub-search .as-sc-sec{font-size:11px;color:#8b93a3;margin:6px 2px 7px;}
+  #anysub-search .as-sc-empty{color:#727b8a;font-size:12px;padding:22px 8px;text-align:center;}
+  #anysub-search .as-sc-back2{display:inline-flex;align-items:center;gap:5px;color:#8fb6ff;cursor:pointer;font-size:12px;margin:2px 2px 9px;}
+  #anysub-search .as-sc-back2 svg{width:14px;height:14px;}
+  #anysub-search .as-sc-back2:hover{text-decoration:underline;}
+
+  #anysub-search .as-sc-anime{display:flex;gap:11px;align-items:center;padding:8px;margin-bottom:7px;border-radius:10px;cursor:pointer;
+    background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);transition:background .15s,border-color .15s;}
+  #anysub-search .as-sc-anime:hover{background:rgba(76,141,255,.12);border-color:rgba(90,150,255,.4);}
+  #anysub-search .as-sc-poster{position:relative;width:42px;height:58px;flex:none;border-radius:6px;background:#2a2f3a;
+    display:flex;align-items:center;justify-content:center;color:#555e6c;overflow:hidden;}
+  #anysub-search .as-sc-poster svg{width:20px;height:20px;}
+  #anysub-search .as-sc-poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  #anysub-search .as-sc-anime-main{flex:1;min-width:0;}
+  #anysub-search .as-sc-anime-t{color:#eaeef6;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #anysub-search .as-sc-anime-s{color:#727b8a;font-size:11px;margin-top:3px;}
+  #anysub-search .as-sc-chev{color:#5a6373;flex:none;display:flex;}
+  #anysub-search .as-sc-chev svg{width:16px;height:16px;}
+
+  #anysub-search .as-sc-file{padding:8px 10px;margin-bottom:6px;border-radius:9px;cursor:pointer;
+    background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);transition:background .15s,border-color .15s;}
+  #anysub-search .as-sc-file:hover{background:rgba(76,141,255,.12);border-color:rgba(90,150,255,.4);}
+  #anysub-search .as-sc-file.loading{opacity:.5;pointer-events:none;}
+  #anysub-search .as-sc-file-t{color:#e8ecf3;font-size:12px;word-break:break-all;line-height:1.4;}
+  #anysub-search .as-sc-file-s{color:#727b8a;font-size:10.5px;margin-top:3px;}
   .anysub-vidpick{position:fixed;z-index:2147483647;border:3px solid #2b6cff;background:rgba(43,108,255,.15);cursor:pointer;box-sizing:border-box;}
   #anysub-toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:2147483647;
     background:rgba(0,0,0,.85);color:#fff;padding:8px 16px;border-radius:6px;
@@ -1114,7 +1162,7 @@
 		} catch (_) {}
 	}
 	var ENDPOINT = "https://graphql.anilist.co";
-	var QUERY = `query($s:String){Page(perPage:6){media(search:$s,type:ANIME){id title{romaji native english} episodes format startDate{year}}}}`;
+	var QUERY = `query($s:String){Page(perPage:6){media(search:$s,type:ANIME){id title{romaji native english} episodes format startDate{year} coverImage{medium}}}}`;
 	async function searchAnime(title) {
 		const res = await fetch(ENDPOINT, {
 			method: "POST",
@@ -1136,7 +1184,8 @@
 			romaji: m.title.romaji || "",
 			episodes: m.episodes || 0,
 			format: m.format || "",
-			year: m.startDate && m.startDate.year || ""
+			year: m.startDate && m.startDate.year || "",
+			cover: m.coverImage && m.coverImage.medium || ""
 		}));
 	}
 	var BASE = "https://jimaku.cc/api";
@@ -1202,22 +1251,31 @@
 			name: fileName
 		} : null;
 	}
-	var panel, keyInput, titleInput, epInput, results;
+	var panel, titleInput, epInput, results;
 	var currentAnime = null;
 	var lastPrefillTitle = null;
+	var keyEditing = false;
+	var S = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+	var IC = {
+		back: S("<path d=\"M19 12H5M11 6l-6 6 6 6\"/>"),
+		search: S("<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.2-3.2\"/>"),
+		check: S("<path d=\"M20 6 9 17l-5-5\"/>"),
+		photo: S("<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"8.5\" cy=\"8.5\" r=\"1.5\"/><path d=\"m21 15-5-5L5 21\"/>"),
+		chev: S("<path d=\"m9 6 6 6-6 6\"/>")
+	};
 	var HTML = `
-  <div class="anysub-row anysub-head"><span>在线字幕 · Jimaku</span><span id="anysub-sc-close">✕</span></div>
-  <div class="anysub-row">
-    <input id="anysub-key" type="password" placeholder="Jimaku API key" autocomplete="off">
-    <button id="anysub-key-save">保存</button>
+  <div class="as-sc-head">
+    <button id="anysub-sc-back" class="as-sc-back" title="返回主面板">${IC.back}<span>主面板</span></button>
+    <button id="anysub-sc-close" class="as-x" title="关闭">✕</button>
   </div>
-  <div class="anysub-key-hint">key 在 jimaku.cc 登录后账号页生成,仅存于本机</div>
-  <div class="anysub-row">
+  <div class="as-sc-title"><span class="as-logo">字</span><span>在线字幕</span><span class="as-sc-tag">Jimaku</span></div>
+  <div id="anysub-key-area"></div>
+  <div class="as-sc-search">
     <input id="anysub-title" placeholder="番剧名(日文最准)">
-    <input id="anysub-ep" placeholder="集" title="集数">
-    <button id="anysub-do-search">搜索</button>
+    <input id="anysub-ep" class="as-sc-ep" placeholder="集" title="集数">
+    <button id="anysub-do-search">${IC.search}<span>搜索</span></button>
   </div>
-  <div id="anysub-results" class="anysub-results"><div class="anysub-empty">输入番剧名后点搜索</div></div>
+  <div id="anysub-results" class="as-sc-results"><div class="as-sc-empty">输入番剧名后点搜索</div></div>
 `;
 	function buildSearchUI() {
 		panel = document.createElement("div");
@@ -1225,12 +1283,12 @@
 		panel.style.display = "none";
 		panel.innerHTML = HTML;
 		refs.uiRoot.appendChild(panel);
-		keyInput = panel.querySelector("#anysub-key");
+		refs.searchPanel = panel;
 		titleInput = panel.querySelector("#anysub-title");
 		epInput = panel.querySelector("#anysub-ep");
 		results = panel.querySelector("#anysub-results");
+		panel.querySelector("#anysub-sc-back").addEventListener("click", backToPanel);
 		panel.querySelector("#anysub-sc-close").addEventListener("click", close);
-		panel.querySelector("#anysub-key-save").addEventListener("click", saveKey);
 		panel.querySelector("#anysub-do-search").addEventListener("click", doSearch);
 		titleInput.addEventListener("keydown", (e) => {
 			if (e.key === "Enter") doSearch();
@@ -1238,86 +1296,135 @@
 		epInput.addEventListener("keydown", (e) => {
 			if (e.key === "Enter") doSearch();
 		});
+		renderKeyArea();
+	}
+	function renderKeyArea() {
+		const area = panel.querySelector("#anysub-key-area");
+		if (state.jimakuKey && !keyEditing) {
+			area.innerHTML = `<div class="as-sc-keyok">${IC.check}<span>已连接 Jimaku</span><span class="as-sc-change" id="anysub-key-change">更换 key</span></div>`;
+			area.querySelector("#anysub-key-change").addEventListener("click", () => {
+				keyEditing = true;
+				renderKeyArea();
+			});
+		} else {
+			area.innerHTML = `<div class="as-sc-keyrow"><input id="anysub-key" type="password" placeholder="Jimaku API key" autocomplete="off"><button id="anysub-key-save">保存</button></div>
+      <div class="as-sc-hint">key 在 jimaku.cc 登录后账号页生成,仅存于本机</div>`;
+			const ki = area.querySelector("#anysub-key");
+			ki.value = state.jimakuKey || "";
+			area.querySelector("#anysub-key-save").addEventListener("click", () => saveKey(ki.value));
+			ki.addEventListener("keydown", (e) => {
+				if (e.key === "Enter") saveKey(ki.value);
+			});
+		}
 	}
 	function openSearch() {
 		if (refs.panel) refs.panel.style.display = "none";
-		panel.style.display = "block";
-		keyInput.value = state.jimakuKey || "";
+		show();
+		renderKeyArea();
 		const curTitle = document.title;
 		if (!titleInput.value && !epInput.value || curTitle !== lastPrefillTitle) {
 			const { series, episode } = parseVideoTitle(curTitle);
 			titleInput.value = series;
 			epInput.value = episode || "";
 			lastPrefillTitle = curTitle;
-			setResults("<div class=\"anysub-empty\">输入番剧名后点搜索</div>");
+			setResults("<div class=\"as-sc-empty\">输入番剧名后点搜索</div>");
 		}
-		(state.jimakuKey ? titleInput : keyInput).focus();
+		(state.jimakuKey ? titleInput : panel.querySelector("#anysub-key") || titleInput).focus();
+	}
+	function show() {
+		panel.style.display = "block";
+		panel.classList.remove("as-in");
+		panel.offsetWidth;
+		panel.classList.add("as-in");
 	}
 	function close() {
 		panel.style.display = "none";
 	}
-	function saveKey() {
-		state.jimakuKey = keyInput.value.trim();
+	function backToPanel() {
+		panel.style.display = "none";
+		openPanel();
+	}
+	function saveKey(val) {
+		state.jimakuKey = (val || "").trim();
 		saveState();
+		keyEditing = false;
+		renderKeyArea();
 		toast(state.jimakuKey ? "API key 已保存" : "API key 已清空");
+		if (state.jimakuKey) titleInput.focus();
 	}
 	async function doSearch() {
 		const title = titleInput.value.trim();
 		if (!state.jimakuKey) {
 			toast("请先填写并保存 Jimaku API key");
-			keyInput.focus();
+			keyEditing = true;
+			renderKeyArea();
 			return;
 		}
 		if (!title) {
 			toast("请输入番剧名");
 			return;
 		}
-		setResults("<div class=\"anysub-empty\">搜索中…</div>");
+		setResults("<div class=\"as-sc-empty\">搜索中…</div>");
 		try {
 			const list = await animeCandidates(title);
 			if (!list.length) {
-				setResults("<div class=\"anysub-empty\">未找到番剧,换个写法试试</div>");
+				setResults("<div class=\"as-sc-empty\">未找到番剧,换个写法试试</div>");
 				return;
 			}
 			renderAnime(list);
 		} catch (err) {
-			setResults(`<div class="anysub-empty">出错:${esc(err.message)}</div>`);
+			setResults(`<div class="as-sc-empty">出错:${esc(err.message)}</div>`);
 		}
+	}
+	function poster(url) {
+		return `<span class="as-sc-poster">${IC.photo}${url ? `<img src="${escAttr(url)}" alt="">` : ""}</span>`;
+	}
+	function metaOf(a) {
+		const bits = [];
+		if (a.format) bits.push(esc(a.format));
+		if (a.year) bits.push(String(a.year));
+		if (a.episodes) bits.push(a.episodes + " 话");
+		return bits.join(" · ");
 	}
 	function renderAnime(list) {
 		results.innerHTML = "";
-		const hint = document.createElement("div");
-		hint.className = "anysub-sec";
-		hint.textContent = "选择番剧:";
-		results.appendChild(hint);
+		results.appendChild(sec("选择番剧"));
 		for (const a of list) {
 			const row = document.createElement("div");
-			row.className = "anysub-item";
-			row.innerHTML = `<div class="anysub-item-t">${esc(a.title)}</div>
-      <div class="anysub-item-s">${esc(a.romaji)} · ${esc(a.format)} ${a.year || ""} · ${a.episodes || "?"}话</div>`;
+			row.className = "as-sc-anime";
+			if (a.romaji) row.title = a.romaji;
+			row.innerHTML = `${poster(a.cover)}
+      <div class="as-sc-anime-main">
+        <div class="as-sc-anime-t">${esc(a.title)}</div>
+        <div class="as-sc-anime-s">${metaOf(a)}</div>
+      </div>
+      <span class="as-sc-chev">${IC.chev}</span>`;
+			wirePoster(row);
 			row.addEventListener("click", () => loadFilesFor(a));
 			results.appendChild(row);
 		}
 	}
 	async function loadFilesFor(anime) {
-		setResults("<div class=\"anysub-empty\">获取字幕文件中…</div>");
+		setResults("<div class=\"as-sc-empty\">获取字幕文件中…</div>");
 		try {
 			const files = await subtitleFiles(anime.anilistId, epInput.value.trim());
 			if (!files.length) {
-				setResults(`<div class="anysub-empty">${esc(anime.title)} 暂无字幕${epInput.value ? "(第" + esc(epInput.value) + "集)" : ""}</div><div class="anysub-back">← 返回</div>`);
-				wireBack();
+				results.innerHTML = "";
+				results.appendChild(backLink("← 返回番剧列表", doSearch));
+				results.appendChild(empty(`${esc(anime.title)} 暂无字幕${epInput.value ? "(第 " + esc(epInput.value) + " 集)" : ""}`));
 				return;
 			}
 			renderFiles(anime, files);
 		} catch (err) {
-			setResults(`<div class="anysub-empty">出错:${esc(err.message)}</div><div class="anysub-back">← 返回</div>`);
-			wireBack();
+			results.innerHTML = "";
+			results.appendChild(backLink("← 返回番剧列表", doSearch));
+			results.appendChild(empty("出错:" + esc(err.message)));
 		}
 	}
 	function showCandidates(seriesTitle, files) {
 		if (refs.panel) refs.panel.style.display = "none";
-		panel.style.display = "block";
-		keyInput.value = state.jimakuKey || "";
+		show();
+		renderKeyArea();
 		if (seriesTitle) titleInput.value = seriesTitle;
 		lastPrefillTitle = document.title;
 		renderFiles({
@@ -1328,20 +1435,13 @@
 	function renderFiles(anime, files) {
 		currentAnime = anime;
 		results.innerHTML = "";
-		const back = document.createElement("div");
-		back.className = "anysub-back";
-		back.textContent = "← 返回番剧列表";
-		back.addEventListener("click", doSearch);
-		results.appendChild(back);
-		const hint = document.createElement("div");
-		hint.className = "anysub-sec";
-		hint.textContent = `${anime.title} · 选择字幕文件(${files.length}):`;
-		results.appendChild(hint);
+		results.appendChild(backLink("← 返回番剧列表", doSearch));
+		results.appendChild(sec(`${esc(anime.title)} · 选择字幕(${files.length})`));
 		for (const f of files) {
 			const row = document.createElement("div");
-			row.className = "anysub-item";
-			row.innerHTML = `<div class="anysub-item-t">${esc(f.name)}</div>
-      <div class="anysub-item-s">${fmtSize(f.size)}${f.entryName ? " · " + esc(f.entryName) : ""}</div>`;
+			row.className = "as-sc-file";
+			row.innerHTML = `<div class="as-sc-file-t">${esc(f.name)}</div>
+      <div class="as-sc-file-s">${fmtSize(f.size)}${f.entryName ? " · " + esc(f.entryName) : ""}</div>`;
 			row.addEventListener("click", () => pickFile(f, row));
 			results.appendChild(row);
 		}
@@ -1360,9 +1460,29 @@
 			row.classList.remove("loading");
 		}
 	}
-	function wireBack() {
-		const b = results.querySelector(".anysub-back");
-		if (b) b.addEventListener("click", doSearch);
+	function sec(text) {
+		const d = document.createElement("div");
+		d.className = "as-sc-sec";
+		d.textContent = text;
+		return d;
+	}
+	function empty(html) {
+		const d = document.createElement("div");
+		d.className = "as-sc-empty";
+		d.innerHTML = html;
+		return d;
+	}
+	function backLink(text, fn) {
+		const d = document.createElement("div");
+		d.className = "as-sc-back2";
+		d.innerHTML = `${IC.back}<span></span>`;
+		d.querySelector("span").textContent = text.replace(/^←\s*/, "");
+		d.addEventListener("click", fn);
+		return d;
+	}
+	function wirePoster(row) {
+		const img = row.querySelector(".as-sc-poster img");
+		if (img) img.addEventListener("error", () => img.remove());
 	}
 	function setResults(html) {
 		results.innerHTML = html;
@@ -1373,6 +1493,9 @@
 	}
 	function esc(s) {
 		return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	}
+	function escAttr(s) {
+		return esc(s).replace(/"/g, "&quot;");
 	}
 	var persist = saveState;
 	var SVG = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
@@ -1500,17 +1623,20 @@
 	}
 	function togglePanel() {
 		const p = refs.panel;
-		const show = p.style.display === "none" || !p.style.display;
-		p.style.display = show ? "block" : "none";
-		if (show) {
-			const inp = p.querySelector("#anysub-offset");
-			if (inp) inp.value = state.offset.toFixed(1);
-			syncVisBtn();
-			positionPanel();
-			p.classList.remove("as-in");
-			p.offsetWidth;
-			p.classList.add("as-in");
-		}
+		if (p.style.display === "none" || !p.style.display) openPanel();
+		else p.style.display = "none";
+	}
+	function openPanel() {
+		const p = refs.panel;
+		if (refs.searchPanel) refs.searchPanel.style.display = "none";
+		p.style.display = "block";
+		const inp = p.querySelector("#anysub-offset");
+		if (inp) inp.value = state.offset.toFixed(1);
+		syncVisBtn();
+		positionPanel();
+		p.classList.remove("as-in");
+		p.offsetWidth;
+		p.classList.add("as-in");
 	}
 	function openFilePicker() {
 		refs.fileInput.click();
