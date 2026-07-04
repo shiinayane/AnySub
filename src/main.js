@@ -47,6 +47,7 @@ function restoreSettings() {
   if (typeof saved.color === 'string') s.color = saved.color;
   if (typeof saved.showFab === 'boolean') state.showFab = saved.showFab;
   if (typeof saved.rubyParen === 'boolean') state.rubyParen = saved.rubyParen;
+  if (typeof saved.enhance === 'boolean') state.enhance = saved.enhance;
   if (typeof saved.jimakuKey === 'string') state.jimakuKey = saved.jimakuKey;
   // 只接受「纯对象 + 有限数值」的偏移表:防脏数据(数组/字符串/嵌套/超大)污染并被回写
   if (saved.offsets && typeof saved.offsets === 'object' && !Array.isArray(saved.offsets)) {

@@ -4,6 +4,7 @@ import { readSubtitleFile, decodeBuffer } from './decode.js';
 import { parseSubtitle } from './parse.js';
 import { parseVideoTitle } from './title-parse.js';
 import { sourceTokens } from './match.js';
+import { buildSpeakers } from './cue-format.js';
 import { pickBestVideo } from './locator.js';
 import { setVideo, startRender, setRenderer, applyStyle } from './controller.js';
 import { invalidateLayout } from './overlay.js';
@@ -54,6 +55,7 @@ export function loadFromText(text, name) {
     return false;
   }
   state.cues = parsed.cues;
+  state.speakers = buildSpeakers(parsed.cues); // 话者名词表(供语义排版消歧独立括号)
   state.fileName = name;
   // 记录当前番剧/集数(用于切集检测);在线来源由在线路径随后设置,这里先清空
   const p = parseVideoTitle(document.title);

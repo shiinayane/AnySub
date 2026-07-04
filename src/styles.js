@@ -66,6 +66,9 @@ const CSS = `
     font-weight:600;border-radius:4px;box-sizing:border-box;}
   #anysub-cuebox ruby{ruby-align:center;}
   #anysub-cuebox rt{font-size:.5em;font-weight:400;opacity:.9;line-height:1;}
+  #anysub-cuebox .anysub-spk{font-size:.82em;font-weight:500;opacity:.66;margin-right:.15em;}
+  #anysub-cuebox .anysub-sfx{font-style:italic;opacity:.68;}
+  #anysub-cuebox .anysub-lyric{font-style:italic;}
   #anysub-fab{position:fixed;bottom:28%;z-index:2147483646;width:30px;height:30px;
     display:flex;align-items:center;justify-content:center;
     background:var(--as-accent2);color:#fff;border-radius:50%;

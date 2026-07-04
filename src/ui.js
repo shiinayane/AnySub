@@ -95,6 +95,10 @@ const PANEL_HTML = `
     <button id="anysub-tg-ruby" class="as-switch" role="switch" title="将 温厚（おんこう) 显示为注音"><span class="as-knob"></span></button>
   </div>
   <div class="as-switch-row">
+    <span class="as-switch-label">话者·音效标记</span>
+    <button id="anysub-tg-enh" class="as-switch" role="switch" title="（人名)淡化为话者名、独立（…)音效/动作斜体、♪ 歌词斜体"><span class="as-knob"></span></button>
+  </div>
+  <div class="as-switch-row">
     <span class="as-switch-label">悬浮球</span>
     <button id="anysub-tg-fab" class="as-switch" role="switch" title="页面右侧常驻小球"><span class="as-knob"></span></button>
   </div>
@@ -242,6 +246,11 @@ function wireEvents() {
     state.rubyParen = !state.rubyParen;
     syncToggles(); refresh(); persist();
   });
+  const enhBtn = panel.querySelector('#anysub-tg-enh');
+  enhBtn.addEventListener('click', () => {
+    state.enhance = !state.enhance;
+    syncToggles(); refresh(); persist();
+  });
   const fabBtn = panel.querySelector('#anysub-tg-fab');
   fabBtn.addEventListener('click', () => {
     state.showFab = !state.showFab;
@@ -270,9 +279,12 @@ function syncVisBtn() {
 
 function syncToggles() {
   const rb = refs.panel.querySelector('#anysub-tg-ruby');
+  const en = refs.panel.querySelector('#anysub-tg-enh');
   const fb = refs.panel.querySelector('#anysub-tg-fab');
   rb.classList.toggle('on', state.rubyParen);
   rb.setAttribute('aria-checked', String(state.rubyParen));
+  en.classList.toggle('on', state.enhance);
+  en.setAttribute('aria-checked', String(state.enhance));
   fb.classList.toggle('on', state.showFab);
   fb.setAttribute('aria-checked', String(state.showFab));
 }

@@ -23,6 +23,8 @@
 		hidden: false,
 		showFab: false,
 		rubyParen: true,
+		enhance: true,
+		speakers: null,
 		jimakuKey: "",
 		loadedSeries: "",
 		loadedEpisode: "",
@@ -98,6 +100,9 @@
     font-weight:600;border-radius:4px;box-sizing:border-box;}
   #anysub-cuebox ruby{ruby-align:center;}
   #anysub-cuebox rt{font-size:.5em;font-weight:400;opacity:.9;line-height:1;}
+  #anysub-cuebox .anysub-spk{font-size:.82em;font-weight:500;opacity:.66;margin-right:.15em;}
+  #anysub-cuebox .anysub-sfx{font-style:italic;opacity:.68;}
+  #anysub-cuebox .anysub-lyric{font-style:italic;}
   #anysub-fab{position:fixed;bottom:28%;z-index:2147483646;width:30px;height:30px;
     display:flex;align-items:center;justify-content:center;
     background:var(--as-accent2);color:#fff;border-radius:50%;
@@ -697,6 +702,38 @@
 		const uni = a.size + b.size - inter;
 		return uni ? inter / uni : 0;
 	}
+	var RE_LEAD = new RegExp("^[（(]([^（()）]{1,16})[）)]\\s*(\\S[\\s\\S]*)$");
+	var RE_ALONE = new RegExp("^[（(]([^（()）]{1,16})[）)]$");
+	function buildSpeakers(cues) {
+		const set = new Set();
+		for (const c of cues || []) {
+			const t = (c && c.text != null ? String(c.text) : "").trim();
+			const m = RE_LEAD.exec(t);
+			if (m) set.add(m[1]);
+		}
+		return set;
+	}
+	function classifyCueLine(raw, speakers) {
+		const t = (raw == null ? "" : String(raw)).trim();
+		if (!t) return { type: "plain" };
+		if (/^[♪♫]/.test(t)) return { type: "lyric" };
+		let m = RE_ALONE.exec(t);
+		if (m) {
+			const inner = m[1];
+			if (speakers && speakers.has(inner)) return {
+				type: "speaker",
+				name: inner
+			};
+			return { type: "sfx" };
+		}
+		m = RE_LEAD.exec(t);
+		if (m) return {
+			type: "dialogue",
+			name: m[1],
+			rest: m[2]
+		};
+		return { type: "plain" };
+	}
 	function collectVideos(root, acc) {
 		acc = acc || [];
 		root = root || document;
@@ -861,6 +898,17 @@
 	function group(base, ruby) {
 		return "<ruby>" + base + "<rt>" + ruby + "</rt></ruby>";
 	}
+	function lineToHtml(text) {
+		if (!state.enhance) return applyRuby(text, state.rubyParen);
+		const c = classifyCueLine(text, state.speakers);
+		switch (c.type) {
+			case "sfx": return `<span class="anysub-sfx">${text}</span>`;
+			case "lyric": return `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
+			case "speaker": return `<span class="anysub-spk">${text}</span>`;
+			case "dialogue": return `<span class="anysub-spk">（${c.name}）</span>${applyRuby(c.rest, state.rubyParen)}`;
+			default: return applyRuby(text, state.rubyParen);
+		}
+	}
 	function createTextRenderer() {
 		let cueBox = null;
 		let lastKey = "";
@@ -900,10 +948,10 @@
 					if (c.start > t) break;
 					if (t < c.end) parts.push(c.text);
 				}
-				const key = (state.rubyParen ? "1" : "0") + "\0" + parts.join("\n");
+				const key = (state.rubyParen ? "1" : "0") + (state.enhance ? "1" : "0") + " " + parts.join(String.fromCharCode(10));
 				if (key === lastKey) return;
 				lastKey = key;
-				const html = parts.map((x) => applyRuby(x, state.rubyParen)).join("<br>");
+				const html = parts.map(lineToHtml).join("<br>");
 				cueBox.innerHTML = html;
 				cueBox.style.display = html ? "inline-block" : "none";
 			},
@@ -1175,6 +1223,7 @@
 			return false;
 		}
 		state.cues = parsed.cues;
+		state.speakers = buildSpeakers(parsed.cues);
 		state.fileName = name;
 		const p = parseVideoTitle(document.title);
 		state.loadedSeries = p.series;
@@ -1202,6 +1251,7 @@
 			color: s.color,
 			showFab: state.showFab,
 			rubyParen: state.rubyParen,
+			enhance: state.enhance,
 			jimakuKey: state.jimakuKey,
 			offsets: state.offsets
 		});
@@ -1636,6 +1686,10 @@
     <button id="anysub-tg-ruby" class="as-switch" role="switch" title="将 温厚（おんこう) 显示为注音"><span class="as-knob"></span></button>
   </div>
   <div class="as-switch-row">
+    <span class="as-switch-label">话者·音效标记</span>
+    <button id="anysub-tg-enh" class="as-switch" role="switch" title="（人名)淡化为话者名、独立（…)音效/动作斜体、♪ 歌词斜体"><span class="as-knob"></span></button>
+  </div>
+  <div class="as-switch-row">
     <span class="as-switch-label">悬浮球</span>
     <button id="anysub-tg-fab" class="as-switch" role="switch" title="页面右侧常驻小球"><span class="as-knob"></span></button>
   </div>
@@ -1788,6 +1842,12 @@
 			refresh();
 			persist();
 		});
+		panel.querySelector("#anysub-tg-enh").addEventListener("click", () => {
+			state.enhance = !state.enhance;
+			syncToggles();
+			refresh();
+			persist();
+		});
 		panel.querySelector("#anysub-tg-fab").addEventListener("click", () => {
 			state.showFab = !state.showFab;
 			syncToggles();
@@ -1815,9 +1875,12 @@
 	}
 	function syncToggles() {
 		const rb = refs.panel.querySelector("#anysub-tg-ruby");
+		const en = refs.panel.querySelector("#anysub-tg-enh");
 		const fb = refs.panel.querySelector("#anysub-tg-fab");
 		rb.classList.toggle("on", state.rubyParen);
 		rb.setAttribute("aria-checked", String(state.rubyParen));
+		en.classList.toggle("on", state.enhance);
+		en.setAttribute("aria-checked", String(state.enhance));
 		fb.classList.toggle("on", state.showFab);
 		fb.setAttribute("aria-checked", String(state.showFab));
 	}
@@ -2124,6 +2187,7 @@
 		if (typeof saved.color === "string") s.color = saved.color;
 		if (typeof saved.showFab === "boolean") state.showFab = saved.showFab;
 		if (typeof saved.rubyParen === "boolean") state.rubyParen = saved.rubyParen;
+		if (typeof saved.enhance === "boolean") state.enhance = saved.enhance;
 		if (typeof saved.jimakuKey === "string") state.jimakuKey = saved.jimakuKey;
 		if (saved.offsets && typeof saved.offsets === "object" && !Array.isArray(saved.offsets)) {
 			const clean = {};
