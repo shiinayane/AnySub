@@ -24,6 +24,9 @@ Chrome / Edge / Safari / Firefox 通用。
 - 🖥️ **全屏跟随**:进入全屏后覆盖层自动挂到全屏元素上
 - 🈁 **日文注音(ruby)**:文本字幕里 `温厚（おんこう）`/`使徒《しと》` 显示为汉字上方假名。
   《》式始终转;括号启发式可在面板开关(仅文本路径,ASS 高保真受 libass 限制不支持)
+  - **逐字对齐**:内置 KANJIDIC2 读音表(常用+人名用,~3000 字)+ 对齐算法,把读音精确落到各汉字并处理连浊/促音。
+    `近接猟兵（りょうへい）` 只把 りょう/へい 注到 `猟兵`、`近接` 留白,不再铺满整串;熟字訓(`今日→きょう`)对不齐时回退整串注音。
+    读音表随脚本本地内置、首次注音才 `JSON.parse`,零运行时网络
 - 🈶 自动**编码探测**:UTF-8 → GBK → Big5 →(日文)Shift-JIS / EUC-JP 回退
 - ⏱️ **时间轴偏移**:±0.1 / ±1 步进按钮,或**手动输入**任意秒数
 - 🔎 **穿透 Shadow DOM** 定位视频;页面多个视频时可手动「选视频」
@@ -103,6 +106,9 @@ src/
 ├── match.js        跨集「同源」匹配(纯逻辑,有单测)
 ├── search-ui.js    在线搜索面板(候选列表)
 ├── title-parse.js  页面标题 → 番剧名 + 集数(含日文/旧字体)
+├── ruby.js         日文注音(《》/｜/括号 → <ruby>,逐字对齐)
+├── furigana-align.js  读音→逐字对齐(连浊/促音/后缀读音,纯逻辑有单测)
+├── kanji-readings.js  内置汉字读音表(构建期由 scripts/build-readings.mjs 生成)
 ├── episode-watch.js 切集检测 + 同源自动接续
 ├── ui.js           设置面板 + 悬浮球 + 拖拽 + 选视频
 ├── shortcuts.js    键盘快捷键(Alt+Shift,capture 拦截)
@@ -146,3 +152,7 @@ npm run build && python3 -m http.server 8000
 **ASS 高保真**采用「先保底、后升级」:打开 `.ass/.ssa` 时先用文本渲染器立即显示(离线可用),同时后台懒加载 libass-wasm——主脚本经 blob `<script>` 注入(避开 `eval`/CSP inline),worker 整段包进 blob 并预置 `Module.locateFile` 使 wasm/字体从 CDN(jsdelivr)加载(绕过跨域 worker 限制)。就绪后切换到 canvas 高保真渲染并撤下文本;若任一步被网络或站点 CSP(`worker-src`/`connect-src`/`script-src`)拦截,则**保留文本渲染**,字幕始终可见。libass-wasm 不含字体,故指定含 CJK 的 Noto Sans SC 作 fallback,避免渲染空白。
 
 > 已知限制:若站点对**裸 `<video>` 元素**(而非其容器)请求全屏,DOM 覆盖层无法叠加其上;绝大多数站点全屏的是播放器容器,不受影响。
+
+**注音逐字对齐**不走通用分词器(kuromoji 那类需运行时加载数 MB 词典),而是内置一张从 [KANJIDIC2](https://www.edrdg.org/kanjidic/kanjidic2.xml.gz) 抽取的精简「汉字→读音」表(常用+人名用约 3000 字,平假名归一,gzip ~35KB),随脚本本地存储、首次注音才 `JSON.parse`。对齐用递归匹配:拿每个汉字的读音候选去消费括号里的假名串,动态生成连浊(は→ば)、促音(がく→がっ)变体;整串对不齐时从左逐字剥离取最长覆盖解(治「读音只覆盖后缀」),再对不齐则回退整串注音(熟字訓如 `今日→きょう`)。
+
+> 词典数据 © [EDRDG](https://www.edrdg.org/) KANJIDIC2,依 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 使用。
