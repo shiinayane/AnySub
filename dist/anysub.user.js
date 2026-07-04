@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.9.2
+// @version      0.9.3
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -521,7 +521,8 @@
 		};
 	}
 	var CDN = `https://cdn.jsdelivr.net/npm/libass-wasm@4.1.0/dist/js/`;
-	var FALLBACK_FONT = "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.5/files/noto-sans-sc-chinese-simplified-400-normal.woff2";
+	var FONT_JP = "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-jp@5.0.5/files/noto-sans-jp-japanese-400-normal.woff2";
+	var FONT_SC = "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.5/files/noto-sans-sc-chinese-simplified-400-normal.woff2";
 	var loadPromise = null;
 	function loadOctopus() {
 		if (loadPromise) return loadPromise;
@@ -542,7 +543,8 @@
 		return {
 			Octopus: window.SubtitlesOctopus,
 			workerUrl,
-			fallbackFont: FALLBACK_FONT
+			fallbackFont: FONT_JP,
+			fonts: [FONT_JP, FONT_SC]
 		};
 	}
 	function fetchText(url) {
@@ -568,7 +570,7 @@
 		let disposed = false;
 		let lastSizeKey = "";
 		function tryLibass() {
-			loadOctopus().then(({ Octopus, workerUrl, fallbackFont }) => {
+			loadOctopus().then(({ Octopus, workerUrl, fallbackFont, fonts }) => {
 				if (disposed) return;
 				assCanvas = document.createElement("canvas");
 				assCanvas.id = "anysub-ass-canvas";
@@ -579,6 +581,7 @@
 					subContent: assText,
 					workerUrl,
 					fallbackFont,
+					fonts,
 					onReady: () => {
 						if (disposed) {
 							safeDispose();
@@ -871,6 +874,69 @@
 		if (!res.ok) throw new Error("下载失败 " + res.status);
 		return loadFromBuffer(await res.arrayBuffer(), name);
 	}
+	var KANJI = {
+		"〇": 0,
+		"零": 0,
+		"一": 1,
+		"二": 2,
+		"三": 3,
+		"四": 4,
+		"五": 5,
+		"六": 6,
+		"七": 7,
+		"八": 8,
+		"九": 9,
+		"壱": 1,
+		"弐": 2,
+		"参": 3,
+		"肆": 4,
+		"伍": 5,
+		"陸": 6,
+		"漆": 7,
+		"捌": 8,
+		"玖": 9
+	};
+	var UNITS = {
+		"十": 10,
+		"拾": 10,
+		"百": 100,
+		"千": 1e3
+	};
+	function toHalfDigits(s) {
+		return s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248));
+	}
+	function jpNumToInt(s) {
+		if (/^[0-9０-９]+$/.test(s)) return parseInt(toHalfDigits(s), 10);
+		let total = 0, cur = 0, seen = false;
+		for (const ch of s) if (ch in KANJI) {
+			cur = KANJI[ch];
+			seen = true;
+		} else if (ch in UNITS) {
+			total += (cur || 1) * UNITS[ch];
+			cur = 0;
+			seen = true;
+		}
+		total += cur;
+		return seen ? total : NaN;
+	}
+	function parseVideoTitle(raw) {
+		let t = (raw || "").trim();
+		t = t.split(/[|｜]/)[0].trim();
+		t = t.replace(/\s*[(（【\[][^)）】\]]*[)）】\]]\s*$/g, "").trim();
+		let episode = "";
+		let m = t.match(/第\s*([0-9０-９〇零一二三四五六七八九十百千壱弐参肆伍陸漆捌玖拾]+)\s*[話话回]/);
+		if (!m) m = t.match(/(?:#|＃|Ep\.?\s*|Episode\s*|EP\s*)([0-9０-９]+)/i);
+		if (m) {
+			const n = jpNumToInt(m[1]);
+			if (isFinite(n)) episode = String(n);
+			t = t.slice(0, m.index).trim();
+		}
+		t = t.replace(/[\s\-–—・:：~〜]+$/g, "").trim();
+		return {
+			series: t.slice(0, 60),
+			episode
+		};
+	}
 	var panel, keyInput, titleInput, epInput, results;
 	var HTML = `
   <div class="anysub-row anysub-head"><span>在线字幕 · Jimaku</span><span id="anysub-sc-close">✕</span></div>
@@ -910,7 +976,11 @@
 		if (refs.panel) refs.panel.style.display = "none";
 		panel.style.display = "block";
 		keyInput.value = state.jimakuKey || "";
-		if (!titleInput.value) titleInput.value = guessTitle();
+		if (!titleInput.value && !epInput.value) {
+			const { series, episode } = parseVideoTitle(document.title);
+			titleInput.value = series;
+			if (episode) epInput.value = episode;
+		}
 		(state.jimakuKey ? titleInput : keyInput).focus();
 	}
 	function close() {
@@ -920,9 +990,6 @@
 		state.jimakuKey = keyInput.value.trim();
 		saveState();
 		toast(state.jimakuKey ? "API key 已保存" : "API key 已清空");
-	}
-	function guessTitle() {
-		return (document.title || "").split(/[|｜\-–—]/)[0].trim().slice(0, 40);
 	}
 	async function doSearch() {
 		const title = titleInput.value.trim();

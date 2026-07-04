@@ -18,7 +18,7 @@ export function createAssRenderer(assText) {
 
   function tryLibass() {
     loadOctopus()
-      .then(({ Octopus, workerUrl, fallbackFont }) => {
+      .then(({ Octopus, workerUrl, fallbackFont, fonts }) => {
         if (disposed) return;
         assCanvas = document.createElement('canvas');
         assCanvas.id = 'anysub-ass-canvas';
@@ -29,6 +29,7 @@ export function createAssRenderer(assText) {
           subContent: assText,
           workerUrl,
           fallbackFont,
+          fonts,               // 额外字体库,libass 为缺失字形做替换,减少方块
           onReady: () => {
             if (disposed) { safeDispose(); return; }
             usingLibass = true;

@@ -4,8 +4,11 @@
 
 const VER = '4.1.0';
 const CDN = `https://cdn.jsdelivr.net/npm/libass-wasm@${VER}/dist/js/`;
-// libass-wasm 未内置字体,提供一个含 CJK 的 fallback,避免渲染空白
-const FALLBACK_FONT = 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.5/files/noto-sans-sc-chinese-simplified-400-normal.woff2';
+// libass-wasm 未内置字体,提供覆盖广的 fallback,避免缺字形显示方块。
+// 动画多为日文,主 fallback 用 Noto Sans JP;再加 SC 补足中文(翻译行/中字),
+// libass 会在所有已加载字体里为缺失字形做替换。
+const FONT_JP = 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-jp@5.0.5/files/noto-sans-jp-japanese-400-normal.woff2';
+const FONT_SC = 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.5/files/noto-sans-sc-chinese-simplified-400-normal.woff2';
 
 let loadPromise = null;
 
@@ -27,7 +30,7 @@ async function doLoad() {
   const prefix = 'var Module={locateFile:function(p){return ' + JSON.stringify(CDN) + '+p;}};\n';
   const workerUrl = URL.createObjectURL(new Blob([prefix + workerText], { type: 'text/javascript' }));
 
-  return { Octopus: window.SubtitlesOctopus, workerUrl, fallbackFont: FALLBACK_FONT };
+  return { Octopus: window.SubtitlesOctopus, workerUrl, fallbackFont: FONT_JP, fonts: [FONT_JP, FONT_SC] };
 }
 
 function fetchText(url) {

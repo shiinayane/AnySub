@@ -5,6 +5,7 @@ import { refs } from './refs.js';
 import { toast } from './notify.js';
 import { saveState } from './storage.js';
 import { animeCandidates, subtitleFiles, downloadAndLoad } from './online.js';
+import { parseVideoTitle } from './title-parse.js';
 
 let panel, keyInput, titleInput, epInput, results;
 
@@ -46,7 +47,12 @@ export function openSearch() {
   if (refs.panel) refs.panel.style.display = 'none';
   panel.style.display = 'block';
   keyInput.value = state.jimakuKey || '';
-  if (!titleInput.value) titleInput.value = guessTitle();
+  // 从页面标题预填「番剧名 + 集数」(用户没手动填过才填,避免覆盖)
+  if (!titleInput.value && !epInput.value) {
+    const { series, episode } = parseVideoTitle(document.title);
+    titleInput.value = series;
+    if (episode) epInput.value = episode;
+  }
   (state.jimakuKey ? titleInput : keyInput).focus();
 }
 
@@ -56,12 +62,6 @@ function saveKey() {
   state.jimakuKey = keyInput.value.trim();
   saveState();
   toast(state.jimakuKey ? 'API key 已保存' : 'API key 已清空');
-}
-
-// 从页面标题猜番剧名(去掉站点名/集数等噪声,用户可改)
-function guessTitle() {
-  let t = (document.title || '').split(/[|｜\-–—]/)[0].trim();
-  return t.slice(0, 40);
 }
 
 async function doSearch() {
