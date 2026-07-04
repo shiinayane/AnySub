@@ -12,17 +12,15 @@ import { initEpisodeWatch } from './episode-watch.js';
 // 避免在同一 window 重复注入
 if (!window.__ANYSUB_LOADED__) {
   window.__ANYSUB_LOADED__ = true;
-  restoreSettings();
-  // 在 document-start 尽早注册键盘监听:抢在站点脚本之前,避免播放器(如 DMM)
-  // 在 window 捕获阶段先注册并 stopImmediatePropagation 把按键吞掉。
-  initShortcuts();
   init();
 }
 
 function init() {
   if (!document.body) { requestAnimationFrame(init); return; }
+  restoreSettings();
   injectStyle();
   buildUI();
+  initShortcuts();
   initEpisodeWatch();
   setReactHandler(react);
   updateFabVisibility();

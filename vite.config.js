@@ -10,7 +10,7 @@ export default defineConfig({
         name: 'AnySub · 通用字幕挂载',
         'name:en': 'AnySub · Universal Subtitle Loader',
         namespace: 'https://github.com/shiinayane/anysub',
-        version: '0.12.2',
+        version: '0.12.1',
         description:
           '给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。',
         'description:en':
@@ -18,7 +18,7 @@ export default defineConfig({
         author: 'shiinayane',
         match: ['*://*/*'],
         grant: 'none',
-        'run-at': 'document-start',
+        'run-at': 'document-idle',
         noframes: true,
       },
     }),
