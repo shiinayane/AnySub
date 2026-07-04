@@ -579,6 +579,7 @@
 			mount() {
 				cueBox = document.createElement("div");
 				cueBox.id = "anysub-cuebox";
+				cueBox.style.display = "none";
 				refs.overlay.appendChild(cueBox);
 				lastHtml = "";
 				this.applyStyle();

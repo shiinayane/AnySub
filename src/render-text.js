@@ -17,6 +17,7 @@ export function createTextRenderer() {
     mount() {
       cueBox = document.createElement('div');
       cueBox.id = 'anysub-cuebox';
+      cueBox.style.display = 'none'; // 初始无字:先隐藏,避免首个 cue 出现前露出空的半透占位
       refs.overlay.appendChild(cueBox);
       lastHtml = '';
       this.applyStyle();
