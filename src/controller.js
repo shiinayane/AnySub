@@ -13,7 +13,11 @@ let onScroll, onResize, onFs, onVis;
 export function setRenderer(r) {
   if (renderer) renderer.destroy();
   renderer = r;
-  if (renderer) renderer.mount();
+  if (renderer) {
+    renderer.mount();
+    // 承接当前隐藏意图:否则用户按 V 隐藏后,切集/换字幕新建的渲染器会无视隐藏又冒出来
+    if (renderer.setVisible) renderer.setVisible(!state.hidden);
+  }
 }
 
 export function applyStyle() { if (renderer && renderer.applyStyle) renderer.applyStyle(); }

@@ -3,12 +3,19 @@
 // 而不是前面全部(近接猟兵)。纯逻辑,有单测。读音表懒加载 JSON.parse。
 import { KANJI_READINGS_JSON } from './kanji-readings.js';
 
+// 硬上限:防止恶意/异常字幕用超长汉字串+读音触发深递归(远端可控输入,需防 DoS)。
+// 真实注音的汉字串一般 ≤8 字,24/48 已极宽松;超出直接放弃逐字对齐(回退整串注音)。
+const MAX_KANJI = 24;
+const MAX_READING = 48;
+
 let READINGS = null; // { 汉字: [平假名读音候选,...] }
 function readingsOf(kanji) {
   if (!READINGS) {
     READINGS = Object.create(null);
-    const raw = JSON.parse(KANJI_READINGS_JSON);
-    for (const k in raw) READINGS[k] = raw[k].split(',');
+    try {
+      const raw = JSON.parse(KANJI_READINGS_JSON);
+      for (const k in raw) READINGS[k] = raw[k].split(',');
+    } catch (_) { /* 数据损坏:留空表,对齐一律失败并回退整串注音,不影响其余渲染 */ }
   }
   return READINGS[kanji];
 }
@@ -56,21 +63,28 @@ function* variants(base, index, isLast) {
 
 // 尝试把整个 kanjis(数组)对齐到 reading(平假名),要求「读音被完全消费」。
 // 成功返回每个汉字对应的读音片段数组,失败返回 null。
+// 记忆化失败节点(i,pos):没有它,高分歧汉字(如「生」37 个读音)+ 长读音会指数回溯。
 function alignRun(kanjis, reading) {
   const n = kanjis.length;
   const out = new Array(n);
+  const stride = reading.length + 1;
+  const failed = new Set(); // 已知无法走到结尾的 (i,pos),避免重复展开
   function dfs(i, pos) {
     if (i === n) return pos === reading.length;
+    const memo = i * stride + pos;
+    if (failed.has(memo)) return false;
     const cands = readingsOf(kanjis[i]);
-    if (!cands) return false;
-    for (const base of cands) {
-      for (const cand of variants(base, i, i === n - 1)) {
-        if (cand && reading.startsWith(cand, pos)) {
-          out[i] = cand;
-          if (dfs(i + 1, pos + cand.length)) return true;
+    if (cands) {
+      for (const base of cands) {
+        for (const cand of variants(base, i, i === n - 1)) {
+          if (cand && reading.startsWith(cand, pos)) {
+            out[i] = cand;
+            if (dfs(i + 1, pos + cand.length)) return true;
+          }
         }
       }
     }
+    failed.add(memo);
     return false;
   }
   return dfs(0, 0) ? out : null;
@@ -84,6 +98,8 @@ export function alignFurigana(base, rawReading) {
   const reading = toHira(rawReading);
   if (!reading) return null;
   const kanjis = [...base];
+  if (kanjis.length > MAX_KANJI || reading.length > MAX_READING) return null; // 防 DoS:超长直接回退
+
   // 从整串开始,逐个从左剥离,取「覆盖汉字最多」(前缀最短)的成功解
   for (let start = 0; start < kanjis.length; start++) {
     const suffix = kanjis.slice(start);

@@ -6,6 +6,7 @@ import { clearSubtitle } from './controller.js';
 import { subtitleFiles, downloadAndLoad, markLoaded } from './online.js';
 import { pickSameSource } from './match.js';
 import { showCandidates } from './search-ui.js';
+import { setOffset } from './ui.js';
 import { toast } from './notify.js';
 
 let timer = 0;
@@ -39,6 +40,10 @@ function onTitleChange() {
 
 async function autoContinue(ctx, series, episode) {
   busy = true;
+  // 同源续播沿用上一集偏移(用户约定「同剧集同源稳定」)。
+  // 必须显式带过去:pickSameSource 是宽松匹配,而 offsetKey 用精确源 token,
+  // 两集文件名的非集数 token 略有差异时 key 不同 → 加载会把 offset 重置为 0。
+  const carryOffset = state.offset;
   toast(`检测到切集,正在找第 ${episode} 集字幕…`);
   try {
     const files = await subtitleFiles(ctx.anilistId, episode);
@@ -46,7 +51,11 @@ async function autoContinue(ctx, series, episode) {
     const best = pickSameSource(files, ctx.name);
     if (best) {
       const ok = await downloadAndLoad(best.url, best.name);
-      if (ok) { markLoaded(ctx.anilistId, best.name); toast(`已自动加载第 ${episode} 集字幕`); }
+      if (ok) {
+        markLoaded(ctx.anilistId, best.name);
+        if (carryOffset) setOffset(carryOffset); // 同源:把上一集偏移带到新集(并记忆到新 key)
+        toast(`已自动加载第 ${episode} 集字幕`);
+      }
     } else {
       toast('未找到同源字幕,请从候选中选择');
       showCandidates(series, files); // 回退:弹出候选让用户选

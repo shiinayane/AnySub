@@ -140,6 +140,15 @@ export function adjustOffset(delta) {
   toast('偏移 ' + state.offset.toFixed(1) + 's');
 }
 
+// 绝对设置偏移(供切集同源续播沿用上一集偏移):更新值 + 同步输入框 + 重渲染 + 记忆
+export function setOffset(val) {
+  state.offset = Math.round(val * 10) / 10;
+  const inp = refs.panel && refs.panel.querySelector('#anysub-offset');
+  if (inp) inp.value = state.offset.toFixed(1);
+  refresh();
+  rememberOffset();
+}
+
 // 按「番剧|源特征」记住当前偏移(持久化);同番剧同源下次自动恢复
 function rememberOffset() {
   if (!state.offsetKey) return;

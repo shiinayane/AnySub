@@ -15,6 +15,7 @@ export function createAssRenderer(assText) {
   let usingLibass = false;
   let disposed = false;
   let lastSizeKey = '';
+  let lastDriveT = -1;
 
   function tryLibass() {
     loadOctopus()
@@ -59,13 +60,17 @@ export function createAssRenderer(assText) {
     const key = bw + 'x' + bh;
     if (key === lastSizeKey) return;
     lastSizeKey = key;
+    lastDriveT = -1; // 尺寸变了需强制重绘(canvas 可能被清空),让下次 drive() 不因时间相同而跳过
     try { octopus.resize(bw, bh, 0, 0); } catch (_) { /* ignore */ }
   }
 
-  // 把视频当前时间(含偏移)推给 libass
+  // 把视频当前时间(含偏移)推给 libass;时间未变则跳过(暂停+滚动/resize 时避免每 tick 重绘)
   function drive() {
     if (!octopus || !state.video) return;
-    try { octopus.setCurrentTime(Math.max(0, state.video.currentTime - state.offset)); } catch (_) { /* ignore */ }
+    const t = Math.max(0, state.video.currentTime - state.offset);
+    if (t === lastDriveT) return;
+    lastDriveT = t;
+    try { octopus.setCurrentTime(t); } catch (_) { /* ignore */ }
   }
 
   function safeDispose() {
@@ -80,7 +85,9 @@ export function createAssRenderer(assText) {
     },
     renderAt(v, rect, layoutChanged) {
       if (!usingLibass) { textRenderer.renderAt(v, rect, layoutChanged); return; }
-      if (layoutChanged) sizeCanvas();
+      // lastSizeKey 为空 = onReady 时 overlay 尚无尺寸(如当时视频 display:none),持续重试直到定尺寸,
+      // 否则若之后 rect 未变(changed=false)canvas 会一直停在默认 300×150
+      if (layoutChanged || lastSizeKey === '') sizeCanvas();
       drive();
     },
     setVisible(vis) {

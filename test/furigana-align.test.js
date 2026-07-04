@@ -57,3 +57,24 @@ test('片假名读音 温厚→オンコウ', () => {
 test('表外字 → null 不抛错', () => {
   assert.equal(alignFurigana('々', 'のま'), null);
 });
+
+// 防 DoS:恶意超长 + 高分歧汉字串必须迅速返回,不得指数爆栈
+test('超长汉字串/读音:超上限直接回退,不卡死', () => {
+  const base = '生'.repeat(60);          // 高分歧汉字(几十个读音)
+  const reading = 'いく'.repeat(60);     // 长且前缀重叠、无法完全消费
+  const t0 = process.hrtime.bigint();
+  const r = alignFurigana(base, reading);
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.equal(r, null);                 // 超 MAX_KANJI → 回退
+  assert.ok(ms < 50, `对齐耗时 ${ms.toFixed(1)}ms,应远小于 50ms`);
+});
+
+// 记忆化:临界长度(上限内)高分歧串必须快(失败节点记忆化,非指数),无论最终是否对齐
+test('上限内高分歧串:记忆化保证快速返回', () => {
+  const base = '生'.repeat(24);          // = MAX_KANJI
+  const reading = 'ずり'.repeat(24);     // 前缀重叠、大量分支
+  const t0 = process.hrtime.bigint();
+  alignFurigana(base, reading);          // 结果不重要,只验证不指数爆栈
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.ok(ms < 50, `对齐耗时 ${ms.toFixed(1)}ms,应远小于 50ms`);
+});
