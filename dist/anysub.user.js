@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.12.0
+// @version      0.12.1
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -1548,11 +1548,26 @@
 		e.stopImmediatePropagation();
 		run();
 	}
+	var NON_TEXT_INPUT = new Set([
+		"range",
+		"checkbox",
+		"radio",
+		"button",
+		"submit",
+		"reset",
+		"file",
+		"image",
+		"color",
+		"hidden"
+	]);
 	function isTyping() {
 		const el = document.activeElement;
 		if (!el) return false;
+		if (el.isContentEditable) return true;
 		const tag = el.tagName;
-		return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+		if (tag === "TEXTAREA" || tag === "SELECT") return true;
+		if (tag === "INPUT") return !NON_TEXT_INPUT.has((el.type || "text").toLowerCase());
+		return false;
 	}
 	var EP_TOK = /^(s\d{1,2}e\d{1,3}|e\d{1,3}|v\d+|\d{1,4}|[0-9a-f]{8})$/;
 	function sourceTokens(name) {

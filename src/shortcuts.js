@@ -33,9 +33,17 @@ function onKey(e) {
   run();
 }
 
+// 非文本录入的 input 类型:焦点在这些上不算「正在输入」(播放器的音量/进度多为 range)
+const NON_TEXT_INPUT = new Set([
+  'range', 'checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'image', 'color', 'hidden',
+]);
+
 function isTyping() {
   const el = document.activeElement;
   if (!el) return false;
+  if (el.isContentEditable) return true;
   const tag = el.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (tag === 'INPUT') return !NON_TEXT_INPUT.has((el.type || 'text').toLowerCase());
+  return false;
 }
