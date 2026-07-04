@@ -7,6 +7,7 @@ import { loadFile } from './loader.js';
 import { collectVideos, isVisible } from './locator.js';
 import { toast } from './notify.js';
 import { saveSettings } from './storage.js';
+import { updateWatcher } from './watcher.js';
 
 // 持久化偏好(偏移与临时隐藏不入库)
 function persist() {
@@ -134,18 +135,6 @@ export function adjustOffset(delta) {
   toast('偏移 ' + state.offset.toFixed(1) + 's');
 }
 
-// 首次在视频页且未开悬浮球时,提示一次快捷键
-let hintShown = false;
-export function maybeFirstRunHint() {
-  if (hintShown || state.showFab) return;
-  hintShown = true;
-  try {
-    if (localStorage.getItem('anysub:hinted') === '1') return;
-    localStorage.setItem('anysub:hinted', '1');
-  } catch (_) { /* 隐私模式 */ }
-  toast('AnySub 已就绪 · 按 Alt+Shift+S 打开字幕面板');
-}
-
 function wireEvents() {
   const { fab, panel, fileInput } = refs;
 
@@ -192,7 +181,7 @@ function wireEvents() {
   const fabBtn = panel.querySelector('#anysub-tg-fab');
   fabBtn.addEventListener('click', () => {
     state.showFab = !state.showFab;
-    syncToggles(); updateFabVisibility(); persist();
+    syncToggles(); updateFabVisibility(); updateWatcher(); persist();
   });
 
   setupDrop(panel.querySelector('#anysub-drop')); // 仅面板区域接收拖放,避免劫持页面拖放
@@ -202,10 +191,10 @@ function wireEvents() {
 
 // 仅当页面存在 <video> 且用户开启了悬浮球时才显示;先便宜地查 light-DOM,再深扫 Shadow DOM
 export function updateFabVisibility() {
+  // 悬浮球关闭时无需检测视频(球始终隐藏),直接返回,零开销
+  if (!state.showFab) { refs.fab.style.display = 'none'; return; }
   const hasVideo = !!document.querySelector('video') || collectVideos().length > 0;
-  refs.fab.style.display = (state.showFab && hasVideo) ? '' : 'none';
-  if (!hasVideo && refs.panel) refs.panel.style.display = 'none';
-  if (hasVideo) maybeFirstRunHint();
+  refs.fab.style.display = hasVideo ? '' : 'none';
 }
 
 function syncVisBtn() {

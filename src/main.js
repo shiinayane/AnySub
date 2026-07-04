@@ -6,6 +6,7 @@ import { pickBestVideo, isVisible } from './locator.js';
 import { setVideo } from './controller.js';
 import { loadSettings } from './storage.js';
 import { initShortcuts } from './shortcuts.js';
+import { setReactHandler, updateWatcher } from './watcher.js';
 
 // 避免在同一 window 重复注入
 if (!window.__ANYSUB_LOADED__) {
@@ -19,8 +20,19 @@ function init() {
   injectStyle();
   buildUI();
   initShortcuts();
+  setReactHandler(react);
   updateFabVisibility();
-  watchVideos();
+  updateWatcher(); // 按需连接:仅当开了悬浮球或已加载字幕才观察 DOM
+}
+
+// DOM 变化时:SPA 换视频后重挂(仅字幕已加载时)+ 刷新悬浮球可见性
+function react() {
+  if (state.cues.length && state.video &&
+      (!state.video.isConnected || !isVisible(state.video))) {
+    const nv = pickBestVideo();
+    if (nv && nv !== state.video) setVideo(nv);
+  }
+  updateFabVisibility();
 }
 
 // 恢复持久化偏好(仅接受已知字段,防脏数据)
@@ -33,23 +45,4 @@ function restoreSettings() {
   if (typeof saved.color === 'string') s.color = saved.color;
   if (typeof saved.shortcutsEnabled === 'boolean') state.shortcutsEnabled = saved.shortcutsEnabled;
   if (typeof saved.showFab === 'boolean') state.showFab = saved.showFab;
-}
-
-// 监听 DOM 变化:切换胶囊可见性 + SPA 换视频后自动重新挂载(防抖,避免频繁全 DOM 遍历)
-function watchVideos() {
-  let timer = 0;
-  const react = () => {
-    // SPA 场景:当前视频被移除,或变得不可见(被换成另一个视频/隐藏)时,改挂到当前最佳视频
-    if (state.cues.length && state.video &&
-        (!state.video.isConnected || !isVisible(state.video))) {
-      const nv = pickBestVideo();
-      if (nv && nv !== state.video) setVideo(nv);
-    }
-    updateFabVisibility();
-  };
-  const mo = new MutationObserver(() => {
-    clearTimeout(timer);
-    timer = setTimeout(react, 300);
-  });
-  mo.observe(document.documentElement, { childList: true, subtree: true });
 }

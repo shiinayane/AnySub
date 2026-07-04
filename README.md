@@ -24,7 +24,8 @@ Chrome / Edge / Safari / Firefox 通用。
   - `Alt+Shift+S` 打开/关闭面板 · `Alt+Shift+V` 显示/隐藏字幕 · `Alt+Shift+O` 打开文件
   - `Alt+Shift+←/→` 偏移 ∓0.1s
   - 输入框内不响应;capture 阶段只吞自己的组合、不破坏站点快捷键;可整体开关
-- 🫧 **极简 UI**:默认无常驻悬浮球,快捷键唤出面板(可在面板里开启悬浮球);首次在视频页提示一次
+- 🫧 **极简 UI**:默认无常驻悬浮球、无任何弹窗打扰,快捷键唤出面板(可在面板里开启悬浮球)
+- 🪶 **零空闲开销**:未加载字幕且未开悬浮球时不连接任何观察器/定时器,注入每个页面几乎无成本
 - 💾 **设置持久化**:字号 / 位置 / 背景 / 颜色偏好自动记住(localStorage,按站点)
 - ⚙️ 渲染**事件驱动 + 定时兜底**(不依赖 rAF),后台标签/PiP 也稳定
 
@@ -81,6 +82,7 @@ src/
 ├── loader.js       载入流程 + 格式注册表(分派渲染器)
 ├── ui.js           设置面板 + 悬浮球 + 拖拽 + 选视频
 ├── shortcuts.js    键盘快捷键(Alt+Shift,capture 拦截)
+├── watcher.js      DOM 观察器按需生命周期(空闲断开)
 ├── styles.js       注入 CSS
 ├── storage.js      设置持久化(localStorage)
 └── notify.js       toast + 状态栏

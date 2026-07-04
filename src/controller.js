@@ -3,6 +3,7 @@ import { state } from './state.js';
 import { refs } from './refs.js';
 import { positionOverlay, ensureMounted, hideOverlay, invalidateLayout } from './overlay.js';
 import { toast, updateStatus } from './notify.js';
+import { updateWatcher } from './watcher.js';
 
 let intervalId = 0, driversAttached = false;
 let renderer = null;
@@ -102,5 +103,6 @@ export function clearSubtitle() {
   stopRender();
   if (renderer) { renderer.destroy(); renderer = null; }
   updateStatus();
+  updateWatcher(); // 字幕已清除 → 若也没开悬浮球,断开观察器
   toast('已清除字幕');
 }

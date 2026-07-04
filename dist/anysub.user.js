@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.8.0
+// @version      0.8.1
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -148,6 +148,27 @@
 		if (!refs.statusEl) return;
 		refs.statusEl.textContent = state.cues.length ? `已加载:${state.fileName} · ${state.cues.length} 条` : "未加载字幕";
 	}
+	var mo = null, timer = 0, onReact = () => {};
+	function setReactHandler(fn) {
+		onReact = fn;
+	}
+	function updateWatcher() {
+		const need = state.showFab || state.cues.length > 0;
+		if (need && !mo) {
+			mo = new MutationObserver(() => {
+				clearTimeout(timer);
+				timer = setTimeout(() => onReact(), 300);
+			});
+			mo.observe(document.documentElement, {
+				childList: true,
+				subtree: true
+			});
+		} else if (!need && mo) {
+			mo.disconnect();
+			mo = null;
+			clearTimeout(timer);
+		}
+	}
 	var intervalId = 0, driversAttached = false;
 	var renderer = null;
 	var onScroll, onResize, onFs, onVis;
@@ -259,6 +280,7 @@
 			renderer = null;
 		}
 		updateStatus();
+		updateWatcher();
 		toast("已清除字幕");
 	}
 	function readSubtitleFile(file) {
@@ -671,6 +693,7 @@
 			setRenderer(fmt.create(parsed));
 			applyStyle();
 			startRender();
+			updateWatcher();
 			updateStatus();
 			toast(`已挂载 ${parsed.cues.length} 条字幕`);
 		}).catch((err) => {
@@ -810,16 +833,6 @@
 		refresh();
 		toast("偏移 " + state.offset.toFixed(1) + "s");
 	}
-	var hintShown = false;
-	function maybeFirstRunHint() {
-		if (hintShown || state.showFab) return;
-		hintShown = true;
-		try {
-			if (localStorage.getItem("anysub:hinted") === "1") return;
-			localStorage.setItem("anysub:hinted", "1");
-		} catch (_) {}
-		toast("AnySub 已就绪 · 按 Alt+Shift+S 打开字幕面板");
-	}
 	function wireEvents() {
 		const { fab, panel, fileInput } = refs;
 		fab.addEventListener("click", () => {
@@ -889,6 +902,7 @@
 			state.showFab = !state.showFab;
 			syncToggles();
 			updateFabVisibility();
+			updateWatcher();
 			persist();
 		});
 		setupDrop(panel.querySelector("#anysub-drop"));
@@ -896,10 +910,12 @@
 		syncControls();
 	}
 	function updateFabVisibility() {
+		if (!state.showFab) {
+			refs.fab.style.display = "none";
+			return;
+		}
 		const hasVideo = !!document.querySelector("video") || collectVideos().length > 0;
-		refs.fab.style.display = state.showFab && hasVideo ? "" : "none";
-		if (!hasVideo && refs.panel) refs.panel.style.display = "none";
-		if (hasVideo) maybeFirstRunHint();
+		refs.fab.style.display = hasVideo ? "" : "none";
 	}
 	function syncVisBtn() {
 		const b = refs.panel.querySelector("#anysub-vis");
@@ -1113,8 +1129,16 @@
 		injectStyle();
 		buildUI();
 		initShortcuts();
+		setReactHandler(react);
 		updateFabVisibility();
-		watchVideos();
+		updateWatcher();
+	}
+	function react() {
+		if (state.cues.length && state.video && (!state.video.isConnected || !isVisible(state.video))) {
+			const nv = pickBestVideo();
+			if (nv && nv !== state.video) setVideo(nv);
+		}
+		updateFabVisibility();
 	}
 	function restoreSettings() {
 		const saved = loadSettings();
@@ -1125,22 +1149,5 @@
 		if (typeof saved.color === "string") s.color = saved.color;
 		if (typeof saved.shortcutsEnabled === "boolean") state.shortcutsEnabled = saved.shortcutsEnabled;
 		if (typeof saved.showFab === "boolean") state.showFab = saved.showFab;
-	}
-	function watchVideos() {
-		let timer = 0;
-		const react = () => {
-			if (state.cues.length && state.video && (!state.video.isConnected || !isVisible(state.video))) {
-				const nv = pickBestVideo();
-				if (nv && nv !== state.video) setVideo(nv);
-			}
-			updateFabVisibility();
-		};
-		new MutationObserver(() => {
-			clearTimeout(timer);
-			timer = setTimeout(react, 300);
-		}).observe(document.documentElement, {
-			childList: true,
-			subtree: true
-		});
 	}
 })();

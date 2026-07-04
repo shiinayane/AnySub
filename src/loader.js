@@ -9,6 +9,7 @@ import { createTextRenderer } from './render-text.js';
 import { createAssRenderer } from './render-ass.js';
 import { parseAss } from './parse-ass.js';
 import { toast, updateStatus } from './notify.js';
+import { updateWatcher } from './watcher.js';
 
 // 格式注册表:test 命中即用其 parse(填充文本保底 cues)+ create(渲染器)。
 const FORMATS = [
@@ -46,6 +47,7 @@ export function loadFile(file) {
       setRenderer(fmt.create(parsed));
       applyStyle();
       startRender();
+      updateWatcher(); // 字幕已加载 → 需要观察 SPA 换视频
       updateStatus();
       toast(`已挂载 ${parsed.cues.length} 条字幕`);
     })
