@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AnySub · 通用字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.13.0
+// @version      0.14.0
 // @author       shiinayane
 // @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
 // @match        *://*/*
@@ -16,6 +16,8 @@
 		video: null,
 		cues: [],
 		offset: 0,
+		offsets: {},
+		offsetKey: "",
 		fileName: "",
 		active: false,
 		hidden: false,
@@ -486,6 +488,38 @@
 			episode
 		};
 	}
+	var EP_TOK = /^(s\d{1,2}e\d{1,3}|e\d{1,3}|v\d+|\d{1,4}|[0-9a-f]{8})$/;
+	function sourceTokens(name) {
+		const out = new Set();
+		for (const t of String(name || "").toLowerCase().split(/[^a-z0-9]+/)) if (t && !EP_TOK.test(t)) out.add(t);
+		return out;
+	}
+	function fileTokens(name) {
+		return String(name || "").toLowerCase().replace(/\.(ass|ssa|srt|vtt|sub|sbv)$/i, "").split(/[^a-z0-9぀-ヿ一-鿿]+/).filter((t) => t && !EP_TOK.test(t));
+	}
+	function pickSameSource(files, refName) {
+		if (!refName) return null;
+		const refSig = sourceTokens(refName);
+		const useSig = refSig.size >= 1;
+		const refFull = new Set(fileTokens(refName));
+		let best = null, bestScore = -1, second = -1;
+		for (const f of files) {
+			const s = useSig ? jaccard(refSig, sourceTokens(f.name)) : jaccard(refFull, new Set(fileTokens(f.name)));
+			if (s > bestScore) {
+				second = bestScore;
+				bestScore = s;
+				best = f;
+			} else if (s > second) second = s;
+		}
+		if (best && (bestScore >= (useSig ? .5 : .6) || bestScore >= .34 && bestScore - second >= .34)) return best;
+		return null;
+	}
+	function jaccard(a, b) {
+		let inter = 0;
+		for (const t of a) if (b.has(t)) inter++;
+		const uni = a.size + b.size - inter;
+		return uni ? inter / uni : 0;
+	}
 	function collectVideos(root, acc) {
 		acc = acc || [];
 		root = root || document;
@@ -846,6 +880,9 @@
 		state.loadedSeries = p.series;
 		state.loadedEpisode = p.episode;
 		state.lastOnline = null;
+		state.offsetKey = (p.series || "") + "|" + [...sourceTokens(name)].sort().join(",");
+		const remembered = state.offsets[state.offsetKey];
+		state.offset = typeof remembered === "number" ? remembered : 0;
 		invalidateLayout();
 		setRenderer(fmt.create(parsed));
 		applyStyle();
@@ -865,7 +902,8 @@
 			color: s.color,
 			showFab: state.showFab,
 			rubyParen: state.rubyParen,
-			jimakuKey: state.jimakuKey
+			jimakuKey: state.jimakuKey,
+			offsets: state.offsets
 		});
 	}
 	function loadSettings() {
@@ -1194,8 +1232,8 @@
     <button id="anysub-tg-fab" class="anysub-toggle">悬浮球:关</button>
   </div>
   <div class="anysub-legend">
-    <div>Alt+Shift+S 面板 · F 在线找 · V 显隐 · O 本地</div>
-    <div>Alt+Shift+← / → 偏移 ∓0.1s</div>
+    <div>Ctrl/Alt+Shift + S 面板 · F 在线 · V 显隐 · O 本地</div>
+    <div>Ctrl/Alt+Shift + ← / → 偏移 ∓0.1s</div>
   </div>
   <div class="anysub-row anysub-status" id="anysub-status">未加载字幕</div>
 `;
@@ -1238,6 +1276,8 @@
 		const show = p.style.display === "none" || !p.style.display;
 		p.style.display = show ? "block" : "none";
 		if (show) {
+			const inp = p.querySelector("#anysub-offset");
+			if (inp) inp.value = state.offset.toFixed(1);
 			syncVisBtn();
 			positionPanel();
 		}
@@ -1250,7 +1290,15 @@
 		const inp = refs.panel && refs.panel.querySelector("#anysub-offset");
 		if (inp) inp.value = state.offset.toFixed(1);
 		refresh();
+		rememberOffset();
 		toast("偏移 " + state.offset.toFixed(1) + "s");
+	}
+	function rememberOffset() {
+		if (!state.offsetKey) return;
+		state.offsets[state.offsetKey] = state.offset;
+		const keys = Object.keys(state.offsets);
+		if (keys.length > 200) delete state.offsets[keys[0]];
+		persist();
 	}
 	function wireEvents() {
 		const { fab, panel, fileInput } = refs;
@@ -1285,6 +1333,7 @@
 			if (!isNaN(val)) {
 				state.offset = val;
 				refresh();
+				rememberOffset();
 			}
 		});
 		const fontR = panel.querySelector("#anysub-font");
@@ -1528,7 +1577,9 @@
 		window.addEventListener("keydown", onKey, true);
 	}
 	function onKey(e) {
-		if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) return;
+		const alt = e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey;
+		const ctrl = e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey;
+		if (!alt && !ctrl) return;
 		if (isTyping()) return;
 		const run = MAP[e.code];
 		if (!run) return;
@@ -1556,38 +1607,6 @@
 		if (tag === "TEXTAREA" || tag === "SELECT") return true;
 		if (tag === "INPUT") return !NON_TEXT_INPUT.has((el.type || "text").toLowerCase());
 		return false;
-	}
-	var EP_TOK = /^(s\d{1,2}e\d{1,3}|e\d{1,3}|v\d+|\d{1,4}|[0-9a-f]{8})$/;
-	function sourceTokens(name) {
-		const out = new Set();
-		for (const t of String(name || "").toLowerCase().split(/[^a-z0-9]+/)) if (t && !EP_TOK.test(t)) out.add(t);
-		return out;
-	}
-	function fileTokens(name) {
-		return String(name || "").toLowerCase().replace(/\.(ass|ssa|srt|vtt|sub|sbv)$/i, "").split(/[^a-z0-9぀-ヿ一-鿿]+/).filter((t) => t && !EP_TOK.test(t));
-	}
-	function pickSameSource(files, refName) {
-		if (!refName) return null;
-		const refSig = sourceTokens(refName);
-		const useSig = refSig.size >= 1;
-		const refFull = new Set(fileTokens(refName));
-		let best = null, bestScore = -1, second = -1;
-		for (const f of files) {
-			const s = useSig ? jaccard(refSig, sourceTokens(f.name)) : jaccard(refFull, new Set(fileTokens(f.name)));
-			if (s > bestScore) {
-				second = bestScore;
-				bestScore = s;
-				best = f;
-			} else if (s > second) second = s;
-		}
-		if (best && (bestScore >= (useSig ? .5 : .6) || bestScore >= .34 && bestScore - second >= .34)) return best;
-		return null;
-	}
-	function jaccard(a, b) {
-		let inter = 0;
-		for (const t of a) if (b.has(t)) inter++;
-		const uni = a.size + b.size - inter;
-		return uni ? inter / uni : 0;
 	}
 	var timer = 0;
 	var busy = false;
@@ -1677,5 +1696,6 @@
 		if (typeof saved.showFab === "boolean") state.showFab = saved.showFab;
 		if (typeof saved.rubyParen === "boolean") state.rubyParen = saved.rubyParen;
 		if (typeof saved.jimakuKey === "string") state.jimakuKey = saved.jimakuKey;
+		if (saved.offsets && typeof saved.offsets === "object") state.offsets = saved.offsets;
 	}
 })();

@@ -48,4 +48,5 @@ function restoreSettings() {
   if (typeof saved.showFab === 'boolean') state.showFab = saved.showFab;
   if (typeof saved.rubyParen === 'boolean') state.rubyParen = saved.rubyParen;
   if (typeof saved.jimakuKey === 'string') state.jimakuKey = saved.jimakuKey;
+  if (saved.offsets && typeof saved.offsets === 'object') state.offsets = saved.offsets;
 }

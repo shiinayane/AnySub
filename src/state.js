@@ -3,6 +3,8 @@ export const state = {
   video: null,
   cues: [],
   offset: 0,           // 秒,正 = 字幕延后
+  offsets: {},         // 按「番剧|源特征」记住的偏移(持久化);同番剧同源跨集自动恢复
+  offsetKey: '',       // 当前字幕的偏移 key(不持久化)
   fileName: '',
   active: false,       // 渲染循环是否运行
   hidden: false,       // 字幕临时隐藏(快捷键切换,不持久化)

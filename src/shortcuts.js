@@ -22,8 +22,10 @@ export function initShortcuts() {
 
 function onKey(e) {
   // 快捷键恒启用(不提供关闭开关,避免与「无悬浮球」叠加造成无法打开面板的死锁)
-  // 必须恰好是 Alt+Shift(排除再叠加 Ctrl/Meta 的组合,避免误吞系统快捷键)
-  if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) return;
+  // 前缀同时接受 Alt+Shift 与 Ctrl+Shift(用哪个都行);排除再叠加另一修饰键 / Meta
+  const alt = e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey;
+  const ctrl = e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey;
+  if (!alt && !ctrl) return;
   if (isTyping()) return;
   const run = MAP[e.code];
   if (!run) return;

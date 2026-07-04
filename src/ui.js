@@ -64,8 +64,8 @@ const PANEL_HTML = `
     <button id="anysub-tg-fab" class="anysub-toggle">悬浮球:关</button>
   </div>
   <div class="anysub-legend">
-    <div>Alt+Shift+S 面板 · F 在线找 · V 显隐 · O 本地</div>
-    <div>Alt+Shift+← / → 偏移 ∓0.1s</div>
+    <div>Ctrl/Alt+Shift + S 面板 · F 在线 · V 显隐 · O 本地</div>
+    <div>Ctrl/Alt+Shift + ← / → 偏移 ∓0.1s</div>
   </div>
   <div class="anysub-row anysub-status" id="anysub-status">未加载字幕</div>
 `;
@@ -121,7 +121,12 @@ export function togglePanel() {
   const p = refs.panel;
   const show = p.style.display === 'none' || !p.style.display;
   p.style.display = show ? 'block' : 'none';
-  if (show) { syncVisBtn(); positionPanel(); }
+  if (show) {
+    const inp = p.querySelector('#anysub-offset');
+    if (inp) inp.value = state.offset.toFixed(1); // 偏移可能在加载时被记忆恢复
+    syncVisBtn();
+    positionPanel();
+  }
 }
 
 export function openFilePicker() { refs.fileInput.click(); }
@@ -131,7 +136,17 @@ export function adjustOffset(delta) {
   const inp = refs.panel && refs.panel.querySelector('#anysub-offset');
   if (inp) inp.value = state.offset.toFixed(1);
   refresh();
+  rememberOffset();
   toast('偏移 ' + state.offset.toFixed(1) + 's');
+}
+
+// 按「番剧|源特征」记住当前偏移(持久化);同番剧同源下次自动恢复
+function rememberOffset() {
+  if (!state.offsetKey) return;
+  state.offsets[state.offsetKey] = state.offset;
+  const keys = Object.keys(state.offsets);
+  if (keys.length > 200) delete state.offsets[keys[0]]; // 软上限
+  persist();
 }
 
 function wireEvents() {
@@ -154,7 +169,7 @@ function wireEvents() {
     b.addEventListener('click', () => adjustOffset(parseFloat(b.dataset.off))));
   panel.querySelector('#anysub-offset').addEventListener('input', (e) => {
     const val = parseFloat(e.target.value);
-    if (!isNaN(val)) { state.offset = val; refresh(); }
+    if (!isNaN(val)) { state.offset = val; refresh(); rememberOffset(); }
   });
 
   const fontR = panel.querySelector('#anysub-font');

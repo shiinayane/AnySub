@@ -3,6 +3,7 @@ import { state } from './state.js';
 import { readSubtitleFile, decodeBuffer } from './decode.js';
 import { parseSubtitle } from './parse.js';
 import { parseVideoTitle } from './title-parse.js';
+import { sourceTokens } from './match.js';
 import { pickBestVideo } from './locator.js';
 import { setVideo, startRender, setRenderer, applyStyle } from './controller.js';
 import { invalidateLayout } from './overlay.js';
@@ -59,6 +60,10 @@ export function loadFromText(text, name) {
   state.loadedSeries = p.series;
   state.loadedEpisode = p.episode;
   state.lastOnline = null;
+  // 偏移记忆:按「番剧|源特征」恢复上次的偏移(同番剧同源跨集稳定);无记录则归 0
+  state.offsetKey = (p.series || '') + '|' + [...sourceTokens(name)].sort().join(',');
+  const remembered = state.offsets[state.offsetKey];
+  state.offset = (typeof remembered === 'number') ? remembered : 0;
   invalidateLayout();
   setRenderer(fmt.create(parsed));
   applyStyle();
