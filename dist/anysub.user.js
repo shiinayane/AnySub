@@ -104,7 +104,7 @@
   .anysub-cuebox rt{font-size:.5em;font-weight:400;opacity:.9;line-height:1;}
   .anysub-cuebox .anysub-spk{font-size:.82em;font-weight:500;opacity:.66;margin-right:.15em;}
   .anysub-cuebox .anysub-sfx{font-style:italic;opacity:.68;}
-  .anysub-cuebox .anysub-voice{font-style:italic;opacity:.9;}
+  .anysub-cuebox .anysub-voice{font-style:italic;color:#8fb8ff;}
   .anysub-cuebox .anysub-book{background:rgba(128,128,128,.24);border-radius:5px;padding:0 .35em;}
   .anysub-cuebox .anysub-lyric{font-style:italic;}
   #anysub-fab{position:fixed;bottom:28%;z-index:2147483646;width:30px;height:30px;
@@ -996,21 +996,28 @@
 			default: return applyRuby(text, state.rubyParen);
 		}
 	}
-	function cueToHtml(cue) {
-		const text = String(cue.text == null ? "" : cue.text);
-		if (!state.enhance) return text.split("<br>").map((l) => applyRuby(l, state.rubyParen)).join("<br>");
-		let st = cue._spanIn || INIT_SPAN;
-		const out = [];
-		for (const line of text.split("<br>")) {
-			const c = stepCueLine(line, state.speakers, st);
-			out.push(typedHtml(line, c));
-			st = c.state;
+	function buildSegments(active) {
+		const segs = [];
+		for (const cue of active) {
+			let st = cue._spanIn || INIT_SPAN;
+			let cur = null;
+			for (const line of String(cue.text == null ? "" : cue.text).split("<br>")) {
+				const c = stepCueLine(line, state.speakers, st);
+				st = c.state;
+				const html = state.enhance ? typedHtml(line, c) : applyRuby(line, state.rubyParen);
+				const turnStart = c.type === "dialogue" || c.type === "speaker";
+				if (cur === null || turnStart) {
+					cur = [html];
+					segs.push(cur);
+				} else cur.push(html);
+			}
 		}
-		return out.join("<br>");
+		return segs.map((lines) => lines.join("<br>"));
 	}
 	function createTextRenderer() {
 		let boxTop = null, boxBottom = null;
 		let visible = true;
+		let lastKey = "";
 		function outline(c) {
 			return `-2px -2px 1px ${c},2px -2px 1px ${c},-2px 2px 1px ${c},2px 2px 1px ${c},0 0 3px ${c}`;
 		}
@@ -1023,7 +1030,6 @@
 			b.className = "anysub-cuebox";
 			b.dataset.anchor = anchor;
 			b.style.display = "none";
-			b.__lastKey = "";
 			return b;
 		}
 		function styleBox(b) {
@@ -1042,20 +1048,13 @@
 				b.style.padding = ".08em .4em";
 			}
 		}
-		function paint(box, cues) {
-			const key = (state.rubyParen ? "1" : "0") + (state.enhance ? "1" : "0") + "|" + cues.map((c) => (c._spanIn ? c._spanIn.span + (c._spanIn.lyric ? "L" : "") : "") + ":" + c.text).join(String.fromCharCode(1));
-			if (box.__lastKey === key) return;
-			box.__lastKey = key;
-			const html = cues.map(cueToHtml).join("<br>");
-			box.innerHTML = html;
-			box.style.display = html ? "inline-block" : "none";
-		}
 		return {
 			mount() {
 				boxTop = makeBox("top");
 				boxBottom = makeBox("bottom");
 				refs.overlay.appendChild(boxTop);
 				refs.overlay.appendChild(boxBottom);
+				lastKey = "";
 				this.applyStyle();
 			},
 			setVisible(v) {
@@ -1063,9 +1062,7 @@
 				if (!v) eachBox((b) => {
 					b.style.display = "none";
 				});
-				else eachBox((b) => {
-					b.__lastKey = "";
-				});
+				else lastKey = "";
 			},
 			renderAt(v, rect, layoutChanged) {
 				if (!boxTop) return;
@@ -1092,15 +1089,23 @@
 					if (c.start > t) break;
 					if (t < c.end) active.push(c);
 				}
-				let primary = active, secondary = [];
-				if (state.multiSplit && active.length >= 2) {
-					primary = [active[active.length - 1]];
-					secondary = active.slice(0, active.length - 1);
+				const key = (state.rubyParen ? "1" : "0") + (state.enhance ? "1" : "0") + (state.multiSplit ? "1" : "0") + state.subPos + "|" + active.map((c) => (c._spanIn ? c._spanIn.span + (c._spanIn.lyric ? "L" : "") : "") + ":" + c.text).join(String.fromCharCode(1));
+				if (key === lastKey) return;
+				lastKey = key;
+				const segs = buildSegments(active);
+				let primary = segs, secondary = [];
+				if (state.multiSplit && segs.length >= 2) {
+					primary = [segs[segs.length - 1]];
+					secondary = segs.slice(0, -1);
 				}
 				const pBox = state.subPos === "top" ? boxTop : boxBottom;
 				const sBox = state.subPos === "top" ? boxBottom : boxTop;
-				paint(pBox, primary);
-				paint(sBox, secondary);
+				const pHtml = primary.join("<br>");
+				const sHtml = secondary.join("<br>");
+				pBox.innerHTML = pHtml;
+				pBox.style.display = pHtml ? "inline-block" : "none";
+				sBox.innerHTML = sHtml;
+				sBox.style.display = sHtml ? "inline-block" : "none";
 			},
 			applyStyle() {
 				eachBox(styleBox);
