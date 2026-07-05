@@ -3109,6 +3109,7 @@
 		}
 	}
 	var MIN_DURATION = 120;
+	var MIN_COVER = .6;
 	var lastOfferedKey = null;
 	var lastUrl = "", retryTimer = 0, waitTries = 0;
 	function initAutoOffer() {
@@ -3124,7 +3125,14 @@
 	}
 	function playingFeature() {
 		const vids = [document.querySelector("video")].concat(collectVideos()).filter(Boolean);
-		for (const v of vids) if (isFinite(v.duration) && v.duration > MIN_DURATION && !v.paused && v.currentTime > 0) return v;
+		const vw = window.innerWidth || 1, vh = window.innerHeight || 1;
+		for (const v of vids) {
+			if (!(isFinite(v.duration) && v.duration > MIN_DURATION && !v.paused && v.currentTime > 0)) continue;
+			const audible = !v.muted && v.volume > 0;
+			const r = v.getBoundingClientRect();
+			const cover = r.width * r.height / (vw * vh);
+			if (audible || cover > MIN_COVER) return v;
+		}
 		return null;
 	}
 	function check() {

@@ -13,6 +13,7 @@ import { onEpisodeChange } from './episode-signal.js';
 import { t } from './i18n.js';
 
 const MIN_DURATION = 120; // 秒:正片阈值,滤掉 hero 预览/短预告(动画正片均 20 分钟+)
+const MIN_COVER = 0.6;    // 视口占比:主播放器 vs 横幅预览(给静音观看者兜底)
 let lastOfferedKey = null;
 let lastUrl = '';
 let pollTimer = 0, retryTimer = 0, waitTries = 0;
@@ -29,11 +30,19 @@ export function initAutoOffer() {
   onEpisodeChange(check); // 切集后(由 episode-signal 统一探测)再探:新一集仍没字幕则再提示
 }
 
-// 「正片在播放」判定:时长足够长、已开始播放且未暂停。首页/详情页的 hero 预览多为短循环 → 被滤掉。
+// 「用户在看正片」判定:时长够长 + 已起播未暂停,且满足以下之一:
+//   · 有声(!muted && volume>0)——最强信号:自动播放的 hero 预览按浏览器策略必然静音,
+//     带声音说明是用户手势主动播放(URL 不变也能区分);
+//   · 或占据大半视口——给「静音观看」的人兜底(主播放器 vs 横幅预览)。
 function playingFeature() {
   const vids = [document.querySelector('video')].concat(collectVideos()).filter(Boolean);
+  const vw = window.innerWidth || 1, vh = window.innerHeight || 1;
   for (const v of vids) {
-    if (isFinite(v.duration) && v.duration > MIN_DURATION && !v.paused && v.currentTime > 0) return v;
+    if (!(isFinite(v.duration) && v.duration > MIN_DURATION && !v.paused && v.currentTime > 0)) continue;
+    const audible = !v.muted && v.volume > 0;
+    const r = v.getBoundingClientRect();
+    const cover = (r.width * r.height) / (vw * vh);
+    if (audible || cover > MIN_COVER) return v;
   }
   return null;
 }
