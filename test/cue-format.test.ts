@@ -7,9 +7,10 @@ import {
   computeSpanStates,
   INIT_SPAN,
 } from '../src/cue-format.js';
+import type { Cue } from '../src/types.js';
 
 // 逐行推进一段文本,返回每行 type 数组(从初始状态起)
-function run(lines) {
+function run(lines: string[]) {
   let st = INIT_SPAN;
   return lines.map((l) => {
     const r = stepCueLine(l, null, st);
@@ -46,7 +47,7 @@ test('独立括号:名字在词表 → speaker', () => {
 });
 
 test('话者名内嵌注音 （千束（ちさと))台词 → dialogue,name 保留注音', () => {
-  assert.deepEqual(classifyCueLine('（千束（ちさと））今日の天気もいいな', new Set()), {
+  assert.deepEqual(classifyCueLine('（千束（ちさと））今日の天気もいいな', new Set<string>()), {
     type: 'dialogue',
     name: '千束（ちさと）',
     rest: '今日の天気もいいな',
@@ -145,7 +146,7 @@ test('注音 漢字《かな》整行内平衡,不触发 book 跨度', () => {
 });
 
 test('computeSpanStates:跨 cue 相邻延续,重叠/大间隔则重置', () => {
-  const cues = [
+  const cues: Cue[] = [
     { start: 0, end: 3, text: '〈声が' }, // 开 voice 未闭
     { start: 3, end: 6, text: '続いている〉' }, // 相邻 → 继承 voice
     { start: 6, end: 9, text: 'ただの台詞' }, // voice 已闭 → none
@@ -153,9 +154,9 @@ test('computeSpanStates:跨 cue 相邻延续,重叠/大间隔则重置', () => {
     { start: 21, end: 24, text: '別の人の声' }, // 与上一条重叠 → 重置,不继承
   ];
   computeSpanStates(cues);
-  assert.equal(cues[0]._spanIn.span, 'none');
-  assert.equal(cues[1]._spanIn.span, 'voice'); // 继承
-  assert.equal(cues[2]._spanIn.span, 'none');
-  assert.equal(cues[3]._spanIn.span, 'none');
-  assert.equal(cues[4]._spanIn.span, 'none'); // 重叠 → 不继承
+  assert.equal(cues[0]._spanIn!.span, 'none');
+  assert.equal(cues[1]._spanIn!.span, 'voice'); // 继承
+  assert.equal(cues[2]._spanIn!.span, 'none');
+  assert.equal(cues[3]._spanIn!.span, 'none');
+  assert.equal(cues[4]._spanIn!.span, 'none'); // 重叠 → 不继承
 });

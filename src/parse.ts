@@ -1,9 +1,10 @@
 // 字幕解析:SRT / VTT → 统一 cue 结构 {start,end,text},按时间排序
+import type { Cue } from './types.js';
 
 const TIME_RE =
   /(\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}|\d{1,2}:\d{2}[.,]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}|\d{1,2}:\d{2}[.,]\d{1,3})/;
 
-export function parseSubtitle(text, fileName) {
+export function parseSubtitle(text: string, fileName?: string): Cue[] {
   text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const isVtt = /^﻿?WEBVTT/.test(text) || /\.vtt$/i.test(fileName || '');
   const cues = isVtt ? parseVtt(text) : parseSrt(text);
@@ -12,7 +13,7 @@ export function parseSubtitle(text, fileName) {
 }
 
 // "00:01:02,500" / "01:02.500" → 秒;非法(NaN / 超过 3 段)返回 NaN
-export function timeToSeconds(t) {
+export function timeToSeconds(t: string): number {
   t = t.trim().replace(',', '.');
   const parts = t.split(':');
   if (parts.length > 3) return NaN;
@@ -26,9 +27,9 @@ export function timeToSeconds(t) {
 }
 
 // 按时间戳行扫描:cue 正文里的空行不会被误当作块边界(修正数据丢失)
-export function parseSrt(text) {
+export function parseSrt(text: string): Cue[] {
   const lines = text.split('\n');
-  const cues = [];
+  const cues: Cue[] = [];
   let i = 0;
   while (i < lines.length) {
     const m = lines[i].match(TIME_RE);
@@ -37,7 +38,7 @@ export function parseSrt(text) {
       continue;
     }
     i++;
-    const body = [];
+    const body: string[] = [];
     while (i < lines.length && !TIME_RE.test(lines[i])) {
       body.push(lines[i]);
       i++;
@@ -51,9 +52,9 @@ export function parseSrt(text) {
   return cues;
 }
 
-export function parseVtt(text) {
+export function parseVtt(text: string): Cue[] {
   const lines = text.split('\n');
-  const cues = [];
+  const cues: Cue[] = [];
   let i = 0;
   while (i < lines.length) {
     const m = lines[i].match(TIME_RE);
@@ -63,7 +64,7 @@ export function parseVtt(text) {
     }
     i++;
     // VTT 规范:空行即 cue 分隔符
-    const body = [];
+    const body: string[] = [];
     while (i < lines.length && lines[i].trim() !== '' && !TIME_RE.test(lines[i])) {
       body.push(lines[i]);
       i++;
@@ -73,7 +74,7 @@ export function parseVtt(text) {
   return cues;
 }
 
-function pushCue(cues, m, bodyLines) {
+function pushCue(cues: Cue[], m: RegExpMatchArray, bodyLines: string[]): void {
   const start = timeToSeconds(m[1]);
   const end = timeToSeconds(m[2]);
   const body = bodyLines.join('\n').trim();
@@ -82,7 +83,7 @@ function pushCue(cues, m, bodyLines) {
 }
 
 // XSS 安全:先转义所有 HTML,再仅还原「无属性」的 i/b/u 标签,换行转 <br>
-export function sanitize(s) {
+export function sanitize(s: string): string {
   s = s.replace(/\{\\[^}]*\}/g, ''); // ASS override {\...}
   s = s.replace(/\{[^}]*\}/g, ''); // SRT {...}
   s = s.replace(/<\/?font[^>]*>/gi, ''); // 常见 font 标签:去标签留内容
@@ -92,6 +93,6 @@ export function sanitize(s) {
   return s;
 }
 
-function escapeHtml(s) {
+function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

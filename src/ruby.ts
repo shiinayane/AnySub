@@ -11,19 +11,19 @@ const RE_AOZORA_BAR = new RegExp('｜([^｜《》]+)《([' + KANA + ']+)》', 'g
 const RE_AOZORA = new RegExp('([' + KANJI + ']+)《([' + KANA + ']+)》', 'g');
 const RE_PAREN = new RegExp('([' + KANJI + ']+)[（(]([' + KANA + ']+)[）)]', 'g');
 
-export function applyRuby(text, allowParen) {
+export function applyRuby(text: string, allowParen?: boolean): string {
   if (!text) return text;
   // 快速跳过:没有任何可能的注音标记时直接返回
   if (!/[《｜]/.test(text) && !(allowParen && /[（(]/.test(text))) return text;
-  text = text.replace(RE_AOZORA_BAR, (m, base, ruby) => tag(base, ruby));
-  text = text.replace(RE_AOZORA, (m, base, ruby) => tag(base, ruby));
-  if (allowParen) text = text.replace(RE_PAREN, (m, base, ruby) => tag(base, ruby));
+  text = text.replace(RE_AOZORA_BAR, (_m, base, ruby) => tag(base, ruby));
+  text = text.replace(RE_AOZORA, (_m, base, ruby) => tag(base, ruby));
+  if (allowParen) text = text.replace(RE_PAREN, (_m, base, ruby) => tag(base, ruby));
   return text;
 }
 
 // 优先逐字对齐(读音精确落到各汉字,后缀读音不再铺满整串);对不齐则整串注音回退。
 // base/ruby 均来自正则捕获的「纯汉字 / 纯假名」,不含需转义字符。
-function tag(base, ruby) {
+function tag(base: string, ruby: string): string {
   const a = alignFurigana(base, ruby);
   if (!a) return group(base, ruby);
   let html = a.plain; // 对不齐、留作纯文本的前缀汉字
@@ -33,6 +33,6 @@ function tag(base, ruby) {
   return html;
 }
 
-function group(base, ruby) {
+function group(base: string, ruby: string): string {
   return '<ruby>' + base + '<rt>' + ruby + '</rt></ruby>';
 }

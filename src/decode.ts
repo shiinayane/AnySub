@@ -1,10 +1,10 @@
 // 读取字幕文件 + 编码探测(UTF-8 → GBK → Big5 回退)
 
-export function readSubtitleFile(file) {
+export function readSubtitleFile(file: File): Promise<string> {
   return file.arrayBuffer().then((buf) => decodeBuffer(new Uint8Array(buf)));
 }
 
-export function decodeBuffer(bytes) {
+export function decodeBuffer(bytes: Uint8Array): string {
   if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf)
     return new TextDecoder('utf-8').decode(bytes.subarray(3));
   if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe)
@@ -15,7 +15,7 @@ export function decodeBuffer(bytes) {
     return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch (_) {
     // 非 UTF-8:在常见 CJK 编码中选「替换字符最少」者(动画字幕常见 Shift-JIS / EUC-JP)
-    let best = null,
+    let best: string | null = null,
       bestScore = Infinity;
     for (const enc of ['shift_jis', 'euc-jp', 'gbk', 'big5']) {
       try {

@@ -23,7 +23,12 @@ test('EVA:各源 ep1 → 各自选中 ep2 同源(长集标题不再稀释)', () 
     ],
     ['[Erai-raws] Neon Genesis Evangelion - 01 [720p][JPN].ass', 'Erai'],
   ];
-  const marker = { Netflix: /Netflix/, DMM: /DMM/, McBalls: /McBalls/, Erai: /Erai/ };
+  const marker: Record<string, RegExp> = {
+    Netflix: /Netflix/,
+    DMM: /DMM/,
+    McBalls: /McBalls/,
+    Erai: /Erai/,
+  };
   for (const [ref, src] of cases) {
     const picked = pickSameSource(EVA_EP2, ref);
     assert.ok(picked, `${src}: 应匹配到同源`);
@@ -45,6 +50,7 @@ test('薬屋:Netflix ep1 → ep2 Netflix(回归,不误配字幕组)', () => {
     { name: '[Nekomoe kissaten] Kusuriya no Hitorigoto [02][Web].JPSC.ass' },
   ];
   const picked = pickSameSource(ep2, '薬屋のひとりごと.S01E01.猫猫.WEBRip.Netflix.ja[cc].srt');
+  assert.ok(picked);
   assert.match(picked.name, /Netflix/);
 });
 
@@ -87,11 +93,11 @@ test('精确命中唯一:DMM 全角空格标题 → 自动选中第二季(不选
 });
 
 test('精确命中唯一:查询第一季标题只命中第一季', () => {
-  assert.equal(pickExactAnime(MIA, 'メイドインアビス').native, 'メイドインアビス');
+  assert.equal(pickExactAnime(MIA, 'メイドインアビス')?.native, 'メイドインアビス');
 });
 
 test('罗马字大小写归一后精确命中', () => {
-  assert.equal(pickExactAnime(MIA, 'made in abyss').romaji, 'Made in Abyss');
+  assert.equal(pickExactAnime(MIA, 'made in abyss')?.romaji, 'Made in Abyss');
 });
 
 test('部分/不精确 → 不自动选(null)', () => {

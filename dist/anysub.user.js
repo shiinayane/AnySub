@@ -382,15 +382,19 @@
 		"zh",
 		"ja"
 	];
+	function isLocale(x) {
+		return x != null && SUPPORTED.includes(x);
+	}
 	function getLocale() {
-		if (state.lang && SUPPORTED.includes(state.lang)) return state.lang;
-		const l = (navigator.language || navigator.userLanguage || "en").toLowerCase();
+		if (isLocale(state.lang)) return state.lang;
+		const nav = navigator;
+		const l = (nav.language || nav.userLanguage || "en").toLowerCase();
 		if (l.startsWith("zh")) return "zh";
 		if (l.startsWith("ja")) return "ja";
 		return "en";
 	}
 	function setLang(lang) {
-		state.lang = SUPPORTED.includes(lang) ? lang : null;
+		state.lang = isLocale(lang) ? lang : null;
 	}
 	var LANG_OPTIONS = [
 		{
@@ -892,7 +896,10 @@
 		if (!entry) return key;
 		const loc = getLocale();
 		let s = entry[loc] != null ? entry[loc] : entry.en;
-		if (params) for (const k in params) s = s.replace("{" + k + "}", () => params[k]);
+		if (params) for (const k in params) {
+			const v = params[k];
+			s = s.replace("{" + k + "}", () => String(v));
+		}
 		return s;
 	}
 	var toastTimer;
@@ -1662,9 +1669,9 @@
 	function applyRuby(text, allowParen) {
 		if (!text) return text;
 		if (!/[《｜]/.test(text) && !(allowParen && /[（(]/.test(text))) return text;
-		text = text.replace(RE_AOZORA_BAR, (m, base, ruby) => tag(base, ruby));
-		text = text.replace(RE_AOZORA, (m, base, ruby) => tag(base, ruby));
-		if (allowParen) text = text.replace(RE_PAREN, (m, base, ruby) => tag(base, ruby));
+		text = text.replace(RE_AOZORA_BAR, (_m, base, ruby) => tag(base, ruby));
+		text = text.replace(RE_AOZORA, (_m, base, ruby) => tag(base, ruby));
+		if (allowParen) text = text.replace(RE_PAREN, (_m, base, ruby) => tag(base, ruby));
 		return text;
 	}
 	function tag(base, ruby) {
@@ -2154,8 +2161,7 @@
 		});
 		if (res.status === 429) throw new Error("AniList 请求过于频繁,请稍后再试");
 		if (!res.ok) throw new Error("AniList 查询失败 " + res.status);
-		const data = await res.json();
-		return (data && data.data && data.data.Page && data.data.Page.media || []).map((m) => ({
+		return ((await res.json())?.data?.Page?.media || []).map((m) => ({
 			anilistId: m.id,
 			title: m.title.native || m.title.romaji || m.title.english || String(m.id),
 			native: m.title.native || "",
@@ -2163,8 +2169,8 @@
 			english: m.title.english || "",
 			episodes: m.episodes || 0,
 			format: m.format || "",
-			year: m.startDate && m.startDate.year || "",
-			cover: m.coverImage && m.coverImage.medium || ""
+			year: m.startDate?.year || "",
+			cover: m.coverImage?.medium || ""
 		}));
 	}
 	var BASE = "https://jimaku.cc/api";

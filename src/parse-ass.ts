@@ -1,9 +1,10 @@
 // ASS / SSA → 统一 cue 结构(文本保底渲染用):解析 [Events] 的 Dialogue 行
 import { sanitize } from './parse.js';
+import type { Cue } from './types.js';
 
-export function parseAss(text) {
+export function parseAss(text: string): Cue[] {
   const lines = text.split(/\r?\n/);
-  const cues = [];
+  const cues: Cue[] = [];
   let inEvents = false;
   let idxStart = 1,
     idxEnd = 2,
@@ -44,8 +45,8 @@ export function parseAss(text) {
 }
 
 // 在前 textIdx 个逗号处切分;Text 字段(可能含逗号)作为最后一段
-function splitFields(rest, textIdx) {
-  const out = [];
+function splitFields(rest: string, textIdx: number): string[] {
+  const out: string[] = [];
   let start = 0;
   for (let i = 0; i < textIdx; i++) {
     const c = rest.indexOf(',', start);
@@ -61,7 +62,7 @@ function splitFields(rest, textIdx) {
 }
 
 // "0:00:01.50" / "1:02:03,456" → 秒
-function assTime(t) {
+function assTime(t: string): number {
   if (!t) return NaN;
   const m = t.trim().match(/^(\d+):(\d{1,2}):(\d{1,2})[.,](\d{1,3})$/);
   if (!m) return NaN;

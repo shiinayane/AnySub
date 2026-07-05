@@ -5,8 +5,8 @@ import { alignFurigana } from '../src/furigana-align.js';
 // 整串对齐:每个汉字各注各的
 test('整串音读对齐 温厚→おんこう', () => {
   const r = alignFurigana('温厚', 'おんこう');
-  assert.equal(r.plain, '');
-  assert.deepEqual(r.pairs, [
+  assert.equal(r!.plain, '');
+  assert.deepEqual(r!.pairs, [
     ['温', 'おん'],
     ['厚', 'こう'],
   ]);
@@ -14,8 +14,8 @@ test('整串音读对齐 温厚→おんこう', () => {
 
 test('单字 使徒→しと', () => {
   const r = alignFurigana('使徒', 'しと');
-  assert.equal(r.plain, '');
-  assert.deepEqual(r.pairs, [
+  assert.equal(r!.plain, '');
+  assert.deepEqual(r!.pairs, [
     ['使', 'し'],
     ['徒', 'と'],
   ]);
@@ -24,8 +24,8 @@ test('单字 使徒→しと', () => {
 // 核心用例:读音只覆盖后缀 → 前缀留作纯文本
 test('后缀读音 近接猟兵→りょうへい 只注 猟兵', () => {
   const r = alignFurigana('近接猟兵', 'りょうへい');
-  assert.equal(r.plain, '近接');
-  assert.deepEqual(r.pairs, [
+  assert.equal(r!.plain, '近接');
+  assert.deepEqual(r!.pairs, [
     ['猟', 'りょう'],
     ['兵', 'へい'],
   ]);
@@ -34,8 +34,8 @@ test('后缀读音 近接猟兵→りょうへい 只注 猟兵', () => {
 // 连浊
 test('连浊 立場→たちば(場: は→ば)', () => {
   const r = alignFurigana('立場', 'たちば');
-  assert.equal(r.plain, '');
-  assert.deepEqual(r.pairs, [
+  assert.equal(r!.plain, '');
+  assert.deepEqual(r!.pairs, [
     ['立', 'たち'],
     ['場', 'ば'],
   ]);
@@ -43,8 +43,8 @@ test('连浊 立場→たちば(場: は→ば)', () => {
 
 test('连浊 花火→はなび(火: ひ→び)', () => {
   const r = alignFurigana('花火', 'はなび');
-  assert.equal(r.plain, '');
-  assert.deepEqual(r.pairs, [
+  assert.equal(r!.plain, '');
+  assert.deepEqual(r!.pairs, [
     ['花', 'はな'],
     ['火', 'び'],
   ]);
@@ -53,8 +53,8 @@ test('连浊 花火→はなび(火: ひ→び)', () => {
 // 促音便
 test('促音 学校→がっこう(学: がく→がっ)', () => {
   const r = alignFurigana('学校', 'がっこう');
-  assert.equal(r.plain, '');
-  assert.deepEqual(r.pairs, [
+  assert.equal(r!.plain, '');
+  assert.deepEqual(r!.pairs, [
     ['学', 'がっ'],
     ['校', 'こう'],
   ]);
@@ -68,7 +68,7 @@ test('熟字訓 今日→きょう 无法逐字对齐 → null', () => {
 // 片假名读音也能对齐(先归一平假名)
 test('片假名读音 温厚→オンコウ', () => {
   const r = alignFurigana('温厚', 'オンコウ');
-  assert.deepEqual(r.pairs, [
+  assert.deepEqual(r!.pairs, [
     ['温', 'おん'],
     ['厚', 'こう'],
   ]);

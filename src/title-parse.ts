@@ -1,7 +1,8 @@
 // 从页面标题解析「番剧名 + 集数」(面向 DMM/日文常见格式,也兼容通用写法)。
 // 例:「新世紀エヴァンゲリオン 第壱話 使徒、襲来 (アニメ/1995年)」→ {series:'新世紀エヴァンゲリオン', episode:'1'}
+import type { DetectInfo } from './types.js';
 
-const KANJI = {
+const KANJI: Record<string, number> = {
   〇: 0,
   零: 0,
   一: 1,
@@ -24,14 +25,14 @@ const KANJI = {
   捌: 8,
   玖: 9,
 };
-const UNITS = { 十: 10, 拾: 10, 百: 100, 千: 1000 };
+const UNITS: Record<string, number> = { 十: 10, 拾: 10, 百: 100, 千: 1000 };
 
-function toHalfDigits(s) {
+function toHalfDigits(s: string): string {
   return s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
 }
 
 // 汉数字(含旧字体)→ 整数;纯数字直接转
-export function jpNumToInt(s) {
+export function jpNumToInt(s: string): number {
   if (/^[0-9０-９]+$/.test(s)) return parseInt(toHalfDigits(s), 10);
   let total = 0,
     cur = 0,
@@ -50,7 +51,7 @@ export function jpNumToInt(s) {
   return seen ? total : NaN;
 }
 
-export function parseVideoTitle(raw) {
+export function parseVideoTitle(raw: string): DetectInfo {
   let t = (raw || '').trim();
   // 去掉站点名(常见分隔符后半)
   t = t.split(/[|｜]/)[0].trim();

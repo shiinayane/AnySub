@@ -3,20 +3,26 @@
 // t(key, params) 取当前语言字符串;{name}/{n}/{ep}/{msg}/{v} 等占位符用 params 插值。
 // 语言可运行时切换(面板语言选择器)→ setLang() 后各处重建 DOM 即刷新。
 import { state } from './state.js';
+import type { Locale } from './types.js';
 
-const SUPPORTED = ['en', 'zh', 'ja'];
+const SUPPORTED: readonly Locale[] = ['en', 'zh', 'ja'];
+
+function isLocale(x: string | null | undefined): x is Locale {
+  return x != null && (SUPPORTED as readonly string[]).includes(x);
+}
 
 // 检测当前语言:手选优先,否则按 navigator.language 归一到三语之一,再兜底 en
-export function getLocale() {
-  if (state.lang && SUPPORTED.includes(state.lang)) return state.lang;
-  const l = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+export function getLocale(): Locale {
+  if (isLocale(state.lang)) return state.lang;
+  const nav = navigator as Navigator & { userLanguage?: string };
+  const l = (nav.language || nav.userLanguage || 'en').toLowerCase();
   if (l.startsWith('zh')) return 'zh';
   if (l.startsWith('ja')) return 'ja';
   return 'en';
 }
 
-export function setLang(lang) {
-  state.lang = SUPPORTED.includes(lang) ? lang : null; // null = 跟随浏览器
+export function setLang(lang: string | null): void {
+  state.lang = isLocale(lang) ? lang : null; // null = 跟随浏览器
 }
 
 // 语言选择器用:选项列表(value 为 lang code 或 '' 表示自动)
@@ -28,7 +34,7 @@ export const LANG_OPTIONS = [
 ];
 
 // key → { en, zh, ja }。缺某语言时回落 en。
-const DICT = {
+const DICT: Record<string, Record<Locale, string>> = {
   // ── 主面板 ──
   'panel.close': {
     en: 'Close (Ctrl/Alt+Shift+S)',
@@ -275,14 +281,17 @@ const DICT = {
 };
 
 // 取译文并插值。缺 key → 返回 key 本身(便于开发期发现漏译);缺当前语言 → 回落 en。
-export function t(key, params) {
+export function t(key: string, params?: Record<string, string | number>): string {
   const entry = DICT[key];
   if (!entry) return key;
   const loc = getLocale();
   let s = entry[loc] != null ? entry[loc] : entry.en;
   if (params) {
     // 函数式替换:避免值(番名/文件名/报错等远程数据)里的 $&/$1/$$ 被 String.replace 当替换模式
-    for (const k in params) s = s.replace('{' + k + '}', () => params[k]);
+    for (const k in params) {
+      const v = params[k];
+      s = s.replace('{' + k + '}', () => String(v));
+    }
   }
   return s;
 }

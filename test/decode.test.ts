@@ -2,7 +2,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { decodeBuffer } from '../src/decode.js';
 
-const enc = (s) => new TextEncoder().encode(s); // UTF-8
+const enc = (s: string) => new TextEncoder().encode(s); // UTF-8
 
 test('UTF-8 直通', () => {
   assert.equal(decodeBuffer(enc('你好 world 日本語')), '你好 world 日本語');
