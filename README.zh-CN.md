@@ -78,51 +78,66 @@
 
 ## 开发
 
-源码按功能拆分为 ES 模块(`src/`),用 [Vite](https://vitejs.dev) + [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 打包成单个带 `==UserScript==` 头的 `dist/anysub.user.js`。
+源码是 **TypeScript**(ES 模块,`src/`),经 strict `tsc` 类型检查,用 [Vite](https://vitejs.dev) + [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 打包成单个带 `==UserScript==` 头的 `dist/anysub.user.js`。**运行时零依赖**——产物自包含(仅在打开 ASS/SSA 时才从 CDN 懒加载 libass-wasm)。
 
 ```bash
-npm install       # 安装依赖
-npm run build     # 构建 → dist/anysub.user.js
-npm run dev       # 开发服务器:改代码自动重载 + 一键安装到脚本管理器
-npm test          # 跑单元测试(Node 内置 node:test,零额外依赖)
+npm install        # 安装开发依赖
+npm run dev        # 开发服务器:改代码自动重载 + 一键安装到脚本管理器
+npm run build      # 构建 → dist/anysub.user.js
+npm test           # 单元测试(Vitest)
+npm run typecheck  # tsc --noEmit(strict)
+npm run lint       # ESLint
+npm run format     # Prettier --write
 ```
 
-纯逻辑模块有单元回归测试(`test/`,用 `node --test`),覆盖历次踩坑点:解析(XSS 转义、空行不截断、NaN/时间序)、ASS 解析、标题解析(旧字体集号)、注音 ruby 与逐字对齐、语义分类、**切集同源匹配**、编码探测。DOM/渲染/网络部分靠 `demo.html` + 浏览器手动验证。
+纯逻辑模块有单元回归测试(`test/`,用 [Vitest](https://vitest.dev)),覆盖历次踩坑点:解析(XSS 转义、空行不截断、NaN/时间序)、ASS 解析、标题解析(旧字体集号)、注音 ruby 与逐字对齐、语义分类、**切集同源匹配**、编码探测、站点识别(DMM / Prime Video / U-NEXT)、自动提示的「正片播放中」判定。DOM/渲染/网络部分靠 `demo.html` + 浏览器手动验证。**CI**(GitHub Actions)在每次 push/PR 跑 format → lint → typecheck → test → build;推送 `vX.Y.Z` tag 会自动构建并发布 GitHub Release。
 
 ### 目录结构
 
+按功能分层。import 说明符保留 `.js` 后缀(由 bundler 解析到 `.ts`)。
+
 ```
 src/
-├── main.js         入口:init + 动态视频监听(MutationObserver)
-├── state.js        全局状态 + 常量
-├── i18n.js         界面本地化(en / zh / ja,浏览器识别 + 可切换)
-├── locator.js      穿透 Shadow DOM 定位 <video>
-├── decode.js       读取文件 + 编码探测
-├── parse.js        SRT/VTT → 统一 cue 结构(XSS 安全、时间排序)
-├── parse-ass.js    ASS/SSA → cue(文本保底用)
-├── overlay.js      覆盖层定位 / 全屏跟随(格式无关)
-├── render-text.js  文本渲染器(实现 renderer 接口)
-├── render-ass.js   ASS 渲染器:文本保底 + libass 升级
-├── octopus-loader.js  懒加载 libass-wasm(blob worker + CDN wasm/字体)
-├── controller.js   渲染循环 + 视频生命周期 + 当前渲染器
-├── loader.js       载入流程 + 格式注册表(本地/在线共用)
-├── cue-format.js   语义分类(纯逻辑,有单测)
-├── anilist.js      番剧名 → AniList 候选(无鉴权)
-├── jimaku.js       Jimaku API 客户端(需 key)
-├── online.js       在线编排:定位番剧 → 取文件 → 下载
-├── match.js        跨集「同源」匹配(纯逻辑,有单测)
-├── search-ui.js    在线搜索面板(候选列表)
-├── title-parse.js  页面标题 → 番剧名 + 集数(含日文/旧字体)
-├── ruby.js         日文注音(《》/｜/括号 → <ruby>,逐字对齐)
-├── furigana-align.js  读音→逐字对齐(连浊/促音;纯逻辑有单测)
-├── kanji-readings.js  内置汉字读音表(构建期生成)
-├── episode-watch.js 切集检测 + 同源自动接续
-├── ui.js           设置面板 + 悬浮球 + 拖拽 + 选视频
-├── shortcuts.js    键盘快捷键(Alt+Shift,capture 拦截)
-├── watcher.js      DOM 观察器按需生命周期(空闲断开)
-├── styles.js       注入 CSS(明/暗色 token)
-├── storage.js      设置持久化(localStorage)
-└── notify.js       toast + 状态栏
+├── main.ts              入口:init + 动态 <video> 监听(MutationObserver)
+├── types.ts             跨模块共享类型
+├── state.ts             全局状态单例 + 常量
+├── refs.ts              共享 DOM 引用
+├── i18n.ts              界面本地化(en / zh / ja,浏览器识别 + 可切换)
+├── subtitle/            解析 & 文本处理(纯逻辑,有单测)
+│   ├── decode.ts           读取文件 + 编码探测
+│   ├── parse.ts            SRT/VTT → 统一 cue 结构(XSS 安全、时间排序)
+│   ├── parse-ass.ts        ASS/SSA → cue(文本保底用)
+│   ├── cue-format.ts       语义分类
+│   ├── furigana-align.ts   读音 → 逐字对齐(连浊/促音)
+│   ├── ruby.ts             日文注音(《》/｜/括号 → <ruby>,逐字对齐)
+│   └── kanji-readings.ts   内置汉字读音表(构建期生成)
+├── render/              覆盖层、渲染器、视频、载入管线
+│   ├── overlay.ts          覆盖层定位 / 全屏跟随(格式无关)
+│   ├── render-text.ts      文本渲染器(实现 renderer 接口)
+│   ├── render-ass.ts       ASS 渲染器:文本保底 + libass 升级
+│   ├── octopus-loader.ts   懒加载 libass-wasm(blob worker + CDN wasm/字体)
+│   ├── controller.ts       渲染循环 + 视频生命周期 + 当前渲染器
+│   ├── locator.ts          穿透 Shadow DOM 定位 <video>
+│   ├── styles.ts           注入 CSS(明/暗色 token)
+│   ├── loader.ts           载入流程 + 格式注册表(本地/在线共用)
+│   └── watcher.ts          DOM 观察器按需生命周期(空闲断开)
+├── online/              远端 API + 解析编排 + 持久化
+│   ├── anilist.ts          番剧名 → AniList 候选(无鉴权)
+│   ├── jimaku.ts           Jimaku API 客户端(需 key)
+│   ├── online.ts           编排:resolveSubtitles(定位 → 取文件 → 下载)
+│   ├── match.ts            同源匹配 + 精确选番(纯逻辑,有单测)
+│   └── storage.ts          设置(localStorage)+ 跨站 Jimaku key(GM 存储)
+├── sites/               站点适配 + 切集自动化
+│   ├── site-adapters.ts    识别番剧/集数(DMM / Prime Video / U-NEXT)
+│   ├── title-parse.ts      页面标题 → 番剧名 + 集数(含日文/旧字体)
+│   ├── episode-signal.ts   共享切集信号(单一观察器,指纹去重)
+│   ├── episode-watch.ts    切集时同源自动接续
+│   └── auto-offer.ts       正片播放中时弹「找到字幕」提示
+└── ui/                  面板、提示、快捷键
+    ├── ui.ts               设置面板 + 悬浮球 + 拖拽 + 选视频
+    ├── search-ui.ts        在线搜索模态(候选列表)
+    ├── notify.ts           toast + 状态栏
+    └── shortcuts.ts        键盘快捷键(Alt+Shift,capture 拦截)
 ```
 
 **渲染层为可插拔架构**:`controller` 驱动循环并持有一个「渲染器」,渲染器实现统一接口 `{ mount, renderAt(video, rect, layoutChanged), applyStyle, destroy }`。`overlay` 负责与视频对齐的盒子(格式无关),渲染器渲染进这个盒子。`loader` 里的**格式注册表**按文件类型选渲染器。
@@ -154,4 +169,4 @@ src/
 
 ## 许可
 
-代码:[MIT](./LICENSE)。内置的 KANJIDIC2 汉字读音数据(`src/kanji-readings.js`)© [EDRDG](https://www.edrdg.org/),依 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 使用。
+代码:[MIT](./LICENSE)。内置的 KANJIDIC2 汉字读音数据(`src/subtitle/kanji-readings.ts`)© [EDRDG](https://www.edrdg.org/),依 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 使用。

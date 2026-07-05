@@ -1870,9 +1870,20 @@
 	function injectScript(text) {
 		return new Promise((resolve, reject) => {
 			const s = document.createElement("script");
-			s.src = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
-			s.onload = () => resolve();
-			s.onerror = () => reject(new Error("主脚本注入失败(可能被 CSP 拦截)"));
+			const url = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+			s.src = url;
+			const cleanup = () => {
+				URL.revokeObjectURL(url);
+				s.remove();
+			};
+			s.onload = () => {
+				cleanup();
+				resolve();
+			};
+			s.onerror = () => {
+				cleanup();
+				reject(new Error("主脚本注入失败(可能被 CSP 拦截)"));
+			};
 			(document.head || document.documentElement).appendChild(s);
 		});
 	}
@@ -2040,6 +2051,14 @@
 		if (!m) return NaN;
 		return +m[1] * 3600 + +m[2] * 60 + +m[3] + parseFloat("0." + m[4]);
 	}
+	function errMessage(e) {
+		if (e instanceof Error) return e.message;
+		if (e && typeof e === "object" && "message" in e) {
+			const m = e.message;
+			if (typeof m === "string") return m;
+		}
+		return String(e);
+	}
 	var FORMATS = [{
 		test: (name) => /\.(ass|ssa)$/i.test(name || ""),
 		parse: (text) => ({
@@ -2056,7 +2075,7 @@
 		if (!file) return;
 		readSubtitleFile(file).then((text) => loadFromText(text, file.name)).catch((err) => {
 			console.error("[AnySub]", err);
-			toast(t("toast.readFailed", { msg: err.message }));
+			toast(t("toast.readFailed", { msg: errMessage(err) }));
 		});
 	}
 	function loadFromBuffer(buffer, name) {
@@ -2289,9 +2308,6 @@
 		photo: S("<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"8.5\" cy=\"8.5\" r=\"1.5\"/><path d=\"m21 15-5-5L5 21\"/>"),
 		chev: S("<path d=\"m9 6 6 6-6 6\"/>")
 	};
-	function errMsg(e) {
-		return e instanceof Error ? e.message : String(e);
-	}
 	function html() {
 		return `
   <div class="as-sc-head">
@@ -2421,7 +2437,7 @@
 			}
 			renderAnime(list);
 		} catch (err) {
-			setResults(`<div class="as-sc-empty">${t("sc.error", { msg: esc(errMsg(err)) })}</div>`);
+			setResults(`<div class="as-sc-empty">${t("sc.error", { msg: esc(errMessage(err)) })}</div>`);
 		}
 	}
 	function poster(url) {
@@ -2474,7 +2490,7 @@
 		} catch (err) {
 			results.innerHTML = "";
 			results.appendChild(backLink(t("sc.backToAnime"), doSearch));
-			results.appendChild(empty(t("sc.error", { msg: esc(errMsg(err)) })));
+			results.appendChild(empty(t("sc.error", { msg: esc(errMessage(err)) })));
 		}
 	}
 	function showCandidates(seriesTitle, files, anilistId) {
@@ -2516,7 +2532,7 @@
 				close();
 			}
 		} catch (err) {
-			toast(t("toast.downloadFailed", { msg: errMsg(err) }));
+			toast(t("toast.downloadFailed", { msg: errMessage(err) }));
 		} finally {
 			row.classList.remove("loading");
 		}
@@ -3204,7 +3220,7 @@
 				showCandidates(series, files);
 			}
 		} catch (err) {
-			toast(t("toast.epFailed", { msg: err instanceof Error ? err.message : String(err) }));
+			toast(t("toast.epFailed", { msg: errMessage(err) }));
 		} finally {
 			busy = false;
 		}

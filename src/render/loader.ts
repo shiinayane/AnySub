@@ -14,6 +14,7 @@ import { parseAss } from '../subtitle/parse-ass.js';
 import { toast, updateStatus } from '../ui/notify.js';
 import { updateWatcher } from './watcher.js';
 import { t } from '../i18n.js';
+import { errMessage } from '../errors.js';
 import type { Cue, Renderer } from '../types.js';
 
 interface Parsed {
@@ -46,7 +47,7 @@ export function loadFile(file?: File | null): void {
     .then((text) => loadFromText(text, file.name))
     .catch((err) => {
       console.error('[AnySub]', err);
-      toast(t('toast.readFailed', { msg: err.message }));
+      toast(t('toast.readFailed', { msg: errMessage(err) }));
     });
 }
 
