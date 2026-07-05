@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 
 // 站点适配器读全局 location/document;node 里默认没有,逐用例注入桩再导入模块。

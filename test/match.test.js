@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { pickSameSource, sourceTokens, pickExactAnime, normTitle } from '../src/match.js';
 
