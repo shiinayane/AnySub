@@ -2,6 +2,8 @@
 
 **English** · [中文](./README.zh-CN.md) · [日本語](./README.ja.md)
 
+[![Install on Greasyfork](https://img.shields.io/greasyfork/v/585665?label=Greasyfork&color=8b0000)](https://greasyfork.org/en/scripts/585665-anysub-japanese-immersion-subtitles-for-any-video) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+
 Turn **any** website's HTML5 video into a Japanese-immersion tool. AnySub mounts subtitle files onto the video and adds the things immersion learners actually want — **accurate per-kanji furigana**, **one-click [Jimaku](https://jimaku.cc) subtitles with auto next-episode**, and **semantic caption formatting** that tells speaker names, sound effects and inner-voice apart at a glance.
 
 Pure userscript — no backend, no upload, nothing leaves your machine. Works on Chrome / Edge / Safari / Firefox. UI in **English / 中文 / 日本語** (auto-detected, switchable).
@@ -52,7 +54,9 @@ Pure userscript — no backend, no upload, nothing leaves your machine. Works on
 
 ## Install
 
-> You install the build output [`dist/anysub.user.js`](./dist/anysub.user.js) (source is in `src/`, see [Development](#development)).
+**Recommended — [install from Greasyfork](https://greasyfork.org/en/scripts/585665-anysub-japanese-immersion-subtitles-for-any-video)** (needs a userscript manager like Tampermonkey / Violentmonkey; auto-updates).
+
+Or install the build output [`dist/anysub.user.js`](./dist/anysub.user.js) manually (source is in `src/`, see [Development](#development)):
 
 ### Chrome / Edge / Firefox
 

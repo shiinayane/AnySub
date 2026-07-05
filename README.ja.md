@@ -2,6 +2,8 @@
 
 [English](./README.md) · [中文](./README.zh-CN.md) · **日本語**
 
+[![Greasyfork でインストール](https://img.shields.io/greasyfork/v/585665?label=Greasyfork&color=8b0000)](https://greasyfork.org/ja/scripts/585665-anysub-japanese-immersion-subtitles-for-any-video) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+
 **どんな**ウェブサイトの HTML5 動画も日本語イマージョン学習ツールに変えます。AnySub は動画に字幕ファイルをマウントし、学習者が本当に欲しい機能を加えます——**漢字ごとに正確なふりがな**、**ワンクリックの [Jimaku](https://jimaku.cc) 字幕取得＋次話への自動継続**、**話者名・効果音・心の声を一目で区別できるセマンティック整形**。
 
 純粋なユーザースクリプトで、バックエンド不要・アップロードなし・データは端末外に出ません。Chrome / Edge / Safari / Firefox 対応。UI は **英語 / 中国語 / 日本語**(自動判定・切替可)。
@@ -50,7 +52,9 @@
 
 ## インストール
 
-> インストールするのはビルド成果物 [`dist/anysub.user.js`](./dist/anysub.user.js) です(ソースは `src/`、下の「開発」を参照)。
+**推奨 —— [Greasyfork からインストール](https://greasyfork.org/ja/scripts/585665-anysub-japanese-immersion-subtitles-for-any-video)**(Tampermonkey / Violentmonkey などのユーザースクリプトマネージャーが必要;自動更新)。
+
+または、ビルド成果物 [`dist/anysub.user.js`](./dist/anysub.user.js) を手動でインストール(ソースは `src/`、下の「開発」を参照):
 
 ### Chrome / Edge / Firefox
 

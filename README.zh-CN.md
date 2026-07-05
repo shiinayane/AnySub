@@ -2,6 +2,8 @@
 
 [English](./README.md) · **中文** · [日本語](./README.ja.md)
 
+[![在 Greasyfork 安装](https://img.shields.io/greasyfork/v/585665?label=Greasyfork&color=8b0000)](https://greasyfork.org/zh-CN/scripts/585665-anysub-japanese-immersion-subtitles-for-any-video) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+
 把**任意网站**的 HTML5 视频变成日语沉浸学习工具。AnySub 给视频挂载字幕文件,并加上沉浸学习者真正想要的东西——**逐字精准注音(furigana)**、**一键 [Jimaku](https://jimaku.cc) 在线字幕并自动接续下一集**、**话者名/音效/心声一眼可辨的语义排版**。
 
 纯用户脚本,无需后端、不上传文件、不联网。Chrome / Edge / Safari / Firefox 通用。界面 **EN / 中文 / 日本語**(自动识别,可切换)。
@@ -50,7 +52,9 @@
 
 ## 安装
 
-> 安装的是构建产物 [`dist/anysub.user.js`](./dist/anysub.user.js)(源码在 `src/`,见下方「开发」)。
+**推荐 —— [从 Greasyfork 安装](https://greasyfork.org/zh-CN/scripts/585665-anysub-japanese-immersion-subtitles-for-any-video)**(需先装 Tampermonkey / Violentmonkey 等用户脚本管理器;自动更新)。
+
+或手动安装构建产物 [`dist/anysub.user.js`](./dist/anysub.user.js)(源码在 `src/`,见下方「开发」):
 
 ### Chrome / Edge / Firefox
 
