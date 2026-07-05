@@ -11,6 +11,7 @@ import { detectShow } from '../sites/site-adapters.js';
 import { pickExactAnime } from '../online/match.js';
 import { openPanel, ensurePanel } from './ui.js';
 import { t } from '../i18n.js';
+import { errMessage } from '../errors.js';
 import type { AnimeCandidate, SubFile } from '../types.js';
 
 // 文件候选头部展示所需的最小番剧信息(showCandidates 可只带 title/anilistId)
@@ -35,10 +36,6 @@ const IC = {
   ),
   chev: S('<path d="m9 6 6 6-6 6"/>'),
 };
-
-function errMsg(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
 
 function html(): string {
   return `
@@ -193,7 +190,7 @@ async function doSearch(): Promise<void> {
     }
     renderAnime(list);
   } catch (err) {
-    setResults(`<div class="as-sc-empty">${t('sc.error', { msg: esc(errMsg(err)) })}</div>`);
+    setResults(`<div class="as-sc-empty">${t('sc.error', { msg: esc(errMessage(err)) })}</div>`);
   }
 }
 
@@ -247,7 +244,7 @@ async function loadFilesFor(anime: AnimeCandidate): Promise<void> {
   } catch (err) {
     results.innerHTML = '';
     results.appendChild(backLink(t('sc.backToAnime'), doSearch));
-    results.appendChild(empty(t('sc.error', { msg: esc(errMsg(err)) })));
+    results.appendChild(empty(t('sc.error', { msg: esc(errMessage(err)) })));
   }
 }
 
@@ -294,7 +291,7 @@ async function pickFile(f: SubFile, row: HTMLElement): Promise<void> {
       close();
     }
   } catch (err) {
-    toast(t('toast.downloadFailed', { msg: errMsg(err) }));
+    toast(t('toast.downloadFailed', { msg: errMessage(err) }));
   } finally {
     row.classList.remove('loading');
   }

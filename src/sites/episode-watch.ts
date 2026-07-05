@@ -9,6 +9,7 @@ import { setOffset } from '../ui/ui.js';
 import { toast } from '../ui/notify.js';
 import { onEpisodeChange } from './episode-signal.js';
 import { t } from '../i18n.js';
+import { errMessage } from '../errors.js';
 import type { DetectInfo, OnlineCtx } from '../types.js';
 
 let busy = false;
@@ -70,7 +71,7 @@ async function autoContinue(ctx: OnlineCtx, series: string, episode: string): Pr
       showCandidates(series, files); // 回退:弹出候选让用户选
     }
   } catch (err) {
-    toast(t('toast.epFailed', { msg: err instanceof Error ? err.message : String(err) }));
+    toast(t('toast.epFailed', { msg: errMessage(err) }));
   } finally {
     busy = false;
   }

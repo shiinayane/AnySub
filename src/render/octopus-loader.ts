@@ -65,13 +65,18 @@ function injectScript(text: string): Promise<void> {
     const s = document.createElement('script');
     const url = URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));
     s.src = url;
-    // 脚本 fetch/执行完即可回收 blob URL(否则多次加载/热重载会累积占用)
-    s.onload = () => {
+    // 脚本 fetch/执行完即回收 blob URL 并移除 <script> 节点(全局 SubtitlesOctopus 已定义,
+    // 移除节点不影响它);否则重试(失败后再次 loadOctopus)会累积 blob 与死节点。
+    const cleanup = () => {
       URL.revokeObjectURL(url);
+      s.remove();
+    };
+    s.onload = () => {
+      cleanup();
       resolve();
     };
     s.onerror = () => {
-      URL.revokeObjectURL(url);
+      cleanup();
       reject(new Error('主脚本注入失败(可能被 CSP 拦截)'));
     };
     (document.head || document.documentElement).appendChild(s);
