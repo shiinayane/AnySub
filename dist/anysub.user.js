@@ -3123,17 +3123,20 @@
 		setTimeout(poll, 1200);
 		onEpisodeChange(check);
 	}
+	function isFeatureVideo(v, vw, vh) {
+		if (!v || !(isFinite(v.duration) && v.duration > MIN_DURATION && !v.paused && v.currentTime > 0)) return false;
+		const audible = !v.muted && v.volume > 0;
+		const r = v.getBoundingClientRect && v.getBoundingClientRect() || {
+			width: 0,
+			height: 0
+		};
+		const cover = r.width * r.height / ((vw || 1) * (vh || 1));
+		return audible || cover > MIN_COVER;
+	}
 	function playingFeature() {
 		const vids = [document.querySelector("video")].concat(collectVideos()).filter(Boolean);
 		const vw = window.innerWidth || 1, vh = window.innerHeight || 1;
-		for (const v of vids) {
-			if (!(isFinite(v.duration) && v.duration > MIN_DURATION && !v.paused && v.currentTime > 0)) continue;
-			const audible = !v.muted && v.volume > 0;
-			const r = v.getBoundingClientRect();
-			const cover = r.width * r.height / (vw * vh);
-			if (audible || cover > MIN_COVER) return v;
-		}
-		return null;
+		return vids.find((v) => isFeatureVideo(v, vw, vh)) || null;
 	}
 	function check() {
 		run(false);

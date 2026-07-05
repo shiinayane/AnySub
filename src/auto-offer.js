@@ -30,21 +30,23 @@ export function initAutoOffer() {
   onEpisodeChange(check); // 切集后(由 episode-signal 统一探测)再探:新一集仍没字幕则再提示
 }
 
-// 「用户在看正片」判定:时长够长 + 已起播未暂停,且满足以下之一:
-//   · 有声(!muted && volume>0)——最强信号:自动播放的 hero 预览按浏览器策略必然静音,
-//     带声音说明是用户手势主动播放(URL 不变也能区分);
+// 「用户在看正片」判定(纯函数,便于单测):时长够长 + 已起播未暂停(排除首页预加载但
+// 暂停的视频),且满足以下之一:
+//   · 有声(!muted && volume>0)——自动播放的 hero 预览按浏览器策略必然静音,带声音说明是
+//     用户手势主动播放(URL 不变也能区分);
 //   · 或占据大半视口——给「静音观看」的人兜底(主播放器 vs 横幅预览)。
+export function isFeatureVideo(v, vw, vh) {
+  if (!v || !(isFinite(v.duration) && v.duration > MIN_DURATION && !v.paused && v.currentTime > 0)) return false;
+  const audible = !v.muted && v.volume > 0;
+  const r = (v.getBoundingClientRect && v.getBoundingClientRect()) || { width: 0, height: 0 };
+  const cover = (r.width * r.height) / ((vw || 1) * (vh || 1));
+  return audible || cover > MIN_COVER;
+}
+
 function playingFeature() {
   const vids = [document.querySelector('video')].concat(collectVideos()).filter(Boolean);
   const vw = window.innerWidth || 1, vh = window.innerHeight || 1;
-  for (const v of vids) {
-    if (!(isFinite(v.duration) && v.duration > MIN_DURATION && !v.paused && v.currentTime > 0)) continue;
-    const audible = !v.muted && v.volume > 0;
-    const r = v.getBoundingClientRect();
-    const cover = (r.width * r.height) / (vw * vh);
-    if (audible || cover > MIN_COVER) return v;
-  }
-  return null;
+  return vids.find((v) => isFeatureVideo(v, vw, vh)) || null;
 }
 
 // 外部触发(轮询/切集信号)入口:重置「等待起播」重试计数
