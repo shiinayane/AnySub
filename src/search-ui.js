@@ -13,16 +13,19 @@ import { openPanel, ensurePanel } from './ui.js';
 import { t } from './i18n.js';
 
 let panel, titleInput, epInput, results;
-let currentAnime = null;    // 当前展开文件列表的番剧(供记录来源)
+let currentAnime = null; // 当前展开文件列表的番剧(供记录来源)
 let lastPrefillSig = null; // 上次预填所依据的「番名#集数」指纹(切集后据此刷新预填)
-let keyEditing = false;      // key 已保存时默认折叠为一行;点「更换」展开输入
+let keyEditing = false; // key 已保存时默认折叠为一行;点「更换」展开输入
 
-const S = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const S = (p) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const IC = {
   back: S('<path d="M19 12H5M11 6l-6 6 6 6"/>'),
   search: S('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>'),
   check: S('<path d="M20 6 9 17l-5-5"/>'),
-  photo: S('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>'),
+  photo: S(
+    '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+  ),
   chev: S('<path d="m9 6 6 6-6 6"/>'),
 };
 
@@ -62,8 +65,12 @@ function wireSearch() {
   panel.querySelector('#anysub-sc-back').addEventListener('click', backToPanel);
   panel.querySelector('#anysub-sc-close').addEventListener('click', close);
   panel.querySelector('#anysub-do-search').addEventListener('click', doSearch);
-  titleInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
-  epInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+  titleInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doSearch();
+  });
+  epInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doSearch();
+  });
   renderKeyArea();
 }
 
@@ -84,14 +91,19 @@ function renderKeyArea() {
   const area = panel.querySelector('#anysub-key-area');
   if (state.jimakuKey && !keyEditing) {
     area.innerHTML = `<div class="as-sc-keyok">${IC.check}<span>${t('sc.keyOk')}</span><span class="as-sc-change" id="anysub-key-change">${t('sc.changeKey')}</span></div>`;
-    area.querySelector('#anysub-key-change').addEventListener('click', () => { keyEditing = true; renderKeyArea(); });
+    area.querySelector('#anysub-key-change').addEventListener('click', () => {
+      keyEditing = true;
+      renderKeyArea();
+    });
   } else {
     area.innerHTML = `<div class="as-sc-keyrow"><input id="anysub-key" type="password" placeholder="${t('sc.keyPlaceholder')}" autocomplete="off"><button id="anysub-key-save">${t('sc.keySave')}</button></div>
       <div class="as-sc-hint">${t('sc.keyHint')}</div>`;
     const ki = area.querySelector('#anysub-key');
     ki.value = state.jimakuKey || '';
     area.querySelector('#anysub-key-save').addEventListener('click', () => saveKey(ki.value));
-    ki.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveKey(ki.value); });
+    ki.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveKey(ki.value);
+    });
   }
 }
 
@@ -112,18 +124,25 @@ export function openSearch() {
     lastPrefillSig = detSig;
     setResults(`<div class="as-sc-empty">${t('sc.prompt')}</div>`);
   }
-  (state.jimakuKey ? titleInput : (panel.querySelector('#anysub-key') || titleInput)).focus();
+  (state.jimakuKey ? titleInput : panel.querySelector('#anysub-key') || titleInput).focus();
 }
 
 function show() {
   panel.style.display = 'block';
-  panel.classList.remove('as-in'); void panel.offsetWidth; panel.classList.add('as-in'); // 重放入场动画
+  panel.classList.remove('as-in');
+  void panel.offsetWidth;
+  panel.classList.add('as-in'); // 重放入场动画
 }
 
-function close() { panel.style.display = 'none'; }
+function close() {
+  panel.style.display = 'none';
+}
 
 // 返回主面板:收起搜索,显式打开主面板(与「关闭」区分——关闭是彻底 dismiss)
-function backToPanel() { panel.style.display = 'none'; openPanel(); }
+function backToPanel() {
+  panel.style.display = 'none';
+  openPanel();
+}
 
 function saveKey(val) {
   state.jimakuKey = (val || '').trim();
@@ -136,14 +155,28 @@ function saveKey(val) {
 
 async function doSearch() {
   const title = titleInput.value.trim();
-  if (!state.jimakuKey) { toast(t('toast.keyNeeded')); keyEditing = true; renderKeyArea(); return; }
-  if (!title) { toast(t('toast.titleNeeded')); return; }
+  if (!state.jimakuKey) {
+    toast(t('toast.keyNeeded'));
+    keyEditing = true;
+    renderKeyArea();
+    return;
+  }
+  if (!title) {
+    toast(t('toast.titleNeeded'));
+    return;
+  }
   setResults(`<div class="as-sc-empty">${t('sc.searching')}</div>`);
   try {
     const list = await animeCandidates(title);
-    if (!list.length) { setResults(`<div class="as-sc-empty">${t('sc.notFound')}</div>`); return; }
+    if (!list.length) {
+      setResults(`<div class="as-sc-empty">${t('sc.notFound')}</div>`);
+      return;
+    }
     const exact = pickExactAnime(list, title); // 精确命中唯一 → 自动选番,省去人工选(仍从文件候选选)
-    if (exact) { loadFilesFor(exact); return; }
+    if (exact) {
+      loadFilesFor(exact);
+      return;
+    }
     renderAnime(list);
   } catch (err) {
     setResults(`<div class="as-sc-empty">${t('sc.error', { msg: esc(err.message) })}</div>`);
@@ -184,8 +217,11 @@ function renderAnime(list) {
 async function loadFilesFor(anime) {
   setResults(`<div class="as-sc-empty">${t('sc.fetchingFiles')}</div>`);
   try {
-    const files = await subtitleFiles(anime.anilistId, epInput.value.trim(),
-      [anime.native, anime.romaji, anime.english]); // anilist_id 无条目时的自由搜兜底
+    const files = await subtitleFiles(anime.anilistId, epInput.value.trim(), [
+      anime.native,
+      anime.romaji,
+      anime.english,
+    ]); // anilist_id 无条目时的自由搜兜底
     if (!files.length) {
       results.innerHTML = '';
       results.appendChild(backLink(t('sc.backToAnime'), doSearch));
@@ -211,7 +247,7 @@ export function showCandidates(seriesTitle, files, anilistId) {
   if (seriesTitle) titleInput.value = seriesTitle;
   const d = detectShow();
   lastPrefillSig = (d.series || '') + '#' + (d.episode || ''); // 视为已按当前集预填,避免重开时被覆盖
-  const id = (anilistId != null) ? anilistId : (state.lastOnline && state.lastOnline.anilistId);
+  const id = anilistId != null ? anilistId : state.lastOnline && state.lastOnline.anilistId;
   renderFiles({ title: seriesTitle, anilistId: id }, files);
 }
 
@@ -247,8 +283,18 @@ async function pickFile(f, row) {
 }
 
 // ── DOM 小工具 ──
-function sec(text) { const d = document.createElement('div'); d.className = 'as-sc-sec'; d.textContent = text; return d; }
-function empty(html) { const d = document.createElement('div'); d.className = 'as-sc-empty'; d.innerHTML = html; return d; }
+function sec(text) {
+  const d = document.createElement('div');
+  d.className = 'as-sc-sec';
+  d.textContent = text;
+  return d;
+}
+function empty(html) {
+  const d = document.createElement('div');
+  d.className = 'as-sc-empty';
+  d.innerHTML = html;
+  return d;
+}
 function backLink(text, fn) {
   const d = document.createElement('div');
   d.className = 'as-sc-back2';
@@ -261,14 +307,19 @@ function wirePoster(row) {
   const img = row.querySelector('.as-sc-poster img');
   if (img) img.addEventListener('error', () => img.remove()); // 失败回落占位图标(位于 img 之下)
 }
-function setResults(html) { results.innerHTML = html; }
+function setResults(html) {
+  results.innerHTML = html;
+}
 
 function fmtSize(n) {
   if (!n) return '';
   return n > 1e6 ? (n / 1e6).toFixed(1) + 'MB' : Math.round(n / 1024) + 'KB';
 }
 function esc(s) {
-  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 function escAttr(s) {
   return esc(s).replace(/"/g, '&quot;');

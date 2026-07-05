@@ -1,6 +1,7 @@
 // 字幕解析:SRT / VTT → 统一 cue 结构 {start,end,text},按时间排序
 
-const TIME_RE = /(\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}|\d{1,2}:\d{2}[.,]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}|\d{1,2}:\d{2}[.,]\d{1,3})/;
+const TIME_RE =
+  /(\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}|\d{1,2}:\d{2}[.,]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}|\d{1,2}:\d{2}[.,]\d{1,3})/;
 
 export function parseSubtitle(text, fileName) {
   text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -31,10 +32,16 @@ export function parseSrt(text) {
   let i = 0;
   while (i < lines.length) {
     const m = lines[i].match(TIME_RE);
-    if (!m) { i++; continue; }
+    if (!m) {
+      i++;
+      continue;
+    }
     i++;
     const body = [];
-    while (i < lines.length && !TIME_RE.test(lines[i])) { body.push(lines[i]); i++; }
+    while (i < lines.length && !TIME_RE.test(lines[i])) {
+      body.push(lines[i]);
+      i++;
+    }
     // 去掉尾部空行 + 下一条 cue 的序号行(它被裹进了本 body 末尾)
     while (body.length && body[body.length - 1].trim() === '') body.pop();
     if (body.length && /^\d+$/.test(body[body.length - 1].trim())) body.pop();
@@ -50,11 +57,17 @@ export function parseVtt(text) {
   let i = 0;
   while (i < lines.length) {
     const m = lines[i].match(TIME_RE);
-    if (!m) { i++; continue; }
+    if (!m) {
+      i++;
+      continue;
+    }
     i++;
     // VTT 规范:空行即 cue 分隔符
     const body = [];
-    while (i < lines.length && lines[i].trim() !== '' && !TIME_RE.test(lines[i])) { body.push(lines[i]); i++; }
+    while (i < lines.length && lines[i].trim() !== '' && !TIME_RE.test(lines[i])) {
+      body.push(lines[i]);
+      i++;
+    }
     pushCue(cues, m, body);
   }
   return cues;
@@ -70,10 +83,10 @@ function pushCue(cues, m, bodyLines) {
 
 // XSS 安全:先转义所有 HTML,再仅还原「无属性」的 i/b/u 标签,换行转 <br>
 export function sanitize(s) {
-  s = s.replace(/\{\\[^}]*\}/g, '');       // ASS override {\...}
-  s = s.replace(/\{[^}]*\}/g, '');          // SRT {...}
-  s = s.replace(/<\/?font[^>]*>/gi, '');    // 常见 font 标签:去标签留内容
-  s = escapeHtml(s);                        // 关键:转义一切,杜绝属性/事件注入
+  s = s.replace(/\{\\[^}]*\}/g, ''); // ASS override {\...}
+  s = s.replace(/\{[^}]*\}/g, ''); // SRT {...}
+  s = s.replace(/<\/?font[^>]*>/gi, ''); // 常见 font 标签:去标签留内容
+  s = escapeHtml(s); // 关键:转义一切,杜绝属性/事件注入
   s = s.replace(/&lt;(\/?)(i|b|u)&gt;/gi, '<$1$2>'); // 只放行裸标签,不含任何属性
   s = s.replace(/\n/g, '<br>');
   return s;

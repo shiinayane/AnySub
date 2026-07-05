@@ -19,14 +19,17 @@ if (!window.__ANYSUB_LOADED__) {
 }
 
 function init() {
-  if (!document.body) { requestAnimationFrame(init); return; }
+  if (!document.body) {
+    requestAnimationFrame(init);
+    return;
+  }
   restoreSettings();
   injectStyle();
   buildUI();
   initShortcuts();
-  initEpisodeWatch();          // 注册切集续播订阅者
-  initAutoOffer();             // 注册「发现字幕」订阅者(仅已知站点)
-  initEpisodeSignal();         // 建立切集信号源(观察站点规则元素或回落 <title>)+ 基线
+  initEpisodeWatch(); // 注册切集续播订阅者
+  initAutoOffer(); // 注册「发现字幕」订阅者(仅已知站点)
+  initEpisodeSignal(); // 建立切集信号源(观察站点规则元素或回落 <title>)+ 基线
   setReactHandler(react);
   updateFabVisibility();
   updateWatcher(); // 按需连接:仅当开了悬浮球或已加载字幕才观察 DOM
@@ -34,8 +37,7 @@ function init() {
 
 // DOM 变化时:SPA 换视频后重挂(仅字幕已加载时)+ 刷新悬浮球可见性
 function react() {
-  if (state.cues.length && state.video &&
-      (!state.video.isConnected || !isVisible(state.video))) {
+  if (state.cues.length && state.video && (!state.video.isConnected || !isVisible(state.video))) {
     const nv = pickBestVideo();
     if (nv && nv !== state.video) setVideo(nv);
   }

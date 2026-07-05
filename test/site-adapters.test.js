@@ -5,8 +5,14 @@ import assert from 'node:assert/strict';
 // els: 选择器片段 → 元素文本(模拟 Prime 的 atvwebplayersdk-* 元素);ogTitle 走 meta;
 // boxes: 选择器片段 → [{h2, h3}](模拟 U-NEXT styled-components 容器,支持内部 h2/h3)。
 function mkBox(b) {
-  return { querySelector: (s) => (s === 'h2' && b.h2 != null) ? { textContent: b.h2 }
-                              : (s === 'h3' && b.h3 != null) ? { textContent: b.h3 } : null };
+  return {
+    querySelector: (s) =>
+      s === 'h2' && b.h2 != null
+        ? { textContent: b.h2 }
+        : s === 'h3' && b.h3 != null
+          ? { textContent: b.h3 }
+          : null,
+  };
 }
 function stub({ hostname, pathname, href, title, ogTitle, els, boxes }) {
   globalThis.location = { hostname, pathname, href };
@@ -14,10 +20,17 @@ function stub({ hostname, pathname, href, title, ogTitle, els, boxes }) {
     title,
     querySelector: (sel) => {
       if (ogTitle != null && sel.includes('og:title')) return { getAttribute: () => ogTitle };
-      if (sel === '[class*="atvwebplayersdk-"]') return (els && Object.keys(els).length) ? { textContent: '' } : null; // isTarget 探针
-      if (els) { // 取「最具体(最长)」匹配片段,避免 episode-info 命中 title 的桩
-        let best = null, len = -1;
-        for (const frag in els) if (sel.includes(frag) && frag.length > len) { best = els[frag]; len = frag.length; }
+      if (sel === '[class*="atvwebplayersdk-"]')
+        return els && Object.keys(els).length ? { textContent: '' } : null; // isTarget 探针
+      if (els) {
+        // 取「最具体(最长)」匹配片段,避免 episode-info 命中 title 的桩
+        let best = null,
+          len = -1;
+        for (const frag in els)
+          if (sel.includes(frag) && frag.length > len) {
+            best = els[frag];
+            len = frag.length;
+          }
         if (best != null) return { textContent: best };
       }
       return null;
@@ -29,30 +42,38 @@ function stub({ hostname, pathname, href, title, ogTitle, els, boxes }) {
   };
 }
 
-const { getSiteAdapter, detectShow, parsePrimeEpisode, cleanPrimeTitle, parseUnextEpisode } = await import('../src/site-adapters.js');
+const { getSiteAdapter, detectShow, parsePrimeEpisode, cleanPrimeTitle, parseUnextEpisode } =
+  await import('../src/site-adapters.js');
 
-const DMM_TITLE = 'メイドインアビス　烈日の黄金郷 第2話 還らずの都 (アニメ/2022年)｜アニメ・ドラマの動画配信ならDMM TV';
-const DMM_OG = 'メイドインアビス　烈日の黄金郷 第2話 還らずの都 (アニメ/2022年) | DMM TVで14日間無料体験';
+const DMM_TITLE =
+  'メイドインアビス　烈日の黄金郷 第2話 還らずの都 (アニメ/2022年)｜アニメ・ドラマの動画配信ならDMM TV';
+const DMM_OG =
+  'メイドインアビス　烈日の黄金郷 第2話 還らずの都 (アニメ/2022年) | DMM TVで14日間無料体験';
 
 test('DMM 播放页:识别番名/集数 + season/content ID', () => {
   stub({
     hostname: 'tv.dmm.com',
     pathname: '/vod/playback/on-demand/',
     href: 'https://tv.dmm.com/vod/playback/on-demand/?season=SEASONID&content=CONTENTID',
-    title: DMM_TITLE, ogTitle: DMM_OG,
+    title: DMM_TITLE,
+    ogTitle: DMM_OG,
   });
   assert.equal(getSiteAdapter().name, 'dmm');
   assert.deepEqual(detectShow(), {
-    series: 'メイドインアビス　烈日の黄金郷', episode: '2',
-    showKey: 'SEASONID', epKey: 'CONTENTID',
+    series: 'メイドインアビス　烈日の黄金郷',
+    episode: '2',
+    showKey: 'SEASONID',
+    epKey: 'CONTENTID',
   });
 });
 
 test('DMM 非播放页(如详情页):不当作目标,回落标题解析', () => {
   stub({
-    hostname: 'tv.dmm.com', pathname: '/vod/detail/',
+    hostname: 'tv.dmm.com',
+    pathname: '/vod/detail/',
     href: 'https://tv.dmm.com/vod/detail/?season=S&content=C',
-    title: DMM_TITLE, ogTitle: DMM_OG,
+    title: DMM_TITLE,
+    ogTitle: DMM_OG,
   });
   assert.equal(getSiteAdapter().name, 'dmm'); // 站点匹配
   const r = detectShow(); // 但非播放页 → 回落 parseVideoTitle,无 showKey/epKey
@@ -63,7 +84,8 @@ test('DMM 非播放页(如详情页):不当作目标,回落标题解析', () => 
 
 test('非已知站点:无适配器,detectShow 回落标题解析', () => {
   stub({
-    hostname: 'example.com', pathname: '/watch',
+    hostname: 'example.com',
+    pathname: '/watch',
     href: 'https://example.com/watch',
     title: '鬼滅の刃 第5話 (アニメ)｜Example',
   });
@@ -74,7 +96,8 @@ test('非已知站点:无适配器,detectShow 回落标题解析', () => {
 // ── Prime Video ──
 test('Prime 播放页:剧集信息元素 → 番名 + 集数(用稳定的 atvwebplayersdk- 前缀,不依赖哈希类名)', () => {
   stub({
-    hostname: 'www.amazon.co.jp', pathname: '/gp/video/detail/xxx',
+    hostname: 'www.amazon.co.jp',
+    pathname: '/gp/video/detail/xxx',
     href: 'https://www.amazon.co.jp/gp/video/detail/xxx',
     title: 'Amazon.co.jp: 攻殻機動隊 STAND ALONE COMPLEXを観る | Prime Video',
     els: {
@@ -88,7 +111,8 @@ test('Prime 播放页:剧集信息元素 → 番名 + 集数(用稳定的 atvweb
 
 test('Prime 无稳定标题元素时回落清洗 <title>', () => {
   stub({
-    hostname: 'www.primevideo.com', pathname: '/detail/xxx',
+    hostname: 'www.primevideo.com',
+    pathname: '/detail/xxx',
     href: 'https://www.primevideo.com/detail/xxx',
     title: 'Amazon.co.jp: 攻殻機動隊 STAND ALONE COMPLEXを観る | Prime Video',
     els: { 'atvwebplayersdk-episode-info': 'S2 E5 第5話 サブタイトル' },
@@ -98,7 +122,8 @@ test('Prime 无稳定标题元素时回落清洗 <title>', () => {
 
 test('Prime 电影(无剧集信息元素)→ 集数为空', () => {
   stub({
-    hostname: 'www.amazon.co.jp', pathname: '/gp/video/detail/yyy',
+    hostname: 'www.amazon.co.jp',
+    pathname: '/gp/video/detail/yyy',
     href: 'https://www.amazon.co.jp/gp/video/detail/yyy',
     title: 'Amazon.co.jp: GHOST IN THE SHELL/攻殻機動隊を観る | Prime Video',
     els: { 'atvwebplayersdk-title-text': 'GHOST IN THE SHELL/攻殻機動隊' },
@@ -115,14 +140,19 @@ test('parsePrimeEpisode:优先 E 编号,回退 第X話', () => {
 
 test('cleanPrimeTitle:去 Amazon 前缀 / を観る 后缀 / 站点名', () => {
   assert.equal(cleanPrimeTitle('Amazon.co.jp: 鬼滅の刃を観る | Prime Video'), '鬼滅の刃');
-  assert.equal(cleanPrimeTitle('Amazon.com: Attack on Titanを観る | Prime Video'), 'Attack on Titan');
+  assert.equal(
+    cleanPrimeTitle('Amazon.com: Attack on Titanを観る | Prime Video'),
+    'Attack on Titan',
+  );
 });
 
 // ── 切集信号源:适配器可选提供 watchEl,否则回落 <title> ──
 test('Prime 提供 watchEl(剧集信息元素);DMM 不提供 → 由 episode-signal 回落 <title>', () => {
   stub({
-    hostname: 'www.amazon.co.jp', pathname: '/gp/video/detail/x',
-    href: 'https://www.amazon.co.jp/gp/video/detail/x', title: 'x',
+    hostname: 'www.amazon.co.jp',
+    pathname: '/gp/video/detail/x',
+    href: 'https://www.amazon.co.jp/gp/video/detail/x',
+    title: 'x',
     els: { 'atvwebplayersdk-episode-info': 'S1 E1 第1話' },
   });
   const prime = getSiteAdapter();
@@ -130,8 +160,10 @@ test('Prime 提供 watchEl(剧集信息元素);DMM 不提供 → 由 episode-sig
   assert.ok(prime.watchEl()); // 返回剧集信息元素(切集信号源)
 
   stub({
-    hostname: 'tv.dmm.com', pathname: '/vod/playback/on-demand/',
-    href: 'https://tv.dmm.com/vod/playback/on-demand/?season=S&content=C', title: 'x',
+    hostname: 'tv.dmm.com',
+    pathname: '/vod/playback/on-demand/',
+    href: 'https://tv.dmm.com/vod/playback/on-demand/?season=S&content=C',
+    title: 'x',
   });
   assert.equal(getSiteAdapter().watchEl, undefined); // DMM <title> 已带集数 → 无需 watchEl
 });
@@ -139,7 +171,10 @@ test('Prime 提供 watchEl(剧集信息元素);DMM 不提供 → 由 episode-sig
 // ── U-NEXT ──
 test('U-NEXT 播放页:标题块 h2(番名)/ h3(#集数)→ 番名 + 集数', () => {
   stub({
-    hostname: 'video.unext.jp', pathname: '/play/xxx', href: 'https://video.unext.jp/play/xxx', title: 'U-NEXT',
+    hostname: 'video.unext.jp',
+    pathname: '/play/xxx',
+    href: 'https://video.unext.jp/play/xxx',
+    title: 'U-NEXT',
     boxes: { 'styles__TitleContainer-': [{ h2: 'ヤニねこ', h3: '#1 ニャーがヤニねこにゃ' }] },
   });
   assert.equal(getSiteAdapter().name, 'unext');
@@ -148,8 +183,11 @@ test('U-NEXT 播放页:标题块 h2(番名)/ h3(#集数)→ 番名 + 集数', ()
 
 test('U-NEXT 无标题块 → 非目标,detectShow 回落 <title>', () => {
   stub({
-    hostname: 'video.unext.jp', pathname: '/', href: 'https://video.unext.jp/',
-    title: '鬼滅の刃 第5話｜U-NEXT', boxes: {},
+    hostname: 'video.unext.jp',
+    pathname: '/',
+    href: 'https://video.unext.jp/',
+    title: '鬼滅の刃 第5話｜U-NEXT',
+    boxes: {},
   });
   assert.equal(getSiteAdapter().name, 'unext');
   assert.equal(getSiteAdapter().isTarget(), false);

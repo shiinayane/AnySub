@@ -15,7 +15,9 @@ export function toast(msg) {
   t.textContent = msg;
   t.style.opacity = '1';
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 2500);
+  toastTimer = setTimeout(() => {
+    t.style.opacity = '0';
+  }, 2500);
 }
 
 // 可点提示:一句话 + 主操作按钮 + 关闭。点操作/关闭即消,约 12s 自动消。用于「发现字幕」自动提示。
@@ -36,8 +38,14 @@ export function toastOffer(msg, actionLabel, onAction) {
   el.append(text, act, x);
   (refs.uiRoot || document.body).appendChild(el);
   let tm;
-  const dismiss = () => { clearTimeout(tm); el.remove(); };
-  act.addEventListener('click', () => { dismiss(); onAction(); });
+  const dismiss = () => {
+    clearTimeout(tm);
+    el.remove();
+  };
+  act.addEventListener('click', () => {
+    dismiss();
+    onAction();
+  });
   x.addEventListener('click', dismiss);
   tm = setTimeout(dismiss, 12000);
 }

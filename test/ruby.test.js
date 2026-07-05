@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { applyRuby } from '../src/ruby.js';
 
 test('括号式 漢字（かな) → ruby(开启时,逐字对齐)', () => {
-  assert.equal(applyRuby('温厚（おんこう）な人', true), '<ruby>温<rt>おん</rt>厚<rt>こう</rt></ruby>な人');
+  assert.equal(
+    applyRuby('温厚（おんこう）な人', true),
+    '<ruby>温<rt>おん</rt>厚<rt>こう</rt></ruby>な人',
+  );
 });
 
 test('括号式:关闭时不转', () => {
@@ -11,15 +14,24 @@ test('括号式:关闭时不转', () => {
 });
 
 test('《》式始终转(不受括号开关影响,逐字对齐)', () => {
-  assert.equal(applyRuby('使徒《しと》、襲来', false), '<ruby>使<rt>し</rt>徒<rt>と</rt></ruby>、襲来');
+  assert.equal(
+    applyRuby('使徒《しと》、襲来', false),
+    '<ruby>使<rt>し</rt>徒<rt>と</rt></ruby>、襲来',
+  );
 });
 
 test('青空文库 ｜base《かな》(逐字对齐)', () => {
-  assert.equal(applyRuby('｜地面師《じめんし》たち', true), '<ruby>地<rt>じ</rt>面<rt>めん</rt>師<rt>し</rt></ruby>たち');
+  assert.equal(
+    applyRuby('｜地面師《じめんし》たち', true),
+    '<ruby>地<rt>じ</rt>面<rt>めん</rt>師<rt>し</rt></ruby>たち',
+  );
 });
 
 test('后缀读音:近接猟兵（りょうへい)→ 只注 猟兵,近接留白', () => {
-  assert.equal(applyRuby('近接猟兵（りょうへい）', true), '近接<ruby>猟<rt>りょう</rt>兵<rt>へい</rt></ruby>');
+  assert.equal(
+    applyRuby('近接猟兵（りょうへい）', true),
+    '近接<ruby>猟<rt>りょう</rt>兵<rt>へい</rt></ruby>',
+  );
 });
 
 test('熟字訓 今日（きょう)→ 逐字对不齐,回退整串注音', () => {

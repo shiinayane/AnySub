@@ -9,7 +9,11 @@ function ogTitle() {
   return (m && m.getAttribute('content')) || document.title;
 }
 function urlParam(name) {
-  try { return new URL(location.href).searchParams.get(name) || ''; } catch (_) { return ''; }
+  try {
+    return new URL(location.href).searchParams.get(name) || '';
+  } catch (_) {
+    return '';
+  }
 }
 
 const DMM = {
@@ -32,8 +36,8 @@ export function parsePrimeEpisode(text) {
 // 清洗 Prime 的 <title>:「Amazon.co.jp: 〈番名〉を観る | Prime Video」→ 番名
 export function cleanPrimeTitle(raw) {
   return String(raw || '')
-    .split(/[|｜]/)[0]                        // 去「| Prime Video」
-    .replace(/^\s*Amazon\.[a-z.]+:\s*/i, '')  // 去「Amazon.co.jp: 」前缀
+    .split(/[|｜]/)[0] // 去「| Prime Video」
+    .replace(/^\s*Amazon\.[a-z.]+:\s*/i, '') // 去「Amazon.co.jp: 」前缀
     .replace(/\s*(を観る|を視聴|を見る)\s*$/, '') // 去「を観る」后缀
     .trim();
 }

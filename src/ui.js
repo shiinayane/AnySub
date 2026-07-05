@@ -14,21 +14,31 @@ import { t, setLang, LANG_OPTIONS } from './i18n.js';
 const persist = saveState;
 
 // 内联 SVG 图标(stroke 用 currentColor,随文字色走;16px 视觉)
-const SVG = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const SVG = (p) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const ICON = {
-  file: SVG('<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/>'),
+  file: SVG(
+    '<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/>',
+  ),
   search: SVG('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>'),
   video: SVG('<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>'),
-  eye: SVG('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'),
-  eyeOff: SVG('<path d="M10 5.1A9.9 9.9 0 0 1 12 5c6.4 0 10 7 10 7a15 15 0 0 1-2.2 2.9M6.5 6.5A15 15 0 0 0 2 12s3.6 7 10 7a9.8 9.8 0 0 0 3.5-.6"/><path d="m3 3 18 18"/>'),
-  trash: SVG('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>'),
+  eye: SVG(
+    '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+  ),
+  eyeOff: SVG(
+    '<path d="M10 5.1A9.9 9.9 0 0 1 12 5c6.4 0 10 7 10 7a15 15 0 0 1-2.2 2.9M6.5 6.5A15 15 0 0 0 2 12s3.6 7 10 7a9.8 9.8 0 0 0 3.5-.6"/><path d="m3 3 18 18"/>',
+  ),
+  trash: SVG(
+    '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
+  ),
   upload: SVG('<path d="M12 15V4M8 8l4-4 4 4M5 20h14"/>'),
 };
 
 function langOptions() {
   const cur = state.lang || '';
-  return LANG_OPTIONS.map((o) =>
-    `<option value="${o.value}"${o.value === cur ? ' selected' : ''}>${o.label}</option>`).join('');
+  return LANG_OPTIONS.map(
+    (o) => `<option value="${o.value}"${o.value === cur ? ' selected' : ''}>${o.label}</option>`,
+  ).join('');
 }
 
 // 面板 HTML 随语言生成(可运行时重建以切换语言)
@@ -138,7 +148,8 @@ export function buildUI() {
   const overlay = document.createElement('div');
   overlay.id = 'anysub-overlay';
   // 关键定位属性内联,即使站点 CSP 剥离了注入的 <style>,覆盖层也不会遮挡/拦截页面
-  overlay.style.cssText = 'display:none;position:fixed;z-index:2147483640;pointer-events:none;overflow:hidden;';
+  overlay.style.cssText =
+    'display:none;position:fixed;z-index:2147483640;pointer-events:none;overflow:hidden;';
 
   const fab = document.createElement('div');
   fab.id = 'anysub-fab';
@@ -164,10 +175,16 @@ export function buildUI() {
 
   // 轻量事件(不依赖面板):悬浮球点击/拖拽、文件选择。面板与搜索 DOM 懒建,空闲页面省创建成本。
   fab.addEventListener('click', () => {
-    if (fab.__dragged) { fab.__dragged = false; return; }
+    if (fab.__dragged) {
+      fab.__dragged = false;
+      return;
+    }
     togglePanel();
   });
-  fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); fileInput.value = ''; });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) loadFile(fileInput.files[0]);
+    fileInput.value = '';
+  });
   makeDraggable(fab);
 }
 
@@ -208,7 +225,8 @@ export function togglePanel() {
   ensurePanel();
   const p = refs.panel;
   const show = p.style.display === 'none' || !p.style.display;
-  if (show) openPanel(); else p.style.display = 'none';
+  if (show) openPanel();
+  else p.style.display = 'none';
 }
 
 // 显式打开主面板(供快捷键 show 分支 + 搜索面板「返回主面板」复用)
@@ -221,10 +239,14 @@ export function openPanel() {
   if (inp) inp.value = state.offset.toFixed(1); // 偏移可能在加载时被记忆恢复
   syncVisBtn();
   positionPanel();
-  p.classList.remove('as-in'); void p.offsetWidth; p.classList.add('as-in'); // 重放入场动画(小面板,reflow 廉价)
+  p.classList.remove('as-in');
+  void p.offsetWidth;
+  p.classList.add('as-in'); // 重放入场动画(小面板,reflow 廉价)
 }
 
-export function openFilePicker() { refs.fileInput.click(); }
+export function openFilePicker() {
+  refs.fileInput.click();
+}
 
 export function adjustOffset(delta) {
   state.offset = Math.round((state.offset + delta) * 10) / 10;
@@ -257,56 +279,94 @@ function rememberOffset() {
 function wirePanel() {
   const { panel } = refs;
 
-  panel.querySelector('#anysub-close').addEventListener('click', () => { panel.style.display = 'none'; });
+  panel.querySelector('#anysub-close').addEventListener('click', () => {
+    panel.style.display = 'none';
+  });
   panel.querySelector('#anysub-choose').addEventListener('click', openFilePicker);
   panel.querySelector('#anysub-online').addEventListener('click', openSearch);
   panel.querySelector('#anysub-pickvid').addEventListener('click', startPickVideo);
-  panel.querySelector('#anysub-clear').addEventListener('click', () => { clearSubtitle(); syncVisBtn(); });
+  panel.querySelector('#anysub-clear').addEventListener('click', () => {
+    clearSubtitle();
+    syncVisBtn();
+  });
 
-  panel.querySelector('#anysub-vis').addEventListener('click', () => { toggleSubtitles(); syncVisBtn(); });
+  panel.querySelector('#anysub-vis').addEventListener('click', () => {
+    toggleSubtitles();
+    syncVisBtn();
+  });
 
-  panel.querySelectorAll('[data-off]').forEach((b) =>
-    b.addEventListener('click', () => adjustOffset(parseFloat(b.dataset.off))));
+  panel
+    .querySelectorAll('[data-off]')
+    .forEach((b) => b.addEventListener('click', () => adjustOffset(parseFloat(b.dataset.off))));
   panel.querySelector('#anysub-offset').addEventListener('input', (e) => {
     const val = parseFloat(e.target.value);
-    if (!isNaN(val)) { state.offset = val; refresh(); rememberOffset(); }
+    if (!isNaN(val)) {
+      state.offset = val;
+      refresh();
+      rememberOffset();
+    }
   });
 
   const fontR = panel.querySelector('#anysub-font');
   fontR.addEventListener('input', () => {
     state.style.fontPct = parseInt(fontR.value, 10);
     panel.querySelector('#anysub-fontval').textContent = state.style.fontPct + '%';
-    invalidateLayout(); refresh(); persist();
+    invalidateLayout();
+    refresh();
+    persist();
   });
   const posR = panel.querySelector('#anysub-pos');
   posR.addEventListener('input', () => {
     state.style.bottomPct = parseInt(posR.value, 10);
     panel.querySelector('#anysub-posval').textContent = state.style.bottomPct + '%';
-    invalidateLayout(); refresh(); persist();
+    invalidateLayout();
+    refresh();
+    persist();
   });
 
-  setupSeg('#anysub-bg', 'bg', (val) => { state.style.bg = val; applyStyle(); persist(); });
-  setupSeg('#anysub-color', 'color', (val) => { state.style.color = val; applyStyle(); persist(); });
-  setupSeg('#anysub-anchor', 'pos', (val) => { state.subPos = val; refresh(); persist(); });
+  setupSeg('#anysub-bg', 'bg', (val) => {
+    state.style.bg = val;
+    applyStyle();
+    persist();
+  });
+  setupSeg('#anysub-color', 'color', (val) => {
+    state.style.color = val;
+    applyStyle();
+    persist();
+  });
+  setupSeg('#anysub-anchor', 'pos', (val) => {
+    state.subPos = val;
+    refresh();
+    persist();
+  });
 
   const rubyBtn = panel.querySelector('#anysub-tg-ruby');
   rubyBtn.addEventListener('click', () => {
     state.rubyParen = !state.rubyParen;
-    syncToggles(); refresh(); persist();
+    syncToggles();
+    refresh();
+    persist();
   });
   const enhBtn = panel.querySelector('#anysub-tg-enh');
   enhBtn.addEventListener('click', () => {
     state.enhance = !state.enhance;
-    syncToggles(); refresh(); persist();
+    syncToggles();
+    refresh();
+    persist();
   });
   const fabBtn = panel.querySelector('#anysub-tg-fab');
   fabBtn.addEventListener('click', () => {
     state.showFab = !state.showFab;
-    syncToggles(); updateFabVisibility(); updateWatcher(); persist();
+    syncToggles();
+    updateFabVisibility();
+    updateWatcher();
+    persist();
   });
 
   panel.querySelector('#anysub-lang').addEventListener('change', (e) => {
-    setLang(e.target.value); persist(); relocalize();
+    setLang(e.target.value);
+    persist();
+    relocalize();
   });
 
   setupDrop(panel.querySelector('#anysub-drop')); // 仅面板区域接收拖放,避免劫持页面拖放
@@ -316,7 +376,10 @@ function wirePanel() {
 // 仅当页面存在 <video> 且用户开启了悬浮球时才显示;先便宜地查 light-DOM,再深扫 Shadow DOM
 export function updateFabVisibility() {
   // 悬浮球关闭时无需检测视频(球始终隐藏),直接返回,零开销
-  if (!state.showFab) { refs.fab.style.display = 'none'; return; }
+  if (!state.showFab) {
+    refs.fab.style.display = 'none';
+    return;
+  }
   const hasVideo = !!document.querySelector('video') || collectVideos().length > 0;
   refs.fab.style.display = hasVideo ? '' : 'none';
 }
@@ -356,29 +419,38 @@ function syncControls() {
 }
 
 function setSegActive(sel, attr, val) {
-  refs.panel.querySelectorAll(`${sel} button`).forEach((b) =>
-    b.classList.toggle('on', b.dataset[attr] === val));
+  refs.panel
+    .querySelectorAll(`${sel} button`)
+    .forEach((b) => b.classList.toggle('on', b.dataset[attr] === val));
 }
 
 function setupSeg(sel, attr, cb) {
   const group = refs.panel.querySelector(sel);
-  group.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
-    group.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
-    b.classList.add('on');
-    cb(b.dataset[attr]);
-  }));
+  group.querySelectorAll('button').forEach((b) =>
+    b.addEventListener('click', () => {
+      group.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+      b.classList.add('on');
+      cb(b.dataset[attr]);
+    }),
+  );
 }
 
 function setupDrop(el) {
   const on = () => el.classList.add('as-dragover');
   const off = () => el.classList.remove('as-dragover');
-  el.addEventListener('dragover', (e) => { e.preventDefault(); on(); });
+  el.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    on();
+  });
   el.addEventListener('dragleave', off);
   el.addEventListener('drop', (e) => {
     off();
     if (!e.dataTransfer || !e.dataTransfer.files.length) return;
     const f = e.dataTransfer.files[0];
-    if (/\.(srt|vtt|ass|ssa|sub|sbv|txt)$/i.test(f.name)) { e.preventDefault(); loadFile(f); }
+    if (/\.(srt|vtt|ass|ssa|sub|sbv|txt)$/i.test(f.name)) {
+      e.preventDefault();
+      loadFile(f);
+    }
   });
 }
 
@@ -388,14 +460,21 @@ function makeDraggable(el) {
   el.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     const r = el.getBoundingClientRect();
-    sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top; moved = false;
+    sx = e.clientX;
+    sy = e.clientY;
+    ox = r.left;
+    oy = r.top;
+    moved = false;
     el.classList.add('dragging');
     el.classList.remove('dock-left', 'dock-right');
-    el.style.left = r.left + 'px'; el.style.top = r.top + 'px';
-    el.style.right = 'auto'; el.style.bottom = 'auto';
+    el.style.left = r.left + 'px';
+    el.style.top = r.top + 'px';
+    el.style.right = 'auto';
+    el.style.bottom = 'auto';
     el.setPointerCapture(e.pointerId);
     const move = (ev) => {
-      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      const dx = ev.clientX - sx,
+        dy = ev.clientY - sy;
       if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
       el.style.left = Math.min(window.innerWidth - r.width, Math.max(0, ox + dx)) + 'px';
       el.style.top = Math.min(window.innerHeight - r.height, Math.max(0, oy + dy)) + 'px';
@@ -416,7 +495,9 @@ function snapFab(el) {
   const r = el.getBoundingClientRect();
   const W = window.innerWidth || document.documentElement.clientWidth || 1;
   const onRight = r.left + r.width / 2 >= W / 2;
-  el.style.left = ''; el.style.right = ''; el.style.bottom = 'auto';
+  el.style.left = '';
+  el.style.right = '';
+  el.style.bottom = 'auto';
   el.style.top = Math.min(window.innerHeight - r.height - 4, Math.max(4, r.top)) + 'px';
   el.classList.add(onRight ? 'dock-right' : 'dock-left');
 }
@@ -427,12 +508,17 @@ function positionPanel() {
   const W = window.innerWidth || document.documentElement.clientWidth || 1;
   const H = window.innerHeight || document.documentElement.clientHeight || 800;
   // bottom 显式 auto:否则回落到 CSS 的 bottom:54px,与下面设的 top 同时生效会把面板纵向拉伸
-  panel.style.left = ''; panel.style.right = ''; panel.style.top = ''; panel.style.bottom = 'auto';
-  const ph = panel.offsetHeight || 500, pw = panel.offsetWidth || 300;
+  panel.style.left = '';
+  panel.style.right = '';
+  panel.style.top = '';
+  panel.style.bottom = 'auto';
+  const ph = panel.offsetHeight || 500,
+    pw = panel.offsetWidth || 300;
   if (state.showFab) {
     const fr = fab.getBoundingClientRect();
     const onRight = fr.left + fr.width / 2 >= W / 2;
-    if (onRight) panel.style.right = '12px'; else panel.style.left = '12px';
+    if (onRight) panel.style.right = '12px';
+    else panel.style.left = '12px';
     panel.style.top = Math.max(10, Math.min(H - ph - 10, fr.top - ph / 2)) + 'px';
   } else {
     panel.style.left = Math.max(10, (W - pw) / 2) + 'px';
@@ -445,7 +531,10 @@ let picking = false;
 function startPickVideo() {
   if (picking) return;
   const vids = collectVideos().filter(isVisible);
-  if (!vids.length) { toast(t('toast.noVideo')); return; }
+  if (!vids.length) {
+    toast(t('toast.noVideo'));
+    return;
+  }
   picking = true;
   toast(t('toast.clickVideo'));
   const overlays = vids.map((v) => {
@@ -454,14 +543,23 @@ function startPickVideo() {
     o.className = 'anysub-vidpick';
     o.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;`;
     o.addEventListener('click', (e) => {
-      e.stopPropagation(); e.preventDefault();
-      setVideo(v); cleanup(); toast(t('toast.videoSelected'));
+      e.stopPropagation();
+      e.preventDefault();
+      setVideo(v);
+      cleanup();
+      toast(t('toast.videoSelected'));
     });
     refs.uiRoot.appendChild(o);
     return o;
   });
   // cleanup 里统一移除 keydown 监听:点击选中视频也会 cleanup,避免遗留悬空的 document 监听
-  function cleanup() { overlays.forEach((o) => o.remove()); picking = false; document.removeEventListener('keydown', esc); }
-  const esc = (e) => { if (e.key === 'Escape') cleanup(); };
+  function cleanup() {
+    overlays.forEach((o) => o.remove());
+    picking = false;
+    document.removeEventListener('keydown', esc);
+  }
+  const esc = (e) => {
+    if (e.key === 'Escape') cleanup();
+  };
   document.addEventListener('keydown', esc);
 }

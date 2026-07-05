@@ -11,13 +11,20 @@ import { stepCueLine, INIT_SPAN } from './cue-format.js';
 // 导出供单测:每种语义类型都应正确套用注音(sfx 曾漏调 applyRuby 导致内嵌注音丢失)。
 export function typedHtml(text, c) {
   switch (c.type) {
-    case 'sfx': return `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
-    case 'voice': return `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
-    case 'book': return `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
-    case 'lyric': return `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
-    case 'speaker': return `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
-    case 'dialogue': return `<span class="anysub-spk">（${applyRuby(c.name, state.rubyParen)}）</span>${applyRuby(c.rest, state.rubyParen)}`;
-    default: return applyRuby(text, state.rubyParen);
+    case 'sfx':
+      return `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
+    case 'voice':
+      return `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
+    case 'book':
+      return `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
+    case 'lyric':
+      return `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
+    case 'speaker':
+      return `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
+    case 'dialogue':
+      return `<span class="anysub-spk">（${applyRuby(c.name, state.rubyParen)}）</span>${applyRuby(c.rest, state.rubyParen)}`;
+    default:
+      return applyRuby(text, state.rubyParen);
   }
 }
 
@@ -34,24 +41,30 @@ function buildSegments(active) {
       const html = state.enhance ? typedHtml(line, c) : applyRuby(line, state.rubyParen);
       const nonspeech = state.enhance && c.type === 'sfx'; // 仅真·音效置顶;书面多是念出来的→留底部
       const turnStart = c.type === 'dialogue' || c.type === 'speaker' || nonspeech;
-      if (cur === null || turnStart) { cur = { lines: [html], nonspeech }; segs.push(cur); }
-      else cur.lines.push(html);
+      if (cur === null || turnStart) {
+        cur = { lines: [html], nonspeech };
+        segs.push(cur);
+      } else cur.lines.push(html);
     }
   }
   return segs.map((s) => ({ html: s.lines.join('<br>'), nonspeech: s.nonspeech }));
 }
 
 export function createTextRenderer() {
-  let boxTop = null, boxBottom = null;
+  let boxTop = null,
+    boxBottom = null;
   let visible = true;
   let lastKey = '';
-  let cursor = 0;   // 活动 cue 扫描起点:前进播放时越过已结束的前缀,免每帧从头扫(O(N)→摊还 O(1))
+  let cursor = 0; // 活动 cue 扫描起点:前进播放时越过已结束的前缀,免每帧从头扫(O(N)→摊还 O(1))
   let prevT = -1;
 
   function outline(c) {
     return `-2px -2px 1px ${c},2px -2px 1px ${c},-2px 2px 1px ${c},2px 2px 1px ${c},0 0 3px ${c}`;
   }
-  function eachBox(fn) { if (boxTop) fn(boxTop); if (boxBottom) fn(boxBottom); }
+  function eachBox(fn) {
+    if (boxTop) fn(boxTop);
+    if (boxBottom) fn(boxBottom);
+  }
 
   function makeBox(anchor) {
     const b = document.createElement('div');
@@ -91,19 +104,32 @@ export function createTextRenderer() {
 
     setVisible(v) {
       visible = v;
-      if (!v) eachBox((b) => { b.style.display = 'none'; });
+      if (!v)
+        eachBox((b) => {
+          b.style.display = 'none';
+        });
       else lastKey = ''; // 强制下次 renderAt 重渲染并恢复 display
     },
 
     renderAt(v, rect, layoutChanged) {
       if (!boxTop) return;
-      if (!visible) { eachBox((b) => { b.style.display = 'none'; }); return; }
+      if (!visible) {
+        eachBox((b) => {
+          b.style.display = 'none';
+        });
+        return;
+      }
       if (layoutChanged && rect) {
-        const fontPx = Math.max(10, rect.height * FONT_BASE * (state.style.fontPct / 100)).toFixed(1) + 'px';
-        const edge = (rect.height * state.style.bottomPct / 100) + 'px';
-        eachBox((b) => { b.style.fontSize = fontPx; });
-        boxBottom.style.bottom = edge; boxBottom.style.top = 'auto';
-        boxTop.style.top = edge; boxTop.style.bottom = 'auto';
+        const fontPx =
+          Math.max(10, rect.height * FONT_BASE * (state.style.fontPct / 100)).toFixed(1) + 'px';
+        const edge = (rect.height * state.style.bottomPct) / 100 + 'px';
+        eachBox((b) => {
+          b.style.fontSize = fontPx;
+        });
+        boxBottom.style.bottom = edge;
+        boxBottom.style.top = 'auto';
+        boxTop.style.top = edge;
+        boxTop.style.bottom = 'auto';
       }
       const t = v.currentTime - state.offset;
       const cues = state.cues;
@@ -119,8 +145,15 @@ export function createTextRenderer() {
         if (t < c.end) active.push(c); // end 独占,避免相邻 cue 边界瞬间双显
       }
       // 内容+开关指纹去重:cue/开关未变则跳过重排与 DOM 写入(不在每个渲染 tick 重跑注音)
-      const key = (state.rubyParen ? '1' : '0') + (state.enhance ? '1' : '0') + state.subPos + '|' +
-        active.map((c) => (c._spanIn ? c._spanIn.span + (c._spanIn.lyric ? 'L' : '') : '') + ':' + c.text)
+      const key =
+        (state.rubyParen ? '1' : '0') +
+        (state.enhance ? '1' : '0') +
+        state.subPos +
+        '|' +
+        active
+          .map(
+            (c) => (c._spanIn ? c._spanIn.span + (c._spanIn.lyric ? 'L' : '') : '') + ':' + c.text,
+          )
           .join(String.fromCharCode(1));
       if (key === lastKey) return;
       lastKey = key;
@@ -134,11 +167,15 @@ export function createTextRenderer() {
       const sBox = state.subPos === 'top' ? boxBottom : boxTop;
       const pHtml = speech.join('<br>');
       const sHtml = meta.join('<br>');
-      pBox.innerHTML = pHtml; pBox.style.display = pHtml ? 'inline-block' : 'none';
-      sBox.innerHTML = sHtml; sBox.style.display = sHtml ? 'inline-block' : 'none';
+      pBox.innerHTML = pHtml;
+      pBox.style.display = pHtml ? 'inline-block' : 'none';
+      sBox.innerHTML = sHtml;
+      sBox.style.display = sHtml ? 'inline-block' : 'none';
     },
 
-    applyStyle() { eachBox(styleBox); },
+    applyStyle() {
+      eachBox(styleBox);
+    },
 
     destroy() {
       eachBox((b) => b.remove());

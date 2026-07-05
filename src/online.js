@@ -20,7 +20,11 @@ export async function resolveSubtitles(series, episode) {
   if (!candidates.length) return { anime: null, candidates: [], files: [], exact: false };
   const exactHit = pickExactAnime(candidates, series);
   const anime = exactHit || candidates[0];
-  const files = await subtitleFiles(anime.anilistId, episode, [anime.native, anime.romaji, anime.english]);
+  const files = await subtitleFiles(anime.anilistId, episode, [
+    anime.native,
+    anime.romaji,
+    anime.english,
+  ]);
   return { anime, candidates, files, exact: !!exactHit };
 }
 
@@ -70,5 +74,5 @@ export function markLoaded(anilistId, fileName) {
   const p = detectShow();
   state.loadedSeries = p.series;
   state.loadedEpisode = p.episode;
-  state.lastOnline = (anilistId != null) ? { anilistId, name: fileName } : null;
+  state.lastOnline = anilistId != null ? { anilistId, name: fileName } : null;
 }

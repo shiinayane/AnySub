@@ -8,7 +8,10 @@
 import { readFileSync } from 'node:fs';
 
 const xmlPath = process.argv[2];
-if (!xmlPath) { console.error('usage: build-readings.mjs <kanjidic2.xml>'); process.exit(1); }
+if (!xmlPath) {
+  console.error('usage: build-readings.mjs <kanjidic2.xml>');
+  process.exit(1);
+}
 const xml = readFileSync(xmlPath, 'utf8');
 
 // 片假名 → 平假名(逐字符 -0x60);丢弃长音符 ー / 非假名
@@ -16,8 +19,10 @@ function toHira(s) {
   let out = '';
   for (const ch of s) {
     const c = ch.codePointAt(0);
-    if (c >= 0x30a1 && c <= 0x30f6) out += String.fromCodePoint(c - 0x60); // カタ→ひら
-    else if (c >= 0x3041 && c <= 0x3096) out += ch;                        // 已是平假名
+    if (c >= 0x30a1 && c <= 0x30f6)
+      out += String.fromCodePoint(c - 0x60); // カタ→ひら
+    else if (c >= 0x3041 && c <= 0x3096)
+      out += ch; // 已是平假名
     else if (c === 0x30fc) out += ''; // 长音符:on 读音里一般没有,丢弃
     // 其余(标点/罗马字)丢弃
   }
@@ -27,7 +32,7 @@ function toHira(s) {
 // 规整单条读音:剥词缀 '-'、okurigana(取 '.' 之前)、归一平假名
 function normReading(raw) {
   let r = raw.trim();
-  r = r.replace(/-/g, '');       // 前/后缀标记
+  r = r.replace(/-/g, ''); // 前/后缀标记
   const dot = r.indexOf('.');
   if (dot >= 0) r = r.slice(0, dot); // okurigana:只留汉字对应的读音部分
   return toHira(r);
@@ -49,11 +54,20 @@ while ((m = reChar.exec(xml))) {
   const readings = new Set();
   let r;
   const reOn = /<reading r_type="ja_on">(.*?)<\/reading>/g;
-  while ((r = reOn.exec(block))) { const v = normReading(r[1]); if (v) readings.add(v); }
+  while ((r = reOn.exec(block))) {
+    const v = normReading(r[1]);
+    if (v) readings.add(v);
+  }
   const reKun = /<reading r_type="ja_kun">(.*?)<\/reading>/g;
-  while ((r = reKun.exec(block))) { const v = normReading(r[1]); if (v) readings.add(v); }
+  while ((r = reKun.exec(block))) {
+    const v = normReading(r[1]);
+    if (v) readings.add(v);
+  }
   const reNan = /<nanori>(.*?)<\/nanori>/g;
-  while ((r = reNan.exec(block))) { const v = normReading(r[1]); if (v) readings.add(v); }
+  while ((r = reNan.exec(block))) {
+    const v = normReading(r[1]);
+    if (v) readings.add(v);
+  }
 
   if (readings.size) map[kanji] = [...readings].join(',');
 }
@@ -61,11 +75,12 @@ while ((m = reChar.exec(xml))) {
 const count = Object.keys(map).length;
 const json = JSON.stringify(map);
 // 以「JSON 字符串常量」导出,懒 JSON.parse(避免每页注入都解析大对象)
-const out =
-`// 自动生成,请勿手改。见 scripts/build-readings.mjs。
+const out = `// 自动生成,请勿手改。见 scripts/build-readings.mjs。
 // 汉字读音表(常用+人名用,${count} 字),源自 KANJIDIC2 (c) EDRDG,CC BY-SA 4.0。
 // 值为逗号分隔的平假名读音候选,供 furigana-align.js 逐字对齐。
 export const KANJI_READINGS_JSON = ${JSON.stringify(json)};
 `;
 process.stdout.write(out);
-process.stderr.write(`[build-readings] ${count} kanji, json ${(json.length / 1024).toFixed(1)}KB\n`);
+process.stderr.write(
+  `[build-readings] ${count} kanji, json ${(json.length / 1024).toFixed(1)}KB\n`,
+);

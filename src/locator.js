@@ -4,11 +4,21 @@ export function collectVideos(root, acc) {
   acc = acc || [];
   root = root || document;
   let list;
-  try { list = root.querySelectorAll('video'); } catch (_) { list = []; }
+  try {
+    list = root.querySelectorAll('video');
+  } catch (_) {
+    list = [];
+  }
   list.forEach((v) => acc.push(v));
   let all;
-  try { all = root.querySelectorAll('*'); } catch (_) { all = []; }
-  all.forEach((el) => { if (el.shadowRoot) collectVideos(el.shadowRoot, acc); });
+  try {
+    all = root.querySelectorAll('*');
+  } catch (_) {
+    all = [];
+  }
+  all.forEach((el) => {
+    if (el.shadowRoot) collectVideos(el.shadowRoot, acc);
+  });
   return acc;
 }
 
@@ -22,7 +32,8 @@ export function pickBestVideo() {
   const vids = collectVideos().filter(isVisible);
   if (!vids.length) return collectVideos()[0] || null;
   vids.sort((a, b) => {
-    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    const ra = a.getBoundingClientRect(),
+      rb = b.getBoundingClientRect();
     return rb.width * rb.height - ra.width * ra.height;
   });
   return vids[0];

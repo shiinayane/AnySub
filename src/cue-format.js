@@ -11,18 +11,24 @@ const INNER = '(?:' + NONP + '|[（(]' + NONP + '*[）)])';
 const RE_LEAD = new RegExp('^[（(](' + INNER + '{1,' + NAME + '})[）)]\\s*(\\S[\\s\\S]*)$');
 const RE_ALONE = new RegExp('^[（(](' + INNER + '{1,' + NAME + '})[）)]$');
 
-const count = (s, re) => { const m = s.match(re); return m ? m.length : 0; };
+const count = (s, re) => {
+  const m = s.match(re);
+  return m ? m.length : 0;
+};
 
 // 话者名归一化 key:去掉内嵌注音（かな)/《かな》,让「千束（ちさと)」与「千束」对得上词表
 export function speakerKey(name) {
-  return String(name).replace(/[（(][^（）()]*[）)]/g, '').replace(/《[^》]*》/g, '').trim();
+  return String(name)
+    .replace(/[（(][^（）()]*[）)]/g, '')
+    .replace(/《[^》]*》/g, '')
+    .trim();
 }
 
 // 扫全部 cue,收集确定的话者名(仅取「行首（X）+台词」形态)。cue 内多行以 <br> 分隔。
 export function buildSpeakers(cues) {
   const set = new Set();
   for (const c of cues || []) {
-    const raw = (c && c.text != null) ? String(c.text) : '';
+    const raw = c && c.text != null ? String(c.text) : '';
     for (const line of raw.split('<br>')) {
       const m = RE_LEAD.exec(line.trim());
       if (m) set.add(speakerKey(m[1]));
@@ -60,11 +66,19 @@ export function stepCueLine(raw, speakers, st) {
   }
 
   // 起新跨度:开括号多于闭括号 → 未闭合,后续行延续;整行被包裹 → 自闭合。
-  const vO = count(t, /[〈＜]/g), vC = count(t, /[〉＞]/g);
-  if (vO > vC) { next.span = 'voice'; return { type: 'voice', state: next }; }
+  const vO = count(t, /[〈＜]/g),
+    vC = count(t, /[〉＞]/g);
+  if (vO > vC) {
+    next.span = 'voice';
+    return { type: 'voice', state: next };
+  }
   if ((vO || vC) && /^[〈＜][\s\S]*[〉＞]$/.test(t)) return { type: 'voice', state: next };
-  const bO = count(t, /《/g), bC = count(t, /》/g);
-  if (bO > bC) { next.span = 'book'; return { type: 'book', state: next }; }
+  const bO = count(t, /《/g),
+    bC = count(t, /》/g);
+  if (bO > bC) {
+    next.span = 'book';
+    return { type: 'book', state: next };
+  }
   // 整行 《…》 → 书面;而注音「漢字《かな》」非整行,不会命中
   if (bO === 1 && bC === 1 && /^《[\s\S]*》$/.test(t)) return { type: 'book', state: next };
 
@@ -72,7 +86,8 @@ export function stepCueLine(raw, speakers, st) {
   let m = RE_ALONE.exec(t);
   if (m) {
     const inner = m[1];
-    if (speakers && speakers.has(speakerKey(inner))) return { type: 'speaker', name: inner, state: next };
+    if (speakers && speakers.has(speakerKey(inner)))
+      return { type: 'speaker', name: inner, state: next };
     return { type: 'sfx', state: next };
   }
   m = RE_LEAD.exec(t);
@@ -97,10 +112,11 @@ export function computeSpanStates(cues) {
   let st = INIT_SPAN;
   let prevEnd = -Infinity;
   for (const c of cues || []) {
-    if (c.start < prevEnd - 0.05 || (c.start - prevEnd) > 2) st = INIT_SPAN;
+    if (c.start < prevEnd - 0.05 || c.start - prevEnd > 2) st = INIT_SPAN;
     c._spanIn = st;
     let s = st;
-    for (const line of String(c.text == null ? '' : c.text).split('<br>')) s = stepCueLine(line, null, s).state;
+    for (const line of String(c.text == null ? '' : c.text).split('<br>'))
+      s = stepCueLine(line, null, s).state;
     st = s;
     prevEnd = Math.max(prevEnd, c.end);
   }

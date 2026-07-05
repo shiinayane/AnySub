@@ -8,7 +8,9 @@ const EP_TOK = /^(s\d{1,2}e\d{1,3}|e\d{1,3}|v\d+|\d{1,4}|[0-9a-f]{8})$/;
 // 「源特征」token:文件名里的拉丁字母数字(剔除集号/哈希)
 export function sourceTokens(name) {
   const out = new Set();
-  for (const t of String(name || '').toLowerCase().split(/[^a-z0-9]+/)) {
+  for (const t of String(name || '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)) {
     if (t && !EP_TOK.test(t)) out.add(t);
   }
   return out;
@@ -16,7 +18,8 @@ export function sourceTokens(name) {
 
 // 整体 token(含 CJK):源特征为空(纯日文命名)时的退路
 export function fileTokens(name) {
-  return String(name || '').toLowerCase()
+  return String(name || '')
+    .toLowerCase()
     .replace(/\.(ass|ssa|srt|vtt|sub|sbv)$/i, '')
     .split(/[^a-z0-9぀-ヿ一-鿿]+/)
     .filter((t) => t && !EP_TOK.test(t));
@@ -28,23 +31,36 @@ export function pickSameSource(files, refName) {
   const refSig = sourceTokens(refName);
   const useSig = refSig.size >= 1;
   const refFull = new Set(fileTokens(refName));
-  let best = null, bestScore = -1, second = -1;
+  let best = null,
+    bestScore = -1,
+    second = -1;
   for (const f of files) {
-    const s = useSig ? jaccard(refSig, sourceTokens(f.name))
-                     : jaccard(refFull, new Set(fileTokens(f.name)));
-    if (s > bestScore) { second = bestScore; bestScore = s; best = f; }
-    else if (s > second) { second = s; }
+    const s = useSig
+      ? jaccard(refSig, sourceTokens(f.name))
+      : jaccard(refFull, new Set(fileTokens(f.name)));
+    if (s > bestScore) {
+      second = bestScore;
+      bestScore = s;
+      best = f;
+    } else if (s > second) {
+      second = s;
+    }
   }
   const thresh = useSig ? 0.5 : 0.6;
   // 达阈值,或明显优于次优(应对源特征很少的情况),即认为同源
-  if (best && (bestScore >= thresh || (bestScore >= 0.34 && bestScore - second >= 0.34))) return best;
+  if (best && (bestScore >= thresh || (bestScore >= 0.34 && bestScore - second >= 0.34)))
+    return best;
   return null;
 }
 
 // 番名归一:NFKC(全角→半角、全角空格 U+3000→半角空格)+ 小写 + 空白折叠 + trim。
 // 刻意保守——只吸收「全/半角空格差异、大小写」这类无意义差异,不做模糊匹配。
 export function normTitle(s) {
-  return String(s == null ? '' : s).normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+  return String(s == null ? '' : s)
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // 自动选番:仅当「唯一」一个候选的某个标题(日文/罗马字/英文)与查询「精确相等」才返回它;
@@ -54,7 +70,8 @@ export function pickExactAnime(candidates, query) {
   const q = normTitle(query);
   if (!q || !candidates || !candidates.length) return null;
   const hits = candidates.filter((a) =>
-    [a.native, a.romaji, a.english, a.title].some((t) => t && normTitle(t) === q));
+    [a.native, a.romaji, a.english, a.title].some((t) => t && normTitle(t) === q),
+  );
   return hits.length === 1 ? hits[0] : null;
 }
 

@@ -34,7 +34,11 @@ test('各类型套用对应语义 class', () => {
 });
 
 test('dialogue:话者名与台词都套用注音,名字包在 spk', () => {
-  const h = typedHtml('', { type: 'dialogue', name: '猫猫（マオマオ）', rest: 'この薬草（やくそう）を' });
+  const h = typedHtml('', {
+    type: 'dialogue',
+    name: '猫猫（マオマオ）',
+    rest: 'この薬草（やくそう）を',
+  });
   assert.match(h, /anysub-spk/);
   assert.match(h, /<ruby>猫猫<rt>マオマオ<\/rt><\/ruby>/); // 话者名内嵌注音(整串回退)
   assert.ok(h.includes('<rt>やく</rt>') && h.includes('<rt>そう</rt>'), '台词未逐字注音'); // 薬草→薬/草 逐字对齐

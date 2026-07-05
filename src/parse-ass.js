@@ -5,14 +5,24 @@ export function parseAss(text) {
   const lines = text.split(/\r?\n/);
   const cues = [];
   let inEvents = false;
-  let idxStart = 1, idxEnd = 2, idxText = 9; // 标准 Format 顺序的默认下标
+  let idxStart = 1,
+    idxEnd = 2,
+    idxText = 9; // 标准 Format 顺序的默认下标
   for (const raw of lines) {
     const line = raw.trim();
-    if (/^\[/.test(line)) { inEvents = /^\[events\]/i.test(line); continue; }
+    if (/^\[/.test(line)) {
+      inEvents = /^\[events\]/i.test(line);
+      continue;
+    }
     if (!inEvents) continue;
     if (/^format\s*:/i.test(line)) {
-      const cols = line.slice(line.indexOf(':') + 1).split(',').map((s) => s.trim().toLowerCase());
-      const s = cols.indexOf('start'), e = cols.indexOf('end'), t = cols.indexOf('text');
+      const cols = line
+        .slice(line.indexOf(':') + 1)
+        .split(',')
+        .map((s) => s.trim().toLowerCase());
+      const s = cols.indexOf('start'),
+        e = cols.indexOf('end'),
+        t = cols.indexOf('text');
       if (s >= 0) idxStart = s;
       if (e >= 0) idxEnd = e;
       if (t >= 0) idxText = t;
@@ -39,7 +49,10 @@ function splitFields(rest, textIdx) {
   let start = 0;
   for (let i = 0; i < textIdx; i++) {
     const c = rest.indexOf(',', start);
-    if (c < 0) { out.push(rest.slice(start)); return out; }
+    if (c < 0) {
+      out.push(rest.slice(start));
+      return out;
+    }
     out.push(rest.slice(start, c));
     start = c + 1;
   }
@@ -52,5 +65,5 @@ function assTime(t) {
   if (!t) return NaN;
   const m = t.trim().match(/^(\d+):(\d{1,2}):(\d{1,2})[.,](\d{1,3})$/);
   if (!m) return NaN;
-  return (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]) + parseFloat('0.' + m[4]);
+  return +m[1] * 3600 + +m[2] * 60 + +m[3] + parseFloat('0.' + m[4]);
 }

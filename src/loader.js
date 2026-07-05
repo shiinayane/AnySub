@@ -33,7 +33,10 @@ export function loadFile(file) {
   if (!file) return;
   readSubtitleFile(file)
     .then((text) => loadFromText(text, file.name))
-    .catch((err) => { console.error('[AnySub]', err); toast(t('toast.readFailed', { msg: err.message })); });
+    .catch((err) => {
+      console.error('[AnySub]', err);
+      toast(t('toast.readFailed', { msg: err.message }));
+    });
 }
 
 // 从字节流载入(在线下载复用:先做编码探测再走统一路径)
@@ -47,7 +50,10 @@ export function loadFromText(text, name) {
     const v = pickBestVideo();
     if (v) setVideo(v);
   }
-  if (!state.video) { toast(t('toast.noVideoOnPage')); return false; }
+  if (!state.video) {
+    toast(t('toast.noVideoOnPage'));
+    return false;
+  }
 
   const fmt = FORMATS.find((f) => f.test(name, text)) || FORMATS[FORMATS.length - 1];
   const parsed = fmt.parse(text, name);
@@ -57,7 +63,7 @@ export function loadFromText(text, name) {
   }
   state.cues = parsed.cues;
   state.speakers = buildSpeakers(parsed.cues); // 话者名词表(供语义排版消歧独立括号)
-  computeSpanStates(parsed.cues);              // 预计算跨行/跨 cue 的画外音/书面/歌曲跨度状态
+  computeSpanStates(parsed.cues); // 预计算跨行/跨 cue 的画外音/书面/歌曲跨度状态
   state.fileName = name;
   // 记录当前番剧/集数(用于切集检测);用站点适配的 detectShow(),与切集信号同源,
   // 否则 Prime 等「集数不在 <title> 里」的站点会记错 → 切集时番名对不上、不自动接续。
@@ -68,7 +74,7 @@ export function loadFromText(text, name) {
   // 偏移记忆:按「番剧|源特征」恢复上次的偏移(同番剧同源跨集稳定);无记录则归 0
   state.offsetKey = (p.series || '') + '|' + [...sourceTokens(name)].sort().join(',');
   const remembered = state.offsets[state.offsetKey];
-  state.offset = (typeof remembered === 'number') ? remembered : 0;
+  state.offset = typeof remembered === 'number' ? remembered : 0;
   invalidateLayout();
   setRenderer(fmt.create(parsed));
   applyStyle();

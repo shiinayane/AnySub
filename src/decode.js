@@ -15,13 +15,19 @@ export function decodeBuffer(bytes) {
     return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch (_) {
     // 非 UTF-8:在常见 CJK 编码中选「替换字符最少」者(动画字幕常见 Shift-JIS / EUC-JP)
-    let best = null, bestScore = Infinity;
+    let best = null,
+      bestScore = Infinity;
     for (const enc of ['shift_jis', 'euc-jp', 'gbk', 'big5']) {
       try {
         const text = new TextDecoder(enc).decode(bytes);
         const score = (text.match(/�/g) || []).length;
-        if (score < bestScore) { bestScore = score; best = text; }
-      } catch (_) { /* 该浏览器(如 Safari)不支持此 legacy 编码 */ }
+        if (score < bestScore) {
+          bestScore = score;
+          best = text;
+        }
+      } catch (_) {
+        /* 该浏览器(如 Safari)不支持此 legacy 编码 */
+      }
     }
     if (best !== null) return best;
     console.warn('[AnySub] 无法自动识别字幕编码,按 UTF-8 兜底,可能乱码;建议转成 UTF-8');

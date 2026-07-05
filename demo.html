@@ -1,34 +1,62 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AnySub 本地测试</title>
-  <style>
-    body { font: 15px/1.6 -apple-system, system-ui, sans-serif; max-width: 820px; margin: 40px auto; padding: 0 16px; }
-    video { width: 100%; background: #000; border-radius: 8px; }
-    ol { background: #f5f5f5; padding: 16px 32px; border-radius: 8px; }
-    code { background: #eee; padding: 1px 5px; border-radius: 3px; }
-    .note { color: #666; font-size: 13px; }
-  </style>
-</head>
-<body>
-  <h1>AnySub 本地测试页</h1>
-  <p>此页面直接内联加载了 <code>anysub.user.js</code>(不经用户脚本管理器),用于快速验证功能。</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AnySub 本地测试</title>
+    <style>
+      body {
+        font:
+          15px/1.6 -apple-system,
+          system-ui,
+          sans-serif;
+        max-width: 820px;
+        margin: 40px auto;
+        padding: 0 16px;
+      }
+      video {
+        width: 100%;
+        background: #000;
+        border-radius: 8px;
+      }
+      ol {
+        background: #f5f5f5;
+        padding: 16px 32px;
+        border-radius: 8px;
+      }
+      code {
+        background: #eee;
+        padding: 1px 5px;
+        border-radius: 3px;
+      }
+      .note {
+        color: #666;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AnySub 本地测试页</h1>
+    <p>此页面直接内联加载了 <code>anysub.user.js</code>(不经用户脚本管理器),用于快速验证功能。</p>
 
-  <video id="v" controls crossorigin="anonymous"
-    src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">
-  </video>
+    <video
+      id="v"
+      controls
+      crossorigin="anonymous"
+      src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+    ></video>
 
-  <ol>
-    <li>点右下角 <strong>「字幕」</strong> 按钮打开面板</li>
-    <li>点「选择字幕文件」,选本目录下的 <code>sample.srt</code></li>
-    <li>播放视频,应在 <strong>2 秒</strong> 处开始看到中文字幕</li>
-    <li>试试「偏移 ±」按钮和「字号」滑块</li>
-  </ol>
-  <p class="note">注:示例视频来自 Google 公共测试桶,需联网。若无网络,可换成任意本地视频文件路径。</p>
+    <ol>
+      <li>点右下角 <strong>「字幕」</strong> 按钮打开面板</li>
+      <li>点「选择字幕文件」,选本目录下的 <code>sample.srt</code></li>
+      <li>播放视频,应在 <strong>2 秒</strong> 处开始看到中文字幕</li>
+      <li>试试「偏移 ±」按钮和「字号」滑块</li>
+    </ol>
+    <p class="note">
+      注:示例视频来自 Google 公共测试桶,需联网。若无网络,可换成任意本地视频文件路径。
+    </p>
 
-  <!-- 内联加载构建产物(元数据注释块无害) -->
-  <script src="./dist/anysub.user.js"></script>
-</body>
+    <!-- 内联加载构建产物(元数据注释块无害) -->
+    <script src="./dist/anysub.user.js"></script>
+  </body>
 </html>

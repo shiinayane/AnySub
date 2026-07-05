@@ -2,9 +2,13 @@
 // 需要的场景:开启了悬浮球(要随视频出现/消失切换),或已加载字幕(SPA 换视频要重挂)。
 import { state } from './state.js';
 
-let mo = null, timer = 0, onReact = () => {};
+let mo = null,
+  timer = 0,
+  onReact = () => {};
 
-export function setReactHandler(fn) { onReact = fn; }
+export function setReactHandler(fn) {
+  onReact = fn;
+}
 
 export function updateWatcher() {
   const need = state.showFab || state.cues.length > 0;

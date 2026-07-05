@@ -15,7 +15,9 @@ function readingsOf(kanji) {
     try {
       const raw = JSON.parse(KANJI_READINGS_JSON);
       for (const k in raw) READINGS[k] = raw[k].split(',');
-    } catch (_) { /* 数据损坏:留空表,对齐一律失败并回退整串注音,不影响其余渲染 */ }
+    } catch (_) {
+      /* 数据损坏:留空表,对齐一律失败并回退整串注音,不影响其余渲染 */
+    }
   }
   return READINGS[kanji];
 }
@@ -34,10 +36,26 @@ function toHira(s) {
 
 // 连浊(rendaku):非首汉字的首音可浊化(か→が、は→ば/ぱ…),返回可能的替换形
 const VOICE = {
-  'か': ['が'], 'き': ['ぎ'], 'く': ['ぐ'], 'け': ['げ'], 'こ': ['ご'],
-  'さ': ['ざ'], 'し': ['じ'], 'す': ['ず'], 'せ': ['ぜ'], 'そ': ['ぞ'],
-  'た': ['だ'], 'ち': ['ぢ'], 'つ': ['づ'], 'て': ['で'], 'と': ['ど'],
-  'は': ['ば', 'ぱ'], 'ひ': ['び', 'ぴ'], 'ふ': ['ぶ', 'ぷ'], 'へ': ['べ', 'ぺ'], 'ほ': ['ぼ', 'ぽ'],
+  か: ['が'],
+  き: ['ぎ'],
+  く: ['ぐ'],
+  け: ['げ'],
+  こ: ['ご'],
+  さ: ['ざ'],
+  し: ['じ'],
+  す: ['ず'],
+  せ: ['ぜ'],
+  そ: ['ぞ'],
+  た: ['だ'],
+  ち: ['ぢ'],
+  つ: ['づ'],
+  て: ['で'],
+  と: ['ど'],
+  は: ['ば', 'ぱ'],
+  ひ: ['び', 'ぴ'],
+  ふ: ['ぶ', 'ぷ'],
+  へ: ['べ', 'ぺ'],
+  ほ: ['ぼ', 'ぽ'],
 };
 function rendakuForms(s) {
   const v = VOICE[s[0]];
@@ -57,7 +75,10 @@ function* variants(base, index, isLast) {
   if (index > 0) for (const r of rendakuForms(base)) firsts.push(r); // 连浊仅非首字
   for (const f of firsts) {
     yield f;
-    if (!isLast) { const g = geminate(f); if (g) yield g; } // 促音仅非末字
+    if (!isLast) {
+      const g = geminate(f);
+      if (g) yield g;
+    } // 促音仅非末字
   }
 }
 

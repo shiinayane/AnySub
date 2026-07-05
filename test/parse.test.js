@@ -43,18 +43,28 @@ test('SRT: cue 正文里的空行不被截断', () => {
 });
 
 test('SRT: NaN / 非法时间戳的 cue 被丢弃', () => {
-  const cues = parseSubtitle('1\n00:00:0X,000 --> 00:00:03,000\n坏\n\n2\n00:00:04,000 --> 00:00:06,000\n好', 'x.srt');
+  const cues = parseSubtitle(
+    '1\n00:00:0X,000 --> 00:00:03,000\n坏\n\n2\n00:00:04,000 --> 00:00:06,000\n好',
+    'x.srt',
+  );
   assert.equal(cues.length, 1);
   assert.equal(cues[0].text, '好');
 });
 
 test('cue 按时间排序(乱序输入)', () => {
-  const cues = parseSubtitle('1\n00:00:05,000 --> 00:00:06,000\n晚\n\n2\n00:00:01,000 --> 00:00:02,000\n早', 'x.srt');
-  assert.deepEqual(cues.map((c) => c.text), ['早', '晚']);
+  const cues = parseSubtitle(
+    '1\n00:00:05,000 --> 00:00:06,000\n晚\n\n2\n00:00:01,000 --> 00:00:02,000\n早',
+    'x.srt',
+  );
+  assert.deepEqual(
+    cues.map((c) => c.text),
+    ['早', '晚'],
+  );
 });
 
 test('VTT: 跳过 WEBVTT/NOTE 头与 cue 标识行,支持分钟级时间戳', () => {
-  const vtt = 'WEBVTT\n\nNOTE 注释\n\ncue-1\n00:00:01.000 --> 00:00:03.000\nHi\n\n00:01:02.500 --> 00:01:05.000\n分钟';
+  const vtt =
+    'WEBVTT\n\nNOTE 注释\n\ncue-1\n00:00:01.000 --> 00:00:03.000\nHi\n\n00:01:02.500 --> 00:01:05.000\n分钟';
   const cues = parseSubtitle(vtt, 'x.vtt');
   assert.equal(cues.length, 2);
   assert.equal(cues[1].start, 62.5);

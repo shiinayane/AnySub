@@ -28,7 +28,8 @@ export default defineConfig({
         description: {
           '': 'Turn any video into a Japanese-immersion tool: accurate per-kanji furigana, one-click Jimaku subtitles with auto next-episode, and semantic CC formatting (speaker / SFX / inner-voice). Also loads any local SRT/VTT/ASS with full style control and fullscreen following. UI in English / 中文 / 日本語.',
           en: 'Turn any video into a Japanese-immersion tool: accurate per-kanji furigana, one-click Jimaku subtitles with auto next-episode, and semantic CC formatting (speaker / SFX / inner-voice). Also loads any local SRT/VTT/ASS with full style control and fullscreen following. UI in English / 中文 / 日本語.',
-          'zh-CN': '把任意网站的 HTML5 视频变成日语沉浸学习工具:逐字精准注音(furigana)、一键 Jimaku 在线字幕并自动接续下一集、话者/音效/心声语义排版。也支持任意 SRT/VTT/ASS 本地字幕、样式可控、全屏跟随。EN/中/日界面。',
+          'zh-CN':
+            '把任意网站的 HTML5 视频变成日语沉浸学习工具:逐字精准注音(furigana)、一键 Jimaku 在线字幕并自动接续下一集、话者/音效/心声语义排版。也支持任意 SRT/VTT/ASS 本地字幕、样式可控、全屏跟随。EN/中/日界面。',
           ja: 'どんな動画も日本語イマージョン学習ツールに:漢字ごとに正確なふりがな、ワンクリックで Jimaku 字幕を取得し次話へ自動継続、話者・効果音・心の声のセマンティック整形。ローカルの SRT/VTT/ASS も読み込み可、スタイル調整・全画面追従対応。UI は英語/中国語/日本語。',
         },
         author: 'shiinayane',

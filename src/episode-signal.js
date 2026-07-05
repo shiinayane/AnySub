@@ -5,12 +5,20 @@
 import { detectShow, getSiteAdapter } from './site-adapters.js';
 
 const subs = [];
-let mo = null, debounce = 0, poll = 0, armed = null, lastSig = null;
+let mo = null,
+  debounce = 0,
+  poll = 0,
+  armed = null,
+  lastSig = null;
 
 // 订阅切集(回调收到最新 detectShow() 结果)
-export function onEpisodeChange(fn) { subs.push(fn); }
+export function onEpisodeChange(fn) {
+  subs.push(fn);
+}
 
-function sig(info) { return (info.series || '') + '#' + (info.episode || ''); }
+function sig(info) {
+  return (info.series || '') + '#' + (info.episode || '');
+}
 
 // 观察目标:站点规则(适配器在目标页提供的 watchEl)优先,回落 <title>
 function target() {
@@ -27,7 +35,13 @@ function fire() {
   const s = sig(info);
   if (s === lastSig) return; // 指纹未变 → 不是切集,忽略
   lastSig = s;
-  for (const fn of subs) { try { fn(info); } catch (_) { /* 单个订阅者出错不影响其余 */ } }
+  for (const fn of subs) {
+    try {
+      fn(info);
+    } catch (_) {
+      /* 单个订阅者出错不影响其余 */
+    }
+  }
 }
 
 function arm() {
@@ -35,7 +49,10 @@ function arm() {
   if (!node || node === armed) return; // 目标未变则不重挂
   if (mo) mo.disconnect();
   armed = node;
-  mo = new MutationObserver(() => { clearTimeout(debounce); debounce = setTimeout(fire, 500); });
+  mo = new MutationObserver(() => {
+    clearTimeout(debounce);
+    debounce = setTimeout(fire, 500);
+  });
   mo.observe(node, { childList: true, characterData: true, subtree: true });
 }
 
@@ -53,7 +70,11 @@ export function initEpisodeSignal() {
   poll = setInterval(() => {
     arm();
     fire();
-    if (ad.isTarget()) n = 0;                            // 在播放页 → 重置计数(正常浏览一阵后不再永久停摆)
-    else if (++n > 20) { clearInterval(poll); poll = 0; } // 仅「持续 ~30s 未进播放页」才停,守空闲
+    if (ad.isTarget())
+      n = 0; // 在播放页 → 重置计数(正常浏览一阵后不再永久停摆)
+    else if (++n > 20) {
+      clearInterval(poll);
+      poll = 0;
+    } // 仅「持续 ~30s 未进播放页」才停,守空闲
   }, 1500);
 }

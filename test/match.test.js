@@ -7,7 +7,9 @@ const EVA_EP2 = [
   { name: '新世紀エヴァンゲリオン.S01E02.第弐話.見知らぬ、天井.WEBRip.Netflix.ja[cc].srt' },
   { name: '[Korean-Blog] Neon Genesis Evangelion 02.ass' },
   { name: '新世紀エヴァンゲリオン 02 (DMM TV).srt' },
-  { name: '[McBalls] Neon Genesis Evangelion - S01E02 - Unfamiliar Ceilings (BD 1080p Hi10 FLAC) [67FBFEDE].ja.srt' },
+  {
+    name: '[McBalls] Neon Genesis Evangelion - S01E02 - Unfamiliar Ceilings (BD 1080p Hi10 FLAC) [67FBFEDE].ja.srt',
+  },
   { name: '[Erai-raws] Neon Genesis Evangelion - 02 [720p][JPN].ass' },
 ];
 
@@ -15,7 +17,10 @@ test('EVA:各源 ep1 → 各自选中 ep2 同源(长集标题不再稀释)', () 
   const cases = [
     ['新世紀エヴァンゲリオン.S01E01.第壱話.使徒、襲来.WEBRip.Netflix.ja[cc].srt', 'Netflix'],
     ['新世紀エヴァンゲリオン 01 (DMM TV).srt', 'DMM'],
-    ['[McBalls] Neon Genesis Evangelion - S01E01 - Angel Attack (BD 1080p Hi10 FLAC) [9FA87534].ja.srt', 'McBalls'],
+    [
+      '[McBalls] Neon Genesis Evangelion - S01E01 - Angel Attack (BD 1080p Hi10 FLAC) [9FA87534].ja.srt',
+      'McBalls',
+    ],
     ['[Erai-raws] Neon Genesis Evangelion - 01 [720p][JPN].ass', 'Erai'],
   ];
   const marker = { Netflix: /Netflix/, DMM: /DMM/, McBalls: /McBalls/, Erai: /Erai/ };
@@ -27,7 +32,9 @@ test('EVA:各源 ep1 → 各自选中 ep2 同源(长集标题不再稀释)', () 
 });
 
 test('EVA Netflix:忽略日文集标题,源特征即 netflix/webrip/ja/cc', () => {
-  const sig = sourceTokens('新世紀エヴァンゲリオン.S01E01.第壱話.使徒、襲来.WEBRip.Netflix.ja[cc].srt');
+  const sig = sourceTokens(
+    '新世紀エヴァンゲリオン.S01E01.第壱話.使徒、襲来.WEBRip.Netflix.ja[cc].srt',
+  );
   assert.deepEqual([...sig].sort(), ['cc', 'ja', 'netflix', 'srt', 'webrip']);
 });
 
@@ -53,9 +60,24 @@ test('空参考 → null', () => {
 
 // ── pickExactAnime:自动选番只在「唯一精确命中」时触发 ──
 const MIA = [
-  { native: 'メイドインアビス 烈日の黄金郷', romaji: 'Made in Abyss: Retsujitsu no Ougonkyou', english: 'Made in Abyss: The Golden City of the Scorching Sun', title: 'メイドインアビス 烈日の黄金郷' },
-  { native: 'メイドインアビス', romaji: 'Made in Abyss', english: 'Made in Abyss', title: 'メイドインアビス' },
-  { native: 'メイドインアビス 烈日の黄金郷「パパといっしょ」', romaji: 'Made in Abyss: Retsujitsu no Ougonkyou - Papa to Issho', english: '', title: 'メイドインアビス 烈日の黄金郷「パパといっしょ」' },
+  {
+    native: 'メイドインアビス 烈日の黄金郷',
+    romaji: 'Made in Abyss: Retsujitsu no Ougonkyou',
+    english: 'Made in Abyss: The Golden City of the Scorching Sun',
+    title: 'メイドインアビス 烈日の黄金郷',
+  },
+  {
+    native: 'メイドインアビス',
+    romaji: 'Made in Abyss',
+    english: 'Made in Abyss',
+    title: 'メイドインアビス',
+  },
+  {
+    native: 'メイドインアビス 烈日の黄金郷「パパといっしょ」',
+    romaji: 'Made in Abyss: Retsujitsu no Ougonkyou - Papa to Issho',
+    english: '',
+    title: 'メイドインアビス 烈日の黄金郷「パパといっしょ」',
+  },
 ];
 
 test('精确命中唯一:DMM 全角空格标题 → 自动选中第二季(不选第一季)', () => {
@@ -87,7 +109,10 @@ test('多个精确同名 → 不自动选(歧义,回落人工)', () => {
 });
 
 test('normTitle:全角空格/大小写归一,但不做模糊', () => {
-  assert.equal(normTitle('メイドインアビス　烈日の黄金郷'), normTitle('メイドインアビス 烈日の黄金郷'));
+  assert.equal(
+    normTitle('メイドインアビス　烈日の黄金郷'),
+    normTitle('メイドインアビス 烈日の黄金郷'),
+  );
   assert.equal(normTitle('Made In Abyss'), 'made in abyss');
   assert.notEqual(normTitle('メイドインアビス'), normTitle('メイドインアビス 烈日の黄金郷')); // 非子串匹配
 });

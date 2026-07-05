@@ -6,7 +6,8 @@ import { toast, updateStatus } from './notify.js';
 import { updateWatcher } from './watcher.js';
 import { t } from './i18n.js';
 
-let intervalId = 0, driversAttached = false;
+let intervalId = 0,
+  driversAttached = false;
 let renderer = null;
 let onScroll, onResize, onFs, onVis;
 
@@ -21,8 +22,12 @@ export function setRenderer(r) {
   }
 }
 
-export function applyStyle() { if (renderer && renderer.applyStyle) renderer.applyStyle(); }
-export function refresh() { renderTick(); }
+export function applyStyle() {
+  if (renderer && renderer.applyStyle) renderer.applyStyle();
+}
+export function refresh() {
+  renderTick();
+}
 
 export function startRender() {
   state.active = true;
@@ -33,7 +38,10 @@ export function startRender() {
 
 export function stopRender() {
   state.active = false;
-  if (intervalId) { clearInterval(intervalId); intervalId = 0; }
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = 0;
+  }
   detachDrivers();
   hideOverlay();
 }
@@ -42,9 +50,17 @@ function attachDrivers() {
   if (driversAttached) return;
   driversAttached = true;
   onScroll = () => renderTick();
-  onResize = () => { invalidateLayout(); renderTick(); };
-  onFs = () => { invalidateLayout(); renderTick(); };
-  onVis = () => { if (!document.hidden) renderTick(); };
+  onResize = () => {
+    invalidateLayout();
+    renderTick();
+  };
+  onFs = () => {
+    invalidateLayout();
+    renderTick();
+  };
+  onVis = () => {
+    if (!document.hidden) renderTick();
+  };
   window.addEventListener('scroll', onScroll, { capture: true, passive: true });
   window.addEventListener('resize', onResize, { passive: true });
   document.addEventListener('fullscreenchange', onFs);
@@ -93,7 +109,10 @@ export function setVideo(v) {
 
 // 临时隐藏/显示字幕(不清除,不持久化)
 export function toggleSubtitles() {
-  if (!state.cues.length) { toast(t('toast.noSubs')); return; }
+  if (!state.cues.length) {
+    toast(t('toast.noSubs'));
+    return;
+  }
   state.hidden = !state.hidden;
   if (renderer && renderer.setVisible) renderer.setVisible(!state.hidden);
   renderTick();
@@ -102,11 +121,17 @@ export function toggleSubtitles() {
 }
 
 export function clearSubtitle() {
-  if (!state.cues.length) { toast(t('toast.noSubsNow')); return; }
+  if (!state.cues.length) {
+    toast(t('toast.noSubsNow'));
+    return;
+  }
   state.cues = [];
   state.fileName = '';
   stopRender();
-  if (renderer) { renderer.destroy(); renderer = null; }
+  if (renderer) {
+    renderer.destroy();
+    renderer = null;
+  }
   updateStatus();
   updateWatcher(); // 字幕已清除 → 若也没开悬浮球,断开观察器
   toast(t('toast.cleared'));
