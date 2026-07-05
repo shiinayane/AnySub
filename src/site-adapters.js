@@ -42,6 +42,8 @@ const PRIME = {
   match: () => /(^|\.)(primevideo\.com|amazon\.[a-z.]+)$/.test(location.hostname),
   // 播放器 SDK 元素存在即视为在播放页(比 URL 判定稳,Prime 播放路径各区域不一)
   isTarget: () => !!document.querySelector('[class*="atvwebplayersdk-"]'),
+  // 切集信号源:Prime 的 <title> 换集常不变,改观察剧集信息元素的变化(集数就在它里面)
+  watchEl: () => document.querySelector('[class*="atvwebplayersdk-episode-info"]'),
   detect() {
     const info = document.querySelector('[class*="atvwebplayersdk-episode-info"]');
     const episode = info ? parsePrimeEpisode(info.textContent) : ''; // 电影无此元素 → 空

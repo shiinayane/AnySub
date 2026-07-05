@@ -945,25 +945,25 @@
 		refs.statusEl.classList.toggle("as-loaded", loaded);
 		refs.statusEl.title = loaded ? state.fileName : "";
 	}
-	var mo = null, timer$2 = 0, onReact = () => {};
+	var mo$1 = null, timer = 0, onReact = () => {};
 	function setReactHandler(fn) {
 		onReact = fn;
 	}
 	function updateWatcher() {
 		const need = state.showFab || state.cues.length > 0;
-		if (need && !mo) {
-			mo = new MutationObserver(() => {
-				clearTimeout(timer$2);
-				timer$2 = setTimeout(() => onReact(), 300);
+		if (need && !mo$1) {
+			mo$1 = new MutationObserver(() => {
+				clearTimeout(timer);
+				timer = setTimeout(() => onReact(), 300);
 			});
-			mo.observe(document.documentElement, {
+			mo$1.observe(document.documentElement, {
 				childList: true,
 				subtree: true
 			});
-		} else if (!need && mo) {
-			mo.disconnect();
-			mo = null;
-			clearTimeout(timer$2);
+		} else if (!need && mo$1) {
+			mo$1.disconnect();
+			mo$1 = null;
+			clearTimeout(timer);
 		}
 	}
 	var intervalId = 0, driversAttached = false;
@@ -2164,6 +2164,7 @@
 		name: "prime",
 		match: () => /(^|\.)(primevideo\.com|amazon\.[a-z.]+)$/.test(location.hostname),
 		isTarget: () => !!document.querySelector("[class*=\"atvwebplayersdk-\"]"),
+		watchEl: () => document.querySelector("[class*=\"atvwebplayersdk-episode-info\"]"),
 		detect() {
 			const info = document.querySelector("[class*=\"atvwebplayersdk-episode-info\"]");
 			const episode = info ? parsePrimeEpisode(info.textContent) : "";
@@ -3005,26 +3006,70 @@
 		if (tag === "INPUT") return !NON_TEXT_INPUT.has((el.type || "text").toLowerCase());
 		return false;
 	}
-	var timer$1 = 0;
-	var busy = false;
-	function isAutoContinuing() {
-		return busy;
+	var subs = [];
+	var mo = null, debounce = 0, poll = 0, armed = null, lastSig = null;
+	function onEpisodeChange(fn) {
+		subs.push(fn);
 	}
-	function initEpisodeWatch() {
-		const titleEl = document.querySelector("title");
-		if (!titleEl) return;
-		new MutationObserver(() => {
-			clearTimeout(timer$1);
-			timer$1 = setTimeout(onTitleChange, 500);
-		}).observe(titleEl, {
+	function sig(info) {
+		return (info.series || "") + "#" + (info.episode || "");
+	}
+	function target() {
+		const ad = getSiteAdapter();
+		if (ad && ad.isTarget() && ad.watchEl) {
+			const el = ad.watchEl();
+			if (el) return el;
+		}
+		return document.querySelector("title");
+	}
+	function fire() {
+		const info = detectShow();
+		const s = sig(info);
+		if (s === lastSig) return;
+		lastSig = s;
+		for (const fn of subs) try {
+			fn(info);
+		} catch (_) {}
+	}
+	function arm() {
+		const node = target();
+		if (!node || node === armed) return;
+		if (mo) mo.disconnect();
+		armed = node;
+		mo = new MutationObserver(() => {
+			clearTimeout(debounce);
+			debounce = setTimeout(fire, 500);
+		});
+		mo.observe(node, {
 			childList: true,
 			characterData: true,
 			subtree: true
 		});
 	}
-	function onTitleChange() {
+	function initEpisodeSignal() {
+		lastSig = sig(detectShow());
+		arm();
+		const ad = getSiteAdapter();
+		if (!ad || !ad.watchEl) return;
+		let n = 0;
+		poll = setInterval(() => {
+			arm();
+			if (!ad.isTarget() && ++n > 20) {
+				clearInterval(poll);
+				poll = 0;
+			}
+		}, 1500);
+	}
+	var busy = false;
+	function isAutoContinuing() {
+		return busy;
+	}
+	function initEpisodeWatch() {
+		onEpisodeChange(onEpisode);
+	}
+	function onEpisode(info) {
 		if (busy || !state.cues.length) return;
-		const { series, episode } = parseVideoTitle(document.title);
+		const { series, episode } = info;
 		if (episode === "") return;
 		if (series === state.loadedSeries && String(episode) === String(state.loadedEpisode)) return;
 		const sameShow = series === state.loadedSeries && state.lastOnline;
@@ -3064,29 +3109,20 @@
 		}
 	}
 	var lastOfferedKey = null;
-	var timer = 0;
 	function initAutoOffer() {
 		if (!getSiteAdapter()) return;
 		let tries = 0;
 		const poll = () => {
 			check();
-			if (++tries < 8 && lastOfferedKey === null) timer = setTimeout(poll, 1500);
+			if (++tries < 8 && lastOfferedKey === null) setTimeout(poll, 1500);
 		};
-		timer = setTimeout(poll, 1200);
-		const titleEl = document.querySelector("title");
-		if (titleEl) new MutationObserver(() => {
-			clearTimeout(timer);
-			timer = setTimeout(check, 800);
-		}).observe(titleEl, {
-			childList: true,
-			characterData: true,
-			subtree: true
-		});
+		setTimeout(poll, 1200);
+		onEpisodeChange(check);
 	}
 	function check() {
 		if (state.cues.length) return;
 		if (isAutoContinuing()) {
-			timer = setTimeout(check, 600);
+			setTimeout(check, 600);
 			return;
 		}
 		if (refs.searchPanel && refs.searchPanel.style.display === "block") return;
@@ -3118,6 +3154,7 @@
 		initShortcuts();
 		initEpisodeWatch();
 		initAutoOffer();
+		initEpisodeSignal();
 		setReactHandler(react);
 		updateFabVisibility();
 		updateWatcher();

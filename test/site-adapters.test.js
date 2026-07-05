@@ -108,3 +108,21 @@ test('cleanPrimeTitle:去 Amazon 前缀 / を観る 后缀 / 站点名', () => {
   assert.equal(cleanPrimeTitle('Amazon.co.jp: 鬼滅の刃を観る | Prime Video'), '鬼滅の刃');
   assert.equal(cleanPrimeTitle('Amazon.com: Attack on Titanを観る | Prime Video'), 'Attack on Titan');
 });
+
+// ── 切集信号源:适配器可选提供 watchEl,否则回落 <title> ──
+test('Prime 提供 watchEl(剧集信息元素);DMM 不提供 → 由 episode-signal 回落 <title>', () => {
+  stub({
+    hostname: 'www.amazon.co.jp', pathname: '/gp/video/detail/x',
+    href: 'https://www.amazon.co.jp/gp/video/detail/x', title: 'x',
+    els: { 'atvwebplayersdk-episode-info': 'S1 E1 第1話' },
+  });
+  const prime = getSiteAdapter();
+  assert.equal(typeof prime.watchEl, 'function');
+  assert.ok(prime.watchEl()); // 返回剧集信息元素(切集信号源)
+
+  stub({
+    hostname: 'tv.dmm.com', pathname: '/vod/playback/on-demand/',
+    href: 'https://tv.dmm.com/vod/playback/on-demand/?season=S&content=C', title: 'x',
+  });
+  assert.equal(getSiteAdapter().watchEl, undefined); // DMM <title> 已带集数 → 无需 watchEl
+});

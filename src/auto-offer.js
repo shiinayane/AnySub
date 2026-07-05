@@ -8,6 +8,7 @@ import { collectVideos } from './locator.js';
 import { toastOffer } from './notify.js';
 import { openSearch } from './search-ui.js';
 import { isAutoContinuing } from './episode-watch.js';
+import { onEpisodeChange } from './episode-signal.js';
 import { t } from './i18n.js';
 
 let lastOfferedKey = null;
@@ -21,12 +22,7 @@ export function initAutoOffer() {
     if (++tries < 8 && lastOfferedKey === null) timer = setTimeout(poll, 1500); // 等 SPA 出视频/水合
   };
   timer = setTimeout(poll, 1200);
-  // 切集(标题变)后再探:新的一集若仍没字幕则再次提示
-  const titleEl = document.querySelector('title');
-  if (titleEl) {
-    new MutationObserver(() => { clearTimeout(timer); timer = setTimeout(check, 800); })
-      .observe(titleEl, { childList: true, characterData: true, subtree: true });
-  }
+  onEpisodeChange(check); // 切集后(由 episode-signal 统一探测)再探:新一集仍没字幕则再提示
 }
 
 function check() {

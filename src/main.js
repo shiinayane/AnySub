@@ -9,6 +9,7 @@ import { initShortcuts } from './shortcuts.js';
 import { setReactHandler, updateWatcher } from './watcher.js';
 import { initEpisodeWatch } from './episode-watch.js';
 import { initAutoOffer } from './auto-offer.js';
+import { initEpisodeSignal } from './episode-signal.js';
 
 // 避免在同一 window 重复注入
 if (!window.__ANYSUB_LOADED__) {
@@ -22,8 +23,9 @@ function init() {
   injectStyle();
   buildUI();
   initShortcuts();
-  initEpisodeWatch();
-  initAutoOffer();
+  initEpisodeWatch();          // 注册切集续播订阅者
+  initAutoOffer();             // 注册「发现字幕」订阅者(仅已知站点)
+  initEpisodeSignal();         // 建立切集信号源(观察站点规则元素或回落 <title>)+ 基线
   setReactHandler(react);
   updateFabVisibility();
   updateWatcher(); // 按需连接:仅当开了悬浮球或已加载字幕才观察 DOM

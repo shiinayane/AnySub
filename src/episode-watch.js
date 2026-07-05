@@ -1,16 +1,15 @@
-// 切集检测:SPA 内换集时页面 <title> 会更新;据标题里的集数变化,
+// 切集续播:换集时(由 episode-signal 统一探测:站点规则优先、回落 <title>)据集数变化,
 // 清除旧字幕并「同源优先」自动加载下一集(找不到同源则弹候选)。
 import { state } from './state.js';
-import { parseVideoTitle } from './title-parse.js';
 import { clearSubtitle } from './controller.js';
 import { subtitleFiles, downloadAndLoad, markLoaded } from './online.js';
 import { pickSameSource } from './match.js';
 import { showCandidates } from './search-ui.js';
 import { setOffset } from './ui.js';
 import { toast } from './notify.js';
+import { onEpisodeChange } from './episode-signal.js';
 import { t } from './i18n.js';
 
-let timer = 0;
 let busy = false;
 
 // 供 auto-offer 用:同源自动接续尝试期间(clearSubtitle 已清空 cues、下一集尚未下完)不该被
@@ -18,18 +17,12 @@ let busy = false;
 export function isAutoContinuing() { return busy; }
 
 export function initEpisodeWatch() {
-  const titleEl = document.querySelector('title');
-  if (!titleEl) return;
-  const mo = new MutationObserver(() => {
-    clearTimeout(timer);
-    timer = setTimeout(onTitleChange, 500); // 防抖:标题可能连续变动
-  });
-  mo.observe(titleEl, { childList: true, characterData: true, subtree: true });
+  onEpisodeChange(onEpisode); // 观察什么由 episode-signal 按站点决定,这里只管切集后的续播
 }
 
-function onTitleChange() {
+function onEpisode(info) {
   if (busy || !state.cues.length) return;
-  const { series, episode } = parseVideoTitle(document.title);
+  const { series, episode } = info;
   if (episode === '') return; // 判断不出集数就不动
   if (series === state.loadedSeries && String(episode) === String(state.loadedEpisode)) return; // 没变
 
