@@ -80,51 +80,66 @@ Or install the build output [`dist/anysub.user.js`](./dist/anysub.user.js) manua
 
 ## Development
 
-Source is split into ES modules (`src/`) and bundled by [Vite](https://vitejs.dev) + [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) into a single `dist/anysub.user.js` with a `==UserScript==` header.
+Source is **TypeScript** (ES modules, `src/`), type-checked with strict `tsc` and bundled by [Vite](https://vitejs.dev) + [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) into a single `dist/anysub.user.js` with a `==UserScript==` header. Zero **runtime** dependencies — the bundle is self-contained (libass-wasm is lazy-loaded from a CDN only when you open an ASS/SSA file).
 
 ```bash
-npm install       # install dependencies
-npm run build     # build → dist/anysub.user.js
-npm run dev       # dev server: hot reload + one-click install into your manager
-npm test          # unit tests (Node's built-in node:test, zero extra deps)
+npm install        # install dev dependencies
+npm run dev        # dev server: hot reload + one-click install into your manager
+npm run build      # build → dist/anysub.user.js
+npm test           # unit tests (Vitest)
+npm run typecheck  # tsc --noEmit (strict)
+npm run lint       # ESLint
+npm run format     # Prettier --write
 ```
 
-Pure-logic modules have unit regression tests (`test/`, via `node --test`) covering past pitfalls: parsing (XSS escaping, blank lines, NaN/time ordering), ASS parsing, title parsing (old-form kanji episode numbers), furigana ruby & per-kanji alignment, semantic caption classification, same-source episode matching, encoding detection. DOM / rendering / network are verified via `demo.html` in a browser.
+Pure-logic modules have unit regression tests (`test/`, via [Vitest](https://vitest.dev)) covering past pitfalls: parsing (XSS escaping, blank lines, NaN/time ordering), ASS parsing, title parsing (old-form kanji episode numbers), furigana ruby & per-kanji alignment, semantic caption classification, same-source episode matching, encoding detection, site-adapter detection (DMM / Prime Video / U-NEXT), and the auto-offer "feature video" gate. DOM / rendering / network are verified via `demo.html` in a browser. **CI** (GitHub Actions) runs format → lint → typecheck → test → build on every push/PR; pushing a `vX.Y.Z` tag builds and publishes a GitHub Release.
 
 ### Layout
 
+Organized by feature layer. Import specifiers keep the `.js` extension (resolved to `.ts` by the bundler).
+
 ```
 src/
-├── main.js         entry: init + dynamic video watching (MutationObserver)
-├── state.js        global state + constants
-├── i18n.js         UI localization (en / zh / ja, browser-detected + switchable)
-├── locator.js      locate <video> through Shadow DOM
-├── decode.js       read file + encoding detection
-├── parse.js        SRT/VTT → unified cue structure (XSS-safe, time-sorted)
-├── parse-ass.js    ASS/SSA → cue (text fallback)
-├── overlay.js      overlay positioning / fullscreen following (format-agnostic)
-├── render-text.js  text renderer (implements the renderer interface)
-├── render-ass.js   ASS renderer: text fallback + libass upgrade
-├── octopus-loader.js  lazy-load libass-wasm (blob worker + CDN wasm/fonts)
-├── controller.js   render loop + video lifecycle + current renderer
-├── loader.js       load flow + format registry (shared local/online)
-├── cue-format.js   semantic caption classification (pure logic, unit-tested)
-├── anilist.js      title → AniList candidates (no auth)
-├── jimaku.js       Jimaku API client (needs key)
-├── online.js       online orchestration: locate → list files → download
-├── match.js        cross-episode "same source" matching (pure logic, tested)
-├── search-ui.js    online search panel (candidate list)
-├── title-parse.js  page title → anime name + episode (JP / old-form kanji)
-├── ruby.js         Japanese furigana (《》/｜/parens → <ruby>, per-kanji)
-├── furigana-align.js  reading → per-kanji alignment (rendaku/gemination; tested)
-├── kanji-readings.js  bundled kanji reading table (generated at build time)
-├── episode-watch.js episode-change detection + same-source auto-continue
-├── ui.js           settings panel + floating ball + drag + pick-video
-├── shortcuts.js    keyboard shortcuts (Alt+Shift, capture-phase)
-├── watcher.js      on-demand DOM-observer lifecycle (disconnects when idle)
-├── styles.js       injected CSS (light/dark tokens)
-├── storage.js      settings persistence (localStorage)
-└── notify.js       toast + status bar
+├── main.ts              entry: init + dynamic <video> watching (MutationObserver)
+├── types.ts             shared cross-module types
+├── state.ts             global state singleton + constants
+├── refs.ts              shared DOM references
+├── i18n.ts              UI localization (en / zh / ja, browser-detected + switchable)
+├── subtitle/            parsing & text processing (pure logic, unit-tested)
+│   ├── decode.ts           read file + encoding detection
+│   ├── parse.ts            SRT/VTT → unified cue structure (XSS-safe, time-sorted)
+│   ├── parse-ass.ts        ASS/SSA → cue (text fallback)
+│   ├── cue-format.ts       semantic caption classification
+│   ├── furigana-align.ts   reading → per-kanji alignment (rendaku/gemination)
+│   ├── ruby.ts             furigana (《》/｜/parens → <ruby>, per-kanji)
+│   └── kanji-readings.ts   bundled kanji reading table (generated at build time)
+├── render/              overlay, renderers, video, load pipeline
+│   ├── overlay.ts          video-aligned box + fullscreen following (format-agnostic)
+│   ├── render-text.ts      text renderer (implements the renderer interface)
+│   ├── render-ass.ts       ASS renderer: text fallback + libass upgrade
+│   ├── octopus-loader.ts   lazy-load libass-wasm (blob worker + CDN wasm/fonts)
+│   ├── controller.ts       render loop + video lifecycle + current renderer
+│   ├── locator.ts          locate <video> through Shadow DOM
+│   ├── styles.ts           injected CSS (light/dark tokens)
+│   ├── loader.ts           load flow + format registry (shared local/online)
+│   └── watcher.ts          on-demand DOM-observer lifecycle (disconnects when idle)
+├── online/              remote APIs + resolution + persistence
+│   ├── anilist.ts          title → AniList candidates (no auth)
+│   ├── jimaku.ts           Jimaku API client (needs key)
+│   ├── online.ts           orchestration: resolveSubtitles (locate → files → download)
+│   ├── match.ts            same-source matching + exact-title pick (pure logic, tested)
+│   └── storage.ts          settings (localStorage) + cross-site Jimaku key (GM storage)
+├── sites/               site adapters + episode automation
+│   ├── site-adapters.ts    detect show/episode (DMM / Prime Video / U-NEXT)
+│   ├── title-parse.ts      page title → anime name + episode (JP / old-form kanji)
+│   ├── episode-signal.ts   shared episode-change signal (single observer, deduped)
+│   ├── episode-watch.ts    same-source auto-continue on episode change
+│   └── auto-offer.ts       "subtitles found" offer when a feature video is playing
+└── ui/                  panels, toasts, shortcuts
+    ├── ui.ts               settings panel + floating ball + drag + pick-video
+    ├── search-ui.ts        online search modal (candidate list)
+    ├── notify.ts           toast + status bar
+    └── shortcuts.ts        keyboard shortcuts (Alt+Shift, capture-phase)
 ```
 
 **The render layer is pluggable**: `controller` drives the loop and holds one "renderer" implementing `{ mount, renderAt(video, rect, layoutChanged), applyStyle, destroy }`. `overlay` owns the video-aligned box (format-agnostic); the renderer draws into it. A **format registry** in `loader` picks the renderer by file type.
@@ -158,4 +173,4 @@ All local files are read via standard `<input type=file>` / drag-drop (no GM fil
 
 ## License
 
-Code: [MIT](./LICENSE). The bundled KANJIDIC2 kanji-reading data (`src/kanji-readings.js`) is © [EDRDG](https://www.edrdg.org/) and used under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+Code: [MIT](./LICENSE). The bundled KANJIDIC2 kanji-reading data (`src/subtitle/kanji-readings.ts`) is © [EDRDG](https://www.edrdg.org/) and used under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).

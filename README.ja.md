@@ -78,51 +78,66 @@
 
 ## 開発
 
-ソースは機能別の ES モジュール(`src/`)に分割され、[Vite](https://vitejs.dev) + [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) で `==UserScript==` ヘッダー付きの単一ファイル `dist/anysub.user.js` にバンドルされます。
+ソースは **TypeScript**(ES モジュール、`src/`)で、strict な `tsc` で型チェックし、[Vite](https://vitejs.dev) + [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) で `==UserScript==` ヘッダー付きの単一ファイル `dist/anysub.user.js` にバンドルします。**ランタイム依存ゼロ**——バンドルは自己完結(libass-wasm は ASS/SSA を開いたときだけ CDN から遅延読み込み)。
 
 ```bash
-npm install       # 依存関係をインストール
-npm run build     # ビルド → dist/anysub.user.js
-npm run dev       # 開発サーバー:ホットリロード + マネージャーへワンクリック導入
-npm test          # 単体テスト(Node 内蔵の node:test、追加依存ゼロ)
+npm install        # 開発依存をインストール
+npm run dev        # 開発サーバー:ホットリロード + マネージャーへワンクリック導入
+npm run build      # ビルド → dist/anysub.user.js
+npm test           # 単体テスト(Vitest)
+npm run typecheck  # tsc --noEmit(strict)
+npm run lint       # ESLint
+npm run format     # Prettier --write
 ```
 
-純ロジックのモジュールには単体回帰テスト(`test/`、`node --test`)があり、過去の落とし穴を網羅:パース(XSS エスケープ・空行・NaN/時系列)、ASS パース、タイトル解析(旧字体の話数)、ふりがなルビと漢字アラインメント、セマンティック分類、**話またぎの同源マッチング**、エンコーディング判定。DOM/描画/ネットワークは `demo.html` をブラウザで手動検証。
+純ロジックのモジュールには単体回帰テスト(`test/`、[Vitest](https://vitest.dev))があり、過去の落とし穴を網羅:パース(XSS エスケープ・空行・NaN/時系列)、ASS パース、タイトル解析(旧字体の話数)、ふりがなルビと漢字アラインメント、セマンティック分類、**話またぎの同源マッチング**、エンコーディング判定、サイト判定(DMM / Prime Video / U-NEXT)、自動オファーの「本編再生中」判定。DOM/描画/ネットワークは `demo.html` をブラウザで手動検証。**CI**(GitHub Actions)は push/PR ごとに format → lint → typecheck → test → build を実行。`vX.Y.Z` タグを push すると自動でビルドして GitHub Release を公開します。
 
 ### 構成
 
+機能レイヤーで分割。import 指定子は `.js` 拡張子のまま(bundler が `.ts` に解決)。
+
 ```
 src/
-├── main.js         エントリ:init + 動的な動画監視(MutationObserver)
-├── state.js        グローバル状態 + 定数
-├── i18n.js         UI ローカライズ(en / zh / ja、ブラウザ判定 + 切替可)
-├── locator.js      Shadow DOM を貫通して <video> を検出
-├── decode.js       ファイル読み込み + エンコーディング判定
-├── parse.js        SRT/VTT → 統一 cue 構造(XSS 安全・時系列ソート)
-├── parse-ass.js    ASS/SSA → cue(テキストフォールバック用)
-├── overlay.js      オーバーレイ配置 / 全画面追従(形式非依存)
-├── render-text.js  テキストレンダラー(renderer インターフェース実装)
-├── render-ass.js   ASS レンダラー:テキストフォールバック + libass 昇格
-├── octopus-loader.js  libass-wasm の遅延読み込み(blob worker + CDN wasm/フォント)
-├── controller.js   描画ループ + 動画ライフサイクル + 現在のレンダラー
-├── loader.js       読み込みフロー + 形式レジストリ(ローカル/オンライン共通)
-├── cue-format.js   セマンティック分類(純ロジック・テスト有)
-├── anilist.js      作品名 → AniList 候補(認証不要)
-├── jimaku.js       Jimaku API クライアント(key 必要)
-├── online.js       オンライン編成:作品特定 → ファイル一覧 → ダウンロード
-├── match.js        話またぎ「同源」マッチング(純ロジック・テスト有)
-├── search-ui.js    オンライン検索パネル(候補リスト)
-├── title-parse.js  ページタイトル → 作品名 + 話数(日本語/旧字体対応)
-├── ruby.js         ふりがな(《》/｜/括弧 → <ruby>、漢字ごと)
-├── furigana-align.js  読み → 漢字アラインメント(連濁/促音;テスト有)
-├── kanji-readings.js  同梱の漢字読みテーブル(ビルド時に生成)
-├── episode-watch.js 話変更検出 + 同源の自動継続
-├── ui.js           設定パネル + フローティングボタン + ドラッグ + 動画選択
-├── shortcuts.js    キーボードショートカット(Alt+Shift、capture 段階)
-├── watcher.js      DOM オブザーバーのオンデマンド ライフサイクル(アイドルで切断)
-├── styles.js       注入 CSS(ライト/ダークトークン)
-├── storage.js      設定の永続化(localStorage)
-└── notify.js       トースト + ステータスバー
+├── main.ts              エントリ:init + 動的な <video> 監視(MutationObserver)
+├── types.ts             モジュール横断の共有型
+├── state.ts             グローバル状態シングルトン + 定数
+├── refs.ts              共有 DOM 参照
+├── i18n.ts              UI ローカライズ(en / zh / ja、ブラウザ判定 + 切替可)
+├── subtitle/            パース & テキスト処理(純ロジック・テスト有)
+│   ├── decode.ts           ファイル読み込み + エンコーディング判定
+│   ├── parse.ts            SRT/VTT → 統一 cue 構造(XSS 安全・時系列ソート)
+│   ├── parse-ass.ts        ASS/SSA → cue(テキストフォールバック用)
+│   ├── cue-format.ts       セマンティック分類
+│   ├── furigana-align.ts   読み → 漢字アラインメント(連濁/促音)
+│   ├── ruby.ts             ふりがな(《》/｜/括弧 → <ruby>、漢字ごと)
+│   └── kanji-readings.ts   同梱の漢字読みテーブル(ビルド時に生成)
+├── render/              オーバーレイ・レンダラー・動画・読み込みパイプライン
+│   ├── overlay.ts          オーバーレイ配置 / 全画面追従(形式非依存)
+│   ├── render-text.ts      テキストレンダラー(renderer インターフェース実装)
+│   ├── render-ass.ts       ASS レンダラー:テキストフォールバック + libass 昇格
+│   ├── octopus-loader.ts   libass-wasm の遅延読み込み(blob worker + CDN wasm/フォント)
+│   ├── controller.ts       描画ループ + 動画ライフサイクル + 現在のレンダラー
+│   ├── locator.ts          Shadow DOM を貫通して <video> を検出
+│   ├── styles.ts           注入 CSS(ライト/ダークトークン)
+│   ├── loader.ts           読み込みフロー + 形式レジストリ(ローカル/オンライン共通)
+│   └── watcher.ts          DOM オブザーバーのオンデマンド ライフサイクル(アイドルで切断)
+├── online/              リモート API + 解決 + 永続化
+│   ├── anilist.ts          作品名 → AniList 候補(認証不要)
+│   ├── jimaku.ts           Jimaku API クライアント(key 必要)
+│   ├── online.ts           編成:resolveSubtitles(作品特定 → ファイル → ダウンロード)
+│   ├── match.ts            同源マッチング + 完全一致選択(純ロジック・テスト有)
+│   └── storage.ts          設定(localStorage)+ サイト横断 Jimaku key(GM ストレージ)
+├── sites/               サイトアダプター + 話数の自動化
+│   ├── site-adapters.ts    作品/話数の判定(DMM / Prime Video / U-NEXT)
+│   ├── title-parse.ts      ページタイトル → 作品名 + 話数(日本語/旧字体対応)
+│   ├── episode-signal.ts   共有の話変更シグナル(単一オブザーバー・重複排除)
+│   ├── episode-watch.ts    話変更時に同源で自動継続
+│   └── auto-offer.ts       本編再生中に「字幕あり」を提案
+└── ui/                  パネル・トースト・ショートカット
+    ├── ui.ts               設定パネル + フローティングボタン + ドラッグ + 動画選択
+    ├── search-ui.ts        オンライン検索モーダル(候補リスト)
+    ├── notify.ts           トースト + ステータスバー
+    └── shortcuts.ts        キーボードショートカット(Alt+Shift、capture 段階)
 ```
 
 **描画層はプラガブル**:`controller` がループを駆動し、`{ mount, renderAt(video, rect, layoutChanged), applyStyle, destroy }` を実装する「レンダラー」を 1 つ保持します。`overlay` が動画に整列したボックス(形式非依存)を担い、レンダラーはそこに描画します。`loader` の**形式レジストリ**がファイル種別でレンダラーを選びます。
@@ -154,4 +169,4 @@ src/
 
 ## ライセンス
 
-コード:[MIT](./LICENSE)。同梱の KANJIDIC2 漢字読みデータ(`src/kanji-readings.js`)は © [EDRDG](https://www.edrdg.org/)、[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) に基づき使用。
+コード:[MIT](./LICENSE)。同梱の KANJIDIC2 漢字読みデータ(`src/subtitle/kanji-readings.ts`)は © [EDRDG](https://www.edrdg.org/)、[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) に基づき使用。
