@@ -67,7 +67,7 @@
 1. App Store 安装 [Userscripts](https://apps.apple.com/us/app/userscripts/id1463298887)(开源、免费)。
 2. Safari → 设置 → 扩展 → 启用 Userscripts,并在网站权限中允许。
 3. 点工具栏 Userscripts 图标 →「Open App」→ 把 `dist/anysub.user.js` 放入其脚本目录。
-   - 本脚本仅用标准 Web API(`@grant none`),不依赖 GM 特权接口,故 Safari 完整可用。
+   - 本脚本仅用标准 Web API,外加 `GM_getValue`/`GM_setValue`(让 Jimaku API key 全站通用);二者 Userscripts 均支持,故 Safari 完整可用。
 
 ## 使用
 
@@ -129,7 +129,7 @@ src/
 
 ### 设计说明
 
-**渲染层**用自绘覆盖层(在视频上叠一层 `div`,按 `timeupdate` 显示当前字幕):相比原生 `TextTrack` / `::cue`,能完全掌控背景/描边/颜色/位置,字号按播放器高度等比缩放,跨浏览器(尤其 Safari)一致。渲染采用**事件驱动 + 定时兜底**而非 `requestAnimationFrame`——rAF 在后台标签会被暂停,事件驱动同时更省 CPU。全屏时把覆盖层重新挂到 `document.fullscreenElement`。所有本地文件通过标准 `<input type=file>` / 拖拽读取,不使用任何 `GM_*` 接口。
+**渲染层**用自绘覆盖层(在视频上叠一层 `div`,按 `timeupdate` 显示当前字幕):相比原生 `TextTrack` / `::cue`,能完全掌控背景/描边/颜色/位置,字号按播放器高度等比缩放,跨浏览器(尤其 Safari)一致。渲染采用**事件驱动 + 定时兜底**而非 `requestAnimationFrame`——rAF 在后台标签会被暂停,事件驱动同时更省 CPU。全屏时把覆盖层重新挂到 `document.fullscreenElement`。所有本地文件通过标准 `<input type=file>` / 拖拽读取(不用 GM 文件/下载接口);唯一用到的 GM 接口是 `GM_getValue`/`GM_setValue`,仅用于跨站保存 Jimaku key。
 
 **ASS 高保真**采用「先保底、后升级」:打开 `.ass/.ssa` 时先用文本渲染器立即显示(离线可用),同时后台懒加载 libass-wasm;就绪后切换到 canvas 高保真渲染,任一步被网络或站点 CSP 拦截则**保留文本渲染**,字幕始终可见。
 

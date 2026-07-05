@@ -33,7 +33,9 @@ export default defineConfig({
         },
         author: 'shiinayane',
         match: ['*://*/*'],
-        grant: 'none',
+        // 仅申请跨站存储(供 Jimaku key 全站通用);其余仍纯 DOM。GM 存储按脚本共享,
+        // 各主流管理器 + Safari Userscripts 均支持。无管理器(如 demo 直接 <script>)时回落 localStorage。
+        grant: ['GM_getValue', 'GM_setValue'],
         'run-at': 'document-idle',
         noframes: true,
       },

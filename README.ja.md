@@ -67,7 +67,7 @@
 1. App Store から [Userscripts](https://apps.apple.com/us/app/userscripts/id1463298887)(オープンソース・無料)をインストール。
 2. Safari → 設定 → 機能拡張 → Userscripts を有効化し、サイトでの実行を許可。
 3. ツールバーの Userscripts アイコン →「Open App」→ `dist/anysub.user.js` をスクリプトフォルダに追加。
-   - 本スクリプトは標準 Web API(`@grant none`)のみを使用し、GM 特権 API に依存しないため、Safari でも完全に動作します。
+   - 本スクリプトは標準 Web API に加え `GM_getValue`/`GM_setValue` のみ使用(Jimaku API キーを全サイト共通にするため);どちらも Userscripts が対応するため Safari でも完全に動作します。
 
 ## 使い方
 
@@ -129,7 +129,7 @@ src/
 
 ### 設計メモ
 
-**描画**は自前のオーバーレイ(動画上に `div` を重ね、`timeupdate` で現在字幕を表示)を使用:ネイティブの `TextTrack` / `::cue` に比べ、背景/縁取り/色/位置を完全に制御でき、文字サイズをプレイヤー高さに比例させ、ブラウザ間(特に Safari)で一貫します。`requestAnimationFrame` ではなく**イベント駆動＋インターバルのフォールバック**——rAF はバックグラウンドタブで停止し、イベント駆動の方が CPU も軽い。全画面時はオーバーレイを `document.fullscreenElement` に再アタッチします。ローカルファイルはすべて標準の `<input type=file>` / ドラッグ&ドロップで読み、`GM_*` インターフェースは一切使いません。
+**描画**は自前のオーバーレイ(動画上に `div` を重ね、`timeupdate` で現在字幕を表示)を使用:ネイティブの `TextTrack` / `::cue` に比べ、背景/縁取り/色/位置を完全に制御でき、文字サイズをプレイヤー高さに比例させ、ブラウザ間(特に Safari)で一貫します。`requestAnimationFrame` ではなく**イベント駆動＋インターバルのフォールバック**——rAF はバックグラウンドタブで停止し、イベント駆動の方が CPU も軽い。全画面時はオーバーレイを `document.fullscreenElement` に再アタッチします。ローカルファイルはすべて標準の `<input type=file>` / ドラッグ&ドロップで読み(GM のファイル/ダウンロード API は不使用);使用する GM はクロスサイトの Jimaku キー保存用の `GM_getValue`/`GM_setValue` のみです。
 
 **ASS 高精度**は「まずフォールバック、後で昇格」:`.ass/.ssa` を開くとまずテキストレンダラーで即表示(オフライン可)しつつ、バックグラウンドで libass-wasm を遅延読み込み。準備が整えば canvas 高精度描画へ切替、いずれかがネットワークやサイト CSP に阻まれた場合は**テキスト描画を維持**し、字幕は常に表示されます。
 

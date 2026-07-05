@@ -69,7 +69,7 @@ Or install the build output [`dist/anysub.user.js`](./dist/anysub.user.js) manua
 1. Install [Userscripts](https://apps.apple.com/us/app/userscripts/id1463298887) from the App Store (open-source, free).
 2. Safari → Settings → Extensions → enable Userscripts and allow it on websites.
 3. Toolbar Userscripts icon → "Open App" → drop `dist/anysub.user.js` into its scripts folder.
-   - AnySub uses only standard Web APIs (`@grant none`), no GM-privileged interfaces, so Safari support is complete.
+   - AnySub uses standard Web APIs plus only `GM_getValue`/`GM_setValue` (so the Jimaku API key is shared across all sites); both are supported by Userscripts, so Safari support is complete.
 
 ## Usage
 
@@ -133,7 +133,7 @@ src/
 
 **Rendering** uses a custom overlay (a `div` layered over the video, updated on `timeupdate`): versus native `TextTrack` / `::cue` it gives full control of background/outline/color/position, scales font by player height, and is consistent across browsers (Safari especially). It's **event-driven + interval fallback** rather than `requestAnimationFrame` — rAF is paused in background tabs, and event-driven is lighter on CPU. In fullscreen the overlay re-attaches to `document.fullscreenElement`.
 
-All local files are read via standard `<input type=file>` / drag-drop — no `GM_*` interfaces — for full Safari compatibility.
+All local files are read via standard `<input type=file>` / drag-drop (no GM file/download APIs); the only GM use is `GM_getValue`/`GM_setValue` for the cross-site Jimaku key.
 
 **High-fidelity ASS** is "fallback first, upgrade later": opening `.ass/.ssa` shows the text renderer immediately (works offline) while libass-wasm lazy-loads in the background (blob `<script>` to avoid eval/CSP-inline; worker bundled into a blob with `Module.locateFile` pointing wasm/fonts at a CDN). Once ready it swaps to canvas high-fidelity; if any step is blocked by network or site CSP, it **keeps the text renderer** so subtitles stay visible.
 

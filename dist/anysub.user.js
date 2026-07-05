@@ -15,7 +15,8 @@
 // @homepageURL        https://github.com/shiinayane/anysub
 // @supportURL         https://github.com/shiinayane/anysub/issues
 // @match              *://*/*
-// @grant              none
+// @grant              GM_getValue
+// @grant              GM_setValue
 // @run-at             document-idle
 // @noframes
 // ==/UserScript==
@@ -2082,6 +2083,8 @@
 		return true;
 	}
 	var KEY = "anysub:settings:v1";
+	var KEY_JIMAKU = "anysub:jimakuKey";
+	var hasGM = typeof GM_getValue === "function" && typeof GM_setValue === "function";
 	function saveState() {
 		const s = state.style;
 		saveSettings({
@@ -2092,7 +2095,6 @@
 			showFab: state.showFab,
 			rubyParen: state.rubyParen,
 			enhance: state.enhance,
-			jimakuKey: state.jimakuKey,
 			subPos: state.subPos,
 			offsets: state.offsets,
 			lang: state.lang
@@ -2108,6 +2110,28 @@
 	function saveSettings(obj) {
 		try {
 			localStorage.setItem(KEY, JSON.stringify(obj));
+		} catch (_) {}
+	}
+	function getGlobalKey() {
+		try {
+			if (hasGM) {
+				const v = GM_getValue(KEY_JIMAKU, "");
+				if (typeof v === "string" && v) return v;
+			}
+		} catch (_) {}
+		try {
+			return localStorage.getItem(KEY_JIMAKU) || "";
+		} catch (_) {
+			return "";
+		}
+	}
+	function saveGlobalKey(v) {
+		const val = v || "";
+		try {
+			if (hasGM) GM_setValue(KEY_JIMAKU, val);
+		} catch (_) {}
+		try {
+			localStorage.setItem(KEY_JIMAKU, val);
 		} catch (_) {}
 	}
 	var ENDPOINT = "https://graphql.anilist.co";
@@ -2342,7 +2366,7 @@
 	}
 	function saveKey(val) {
 		state.jimakuKey = (val || "").trim();
-		saveState();
+		saveGlobalKey(state.jimakuKey);
 		keyEditing = false;
 		renderKeyArea();
 		toast(state.jimakuKey ? t("toast.keySaved") : t("toast.keyCleared"));
@@ -3272,8 +3296,13 @@
 		if (typeof saved.rubyParen === "boolean") state.rubyParen = saved.rubyParen;
 		if (typeof saved.enhance === "boolean") state.enhance = saved.enhance;
 		if (saved.subPos === "top" || saved.subPos === "bottom") state.subPos = saved.subPos;
-		if (typeof saved.jimakuKey === "string") state.jimakuKey = saved.jimakuKey;
 		if (saved.lang === "en" || saved.lang === "zh" || saved.lang === "ja") state.lang = saved.lang;
+		const globalKey = getGlobalKey();
+		if (globalKey) state.jimakuKey = globalKey;
+		else if (typeof saved.jimakuKey === "string" && saved.jimakuKey) {
+			state.jimakuKey = saved.jimakuKey;
+			saveGlobalKey(saved.jimakuKey);
+		}
 		if (saved.offsets && typeof saved.offsets === "object" && !Array.isArray(saved.offsets)) {
 			const clean = {};
 			for (const k in saved.offsets) {

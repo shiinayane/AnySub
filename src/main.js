@@ -4,7 +4,7 @@ import { injectStyle } from './styles.js';
 import { buildUI, updateFabVisibility } from './ui.js';
 import { pickBestVideo, isVisible } from './locator.js';
 import { setVideo } from './controller.js';
-import { loadSettings } from './storage.js';
+import { loadSettings, getGlobalKey, saveGlobalKey } from './storage.js';
 import { initShortcuts } from './shortcuts.js';
 import { setReactHandler, updateWatcher } from './watcher.js';
 import { initEpisodeWatch } from './episode-watch.js';
@@ -53,8 +53,14 @@ function restoreSettings() {
   if (typeof saved.rubyParen === 'boolean') state.rubyParen = saved.rubyParen;
   if (typeof saved.enhance === 'boolean') state.enhance = saved.enhance;
   if (saved.subPos === 'top' || saved.subPos === 'bottom') state.subPos = saved.subPos;
-  if (typeof saved.jimakuKey === 'string') state.jimakuKey = saved.jimakuKey;
   if (saved.lang === 'en' || saved.lang === 'zh' || saved.lang === 'ja') state.lang = saved.lang;
+  // Jimaku key 走跨站存储(全站通用)。取全站 key;若为空但旧版把 key 存在了每站点设置里,迁移过去。
+  const globalKey = getGlobalKey();
+  if (globalKey) state.jimakuKey = globalKey;
+  else if (typeof saved.jimakuKey === 'string' && saved.jimakuKey) {
+    state.jimakuKey = saved.jimakuKey;
+    saveGlobalKey(saved.jimakuKey); // 一次性迁移:旧的每站点 key → 全站
+  }
   // 只接受「纯对象 + 有限数值」的偏移表:防脏数据(数组/字符串/嵌套/超大)污染并被回写
   if (saved.offsets && typeof saved.offsets === 'object' && !Array.isArray(saved.offsets)) {
     const clean = {};

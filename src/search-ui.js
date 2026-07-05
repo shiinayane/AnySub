@@ -5,7 +5,7 @@
 import { state } from './state.js';
 import { refs } from './refs.js';
 import { toast } from './notify.js';
-import { saveState } from './storage.js';
+import { saveGlobalKey } from './storage.js';
 import { animeCandidates, subtitleFiles, downloadAndLoad, markLoaded } from './online.js';
 import { detectShow } from './site-adapters.js';
 import { pickExactAnime } from './match.js';
@@ -122,7 +122,7 @@ function backToPanel() { panel.style.display = 'none'; openPanel(); }
 
 function saveKey(val) {
   state.jimakuKey = (val || '').trim();
-  saveState();
+  saveGlobalKey(state.jimakuKey); // 跨站存储:一处设置,DMM/Prime/U-NEXT 等全站通用
   keyEditing = false;
   renderKeyArea();
   toast(state.jimakuKey ? t('toast.keySaved') : t('toast.keyCleared'));
