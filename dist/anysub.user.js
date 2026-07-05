@@ -2167,7 +2167,7 @@
 		detect() {
 			const info = document.querySelector("[class*=\"atvwebplayersdk-episode-info\"]");
 			const episode = info ? parsePrimeEpisode(info.textContent) : "";
-			const titleEl = document.querySelector("[class*=\"atvwebplayersdk-title\"]");
+			const titleEl = document.querySelector("[class*=\"atvwebplayersdk-title-text\"]");
 			return {
 				series: titleEl && titleEl.textContent.trim() || cleanPrimeTitle(document.title),
 				episode

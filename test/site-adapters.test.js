@@ -70,7 +70,7 @@ test('Prime 播放页:剧集信息元素 → 番名 + 集数(用稳定的 atvweb
     title: 'Amazon.co.jp: 攻殻機動隊 STAND ALONE COMPLEXを観る | Prime Video',
     els: {
       'atvwebplayersdk-episode-info': 'S1 E1 第1話 公安9課　SECTION-9',
-      'atvwebplayersdk-title': '攻殻機動隊　STAND ALONE COMPLEX',
+      'atvwebplayersdk-title-text': '攻殻機動隊　STAND ALONE COMPLEX',
     },
   });
   assert.equal(getSiteAdapter().name, 'prime');
@@ -92,7 +92,7 @@ test('Prime 电影(无剧集信息元素)→ 集数为空', () => {
     hostname: 'www.amazon.co.jp', pathname: '/gp/video/detail/yyy',
     href: 'https://www.amazon.co.jp/gp/video/detail/yyy',
     title: 'Amazon.co.jp: GHOST IN THE SHELL/攻殻機動隊を観る | Prime Video',
-    els: { 'atvwebplayersdk-title': 'GHOST IN THE SHELL/攻殻機動隊' },
+    els: { 'atvwebplayersdk-title-text': 'GHOST IN THE SHELL/攻殻機動隊' },
   });
   assert.deepEqual(detectShow(), { series: 'GHOST IN THE SHELL/攻殻機動隊', episode: '' });
 });

@@ -45,7 +45,7 @@ const PRIME = {
   detect() {
     const info = document.querySelector('[class*="atvwebplayersdk-episode-info"]');
     const episode = info ? parsePrimeEpisode(info.textContent) : ''; // 电影无此元素 → 空
-    const titleEl = document.querySelector('[class*="atvwebplayersdk-title"]'); // 稳定则优先
+    const titleEl = document.querySelector('[class*="atvwebplayersdk-title-text"]'); // 稳定类名(后缀 f52hj7o 等是哈希,忽略);比 -title 前缀更精确,避开 title-image 等兄弟元素
     const series = (titleEl && titleEl.textContent.trim()) || cleanPrimeTitle(document.title);
     return { series, episode };
   },
