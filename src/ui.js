@@ -5,7 +5,7 @@ import { refresh, applyStyle, clearSubtitle, setVideo, toggleSubtitles } from '.
 import { invalidateLayout } from './overlay.js';
 import { loadFile } from './loader.js';
 import { collectVideos, isVisible } from './locator.js';
-import { toast } from './notify.js';
+import { toast, updateStatus } from './notify.js';
 import { saveState } from './storage.js';
 import { updateWatcher } from './watcher.js';
 import { buildSearchUI, openSearch } from './search-ui.js';
@@ -132,11 +132,6 @@ export function buildUI() {
   fab.title = 'AnySub · 点击打开字幕面板(可拖动)';
   fab.style.display = 'none'; // 默认隐藏,靠快捷键;可在面板里开启
 
-  const panel = document.createElement('div');
-  panel.id = 'anysub-panel';
-  panel.style.display = 'none';
-  panel.innerHTML = PANEL_HTML;
-
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
   fileInput.accept = '.srt,.vtt,.ass,.ssa,.sub,.sbv,text/plain';
@@ -144,19 +139,38 @@ export function buildUI() {
 
   uiRoot.appendChild(overlay);
   uiRoot.appendChild(fab);
-  uiRoot.appendChild(panel);
   uiRoot.appendChild(fileInput);
   document.body.appendChild(uiRoot);
 
   refs.uiRoot = uiRoot;
   refs.overlay = overlay;
   refs.fab = fab;
-  refs.panel = panel;
   refs.fileInput = fileInput;
-  refs.statusEl = panel.querySelector('#anysub-status');
 
+  // 轻量事件(不依赖面板):悬浮球点击/拖拽、文件选择。面板与搜索 DOM 懒建,空闲页面省创建成本。
+  fab.addEventListener('click', () => {
+    if (fab.__dragged) { fab.__dragged = false; return; }
+    togglePanel();
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); fileInput.value = ''; });
+  makeDraggable(fab);
+}
+
+// 懒建设置面板 + 搜索面板:首次打开(快捷键/悬浮球/在线搜索)时才创建 DOM 并接线。
+let panelBuilt = false;
+export function ensurePanel() {
+  if (panelBuilt) return;
+  panelBuilt = true;
+  const panel = document.createElement('div');
+  panel.id = 'anysub-panel';
+  panel.style.display = 'none';
+  panel.innerHTML = PANEL_HTML;
+  refs.uiRoot.appendChild(panel);
+  refs.panel = panel;
+  refs.statusEl = panel.querySelector('#anysub-status');
   buildSearchUI();
-  wireEvents();
+  wirePanel();
+  updateStatus(); // 首建即反映当前加载状态
 }
 
 // 供快捷键调用:打开在线搜索
@@ -164,6 +178,7 @@ export { openSearch };
 
 // ── 供快捷键调用的动作 ──
 export function togglePanel() {
+  ensurePanel();
   const p = refs.panel;
   const show = p.style.display === 'none' || !p.style.display;
   if (show) openPanel(); else p.style.display = 'none';
@@ -171,6 +186,7 @@ export function togglePanel() {
 
 // 显式打开主面板(供快捷键 show 分支 + 搜索面板「返回主面板」复用)
 export function openPanel() {
+  ensurePanel();
   const p = refs.panel;
   if (refs.searchPanel) refs.searchPanel.style.display = 'none'; // 与搜索面板互斥
   p.style.display = 'block';
@@ -210,17 +226,13 @@ function rememberOffset() {
   persist();
 }
 
-function wireEvents() {
-  const { fab, panel, fileInput } = refs;
+// 接线面板控件(懒建时调用一次)
+function wirePanel() {
+  const { panel } = refs;
 
-  fab.addEventListener('click', () => {
-    if (fab.__dragged) { fab.__dragged = false; return; }
-    togglePanel();
-  });
   panel.querySelector('#anysub-close').addEventListener('click', () => { panel.style.display = 'none'; });
   panel.querySelector('#anysub-choose').addEventListener('click', openFilePicker);
   panel.querySelector('#anysub-online').addEventListener('click', openSearch);
-  fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); fileInput.value = ''; });
   panel.querySelector('#anysub-pickvid').addEventListener('click', startPickVideo);
   panel.querySelector('#anysub-clear').addEventListener('click', () => { clearSubtitle(); syncVisBtn(); });
 
@@ -267,7 +279,6 @@ function wireEvents() {
   });
 
   setupDrop(panel.querySelector('#anysub-drop')); // 仅面板区域接收拖放,避免劫持页面拖放
-  makeDraggable(fab);
   syncControls();
 }
 

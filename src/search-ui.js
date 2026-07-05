@@ -8,7 +8,7 @@ import { toast } from './notify.js';
 import { saveState } from './storage.js';
 import { animeCandidates, subtitleFiles, downloadAndLoad, markLoaded } from './online.js';
 import { parseVideoTitle } from './title-parse.js';
-import { openPanel } from './ui.js';
+import { openPanel, ensurePanel } from './ui.js';
 
 let panel, titleInput, epInput, results;
 let currentAnime = null;    // 当前展开文件列表的番剧(供记录来源)
@@ -76,6 +76,7 @@ function renderKeyArea() {
 }
 
 export function openSearch() {
+  ensurePanel(); // 懒建面板+搜索 DOM(含本模块的 panel)
   if (refs.panel) refs.panel.style.display = 'none'; // 与主面板互斥
   show();
   renderKeyArea();
@@ -177,6 +178,7 @@ async function loadFilesFor(anime) {
 
 // 直接展示某番剧的文件候选(切集找不到同源时回退用)
 export function showCandidates(seriesTitle, files) {
+  ensurePanel();
   if (refs.panel) refs.panel.style.display = 'none';
   show();
   renderKeyArea();

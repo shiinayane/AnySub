@@ -44,6 +44,8 @@ export function createTextRenderer() {
   let boxTop = null, boxBottom = null;
   let visible = true;
   let lastKey = '';
+  let cursor = 0;   // 活动 cue 扫描起点:前进播放时越过已结束的前缀,免每帧从头扫(O(N)→摊还 O(1))
+  let prevT = -1;
 
   function outline(c) {
     return `-2px -2px 1px ${c},2px -2px 1px ${c},-2px 2px 1px ${c},2px 2px 1px ${c},0 0 3px ${c}`;
@@ -103,9 +105,15 @@ export function createTextRenderer() {
         boxTop.style.top = edge; boxTop.style.bottom = 'auto';
       }
       const t = v.currentTime - state.offset;
+      const cues = state.cues;
+      if (t < prevT - 0.05) cursor = 0; // 回退/跳转 → 重置游标
+      prevT = t;
+      // 游标越过「已结束的前缀 cue」(前进播放中不会再命中);遇到仍活动的 cue 即停,不越过它
+      while (cursor < cues.length && cues[cursor].end <= t) cursor++;
       const active = [];
-      // cues 已按 start 升序:start > t 之后不可能再命中,提前结束
-      for (const c of state.cues) {
+      // cues 按 start 升序:从游标扫到 start > t;游标之后仍可能有已结束的(重叠 cue),故仍判 end
+      for (let i = cursor; i < cues.length; i++) {
+        const c = cues[i];
         if (c.start > t) break;
         if (t < c.end) active.push(c); // end 独占,避免相邻 cue 边界瞬间双显
       }

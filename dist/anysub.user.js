@@ -1027,6 +1027,8 @@
 		let boxTop = null, boxBottom = null;
 		let visible = true;
 		let lastKey = "";
+		let cursor = 0;
+		let prevT = -1;
 		function outline(c) {
 			return `-2px -2px 1px ${c},2px -2px 1px ${c},-2px 2px 1px ${c},2px 2px 1px ${c},0 0 3px ${c}`;
 		}
@@ -1093,8 +1095,13 @@
 					boxTop.style.bottom = "auto";
 				}
 				const t = v.currentTime - state.offset;
+				const cues = state.cues;
+				if (t < prevT - .05) cursor = 0;
+				prevT = t;
+				while (cursor < cues.length && cues[cursor].end <= t) cursor++;
 				const active = [];
-				for (const c of state.cues) {
+				for (let i = cursor; i < cues.length; i++) {
+					const c = cues[i];
 					if (c.start > t) break;
 					if (t < c.end) active.push(c);
 				}
@@ -1570,6 +1577,7 @@
 		}
 	}
 	function openSearch() {
+		ensurePanel();
 		if (refs.panel) refs.panel.style.display = "none";
 		show();
 		renderKeyArea();
@@ -1674,6 +1682,7 @@
 		}
 	}
 	function showCandidates(seriesTitle, files) {
+		ensurePanel();
 		if (refs.panel) refs.panel.style.display = "none";
 		show();
 		renderKeyArea();
@@ -1863,34 +1872,54 @@
 		fab.textContent = "字";
 		fab.title = "AnySub · 点击打开字幕面板(可拖动)";
 		fab.style.display = "none";
-		const panel = document.createElement("div");
-		panel.id = "anysub-panel";
-		panel.style.display = "none";
-		panel.innerHTML = PANEL_HTML;
 		const fileInput = document.createElement("input");
 		fileInput.type = "file";
 		fileInput.accept = ".srt,.vtt,.ass,.ssa,.sub,.sbv,text/plain";
 		fileInput.style.display = "none";
 		uiRoot.appendChild(overlay);
 		uiRoot.appendChild(fab);
-		uiRoot.appendChild(panel);
 		uiRoot.appendChild(fileInput);
 		document.body.appendChild(uiRoot);
 		refs.uiRoot = uiRoot;
 		refs.overlay = overlay;
 		refs.fab = fab;
-		refs.panel = panel;
 		refs.fileInput = fileInput;
+		fab.addEventListener("click", () => {
+			if (fab.__dragged) {
+				fab.__dragged = false;
+				return;
+			}
+			togglePanel();
+		});
+		fileInput.addEventListener("change", () => {
+			if (fileInput.files[0]) loadFile(fileInput.files[0]);
+			fileInput.value = "";
+		});
+		makeDraggable(fab);
+	}
+	var panelBuilt = false;
+	function ensurePanel() {
+		if (panelBuilt) return;
+		panelBuilt = true;
+		const panel = document.createElement("div");
+		panel.id = "anysub-panel";
+		panel.style.display = "none";
+		panel.innerHTML = PANEL_HTML;
+		refs.uiRoot.appendChild(panel);
+		refs.panel = panel;
 		refs.statusEl = panel.querySelector("#anysub-status");
 		buildSearchUI();
-		wireEvents();
+		wirePanel();
+		updateStatus();
 	}
 	function togglePanel() {
+		ensurePanel();
 		const p = refs.panel;
 		if (p.style.display === "none" || !p.style.display) openPanel();
 		else p.style.display = "none";
 	}
 	function openPanel() {
+		ensurePanel();
 		const p = refs.panel;
 		if (refs.searchPanel) refs.searchPanel.style.display = "none";
 		p.style.display = "block";
@@ -1927,24 +1956,13 @@
 		if (keys.length > 200) delete state.offsets[keys[0]];
 		persist();
 	}
-	function wireEvents() {
-		const { fab, panel, fileInput } = refs;
-		fab.addEventListener("click", () => {
-			if (fab.__dragged) {
-				fab.__dragged = false;
-				return;
-			}
-			togglePanel();
-		});
+	function wirePanel() {
+		const { panel } = refs;
 		panel.querySelector("#anysub-close").addEventListener("click", () => {
 			panel.style.display = "none";
 		});
 		panel.querySelector("#anysub-choose").addEventListener("click", openFilePicker);
 		panel.querySelector("#anysub-online").addEventListener("click", openSearch);
-		fileInput.addEventListener("change", () => {
-			if (fileInput.files[0]) loadFile(fileInput.files[0]);
-			fileInput.value = "";
-		});
 		panel.querySelector("#anysub-pickvid").addEventListener("click", startPickVideo);
 		panel.querySelector("#anysub-clear").addEventListener("click", () => {
 			clearSubtitle();
@@ -2014,7 +2032,6 @@
 			persist();
 		});
 		setupDrop(panel.querySelector("#anysub-drop"));
-		makeDraggable(fab);
 		syncControls();
 	}
 	function updateFabVisibility() {
