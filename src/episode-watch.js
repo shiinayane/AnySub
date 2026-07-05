@@ -47,7 +47,7 @@ async function autoContinue(ctx, series, episode) {
   const carryOffset = state.offset;
   toast(t('toast.epFinding', { ep: episode }));
   try {
-    const files = await subtitleFiles(ctx.anilistId, episode);
+    const files = await subtitleFiles(ctx.anilistId, episode, [series]); // 兜底:用页面标题番名自由搜
     if (!files.length) { toast(t('toast.epNone', { ep: episode })); return; }
     const best = pickSameSource(files, ctx.name);
     if (best) {

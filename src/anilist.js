@@ -15,7 +15,9 @@ export async function searchAnime(title) {
   return media.map((m) => ({
     anilistId: m.id,
     title: m.title.native || m.title.romaji || m.title.english || String(m.id),
+    native: m.title.native || '',
     romaji: m.title.romaji || '',
+    english: m.title.english || '',
     episodes: m.episodes || 0,
     format: m.format || '',
     year: (m.startDate && m.startDate.year) || '',

@@ -2,7 +2,7 @@
 import { state } from './state.js';
 import { parseVideoTitle } from './title-parse.js';
 import { searchAnime } from './anilist.js';
-import { searchByAnilist, getFiles } from './jimaku.js';
+import { searchByAnilist, searchByQuery, getFiles } from './jimaku.js';
 import { loadFromBuffer } from './loader.js';
 
 const SUB_RE = /\.(ass|ssa|srt|vtt|sub|sbv)$/i; // 只要字幕文件,跳过 .7z/.zip 等压缩包
@@ -11,9 +11,21 @@ export function animeCandidates(title) {
   return searchAnime(title);
 }
 
-// 给定 anilist_id + 集数,返回可用字幕文件(ass 优先)
-export async function subtitleFiles(anilistId, episode) {
-  const entries = await searchByAnilist(anilistId);
+// 给定 anilist_id + 集数,返回可用字幕文件(ass 优先)。
+// fallbackTitles:anilist_id 在 Jimaku 无条目时,依次用这些标题(AniList 的日文/罗马字/英文)
+// 走自由文本搜索兜底 —— Jimaku 未按该番建 anilist 映射时仍可能命中。半自动,用户仍需从候选选择。
+export async function subtitleFiles(anilistId, episode, fallbackTitles = []) {
+  let entries = await searchByAnilist(anilistId);
+  if (!entries.length) {
+    const seen = new Set();
+    for (const q of fallbackTitles) {
+      const query = (q || '').trim();
+      if (!query || seen.has(query)) continue;
+      seen.add(query);
+      entries = await searchByQuery(query);
+      if (entries.length) break; // 命中即止,不叠多次自由搜
+    }
+  }
   if (!entries.length) return [];
   const out = [];
   for (const e of entries) {

@@ -1967,7 +1967,9 @@
 		return (data && data.data && data.data.Page && data.data.Page.media || []).map((m) => ({
 			anilistId: m.id,
 			title: m.title.native || m.title.romaji || m.title.english || String(m.id),
+			native: m.title.native || "",
 			romaji: m.title.romaji || "",
+			english: m.title.english || "",
 			episodes: m.episodes || 0,
 			format: m.format || "",
 			year: m.startDate && m.startDate.year || "",
@@ -1990,6 +1992,9 @@
 	function searchByAnilist(anilistId) {
 		return get("/entries/search?anilist_id=" + encodeURIComponent(anilistId));
 	}
+	function searchByQuery(query) {
+		return get("/entries/search?query=" + encodeURIComponent(query));
+	}
 	function getFiles(entryId, episode) {
 		let p = "/entries/" + encodeURIComponent(entryId) + "/files";
 		if (episode != null && episode !== "") p += "?episode=" + encodeURIComponent(episode);
@@ -1999,8 +2004,18 @@
 	function animeCandidates(title) {
 		return searchAnime(title);
 	}
-	async function subtitleFiles(anilistId, episode) {
-		const entries = await searchByAnilist(anilistId);
+	async function subtitleFiles(anilistId, episode, fallbackTitles = []) {
+		let entries = await searchByAnilist(anilistId);
+		if (!entries.length) {
+			const seen = new Set();
+			for (const q of fallbackTitles) {
+				const query = (q || "").trim();
+				if (!query || seen.has(query)) continue;
+				seen.add(query);
+				entries = await searchByQuery(query);
+				if (entries.length) break;
+			}
+		}
 		if (!entries.length) return [];
 		const out = [];
 		for (const e of entries) {
@@ -2204,7 +2219,11 @@
 	async function loadFilesFor(anime) {
 		setResults(`<div class="as-sc-empty">${t("sc.fetchingFiles")}</div>`);
 		try {
-			const files = await subtitleFiles(anime.anilistId, epInput.value.trim());
+			const files = await subtitleFiles(anime.anilistId, epInput.value.trim(), [
+				anime.native,
+				anime.romaji,
+				anime.english
+			]);
 			if (!files.length) {
 				results.innerHTML = "";
 				results.appendChild(backLink(t("sc.backToAnime"), doSearch));
@@ -2877,7 +2896,7 @@
 		const carryOffset = state.offset;
 		toast(t("toast.epFinding", { ep: episode }));
 		try {
-			const files = await subtitleFiles(ctx.anilistId, episode);
+			const files = await subtitleFiles(ctx.anilistId, episode, [series]);
 			if (!files.length) {
 				toast(t("toast.epNone", { ep: episode }));
 				return;

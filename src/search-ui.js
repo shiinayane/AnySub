@@ -175,7 +175,8 @@ function renderAnime(list) {
 async function loadFilesFor(anime) {
   setResults(`<div class="as-sc-empty">${t('sc.fetchingFiles')}</div>`);
   try {
-    const files = await subtitleFiles(anime.anilistId, epInput.value.trim());
+    const files = await subtitleFiles(anime.anilistId, epInput.value.trim(),
+      [anime.native, anime.romaji, anime.english]); // anilist_id 无条目时的自由搜兜底
     if (!files.length) {
       results.innerHTML = '';
       results.appendChild(backLink(t('sc.backToAnime'), doSearch));
