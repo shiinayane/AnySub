@@ -4,7 +4,8 @@ import { injectStyle } from './styles.js';
 import { buildUI, updateFabVisibility } from './ui.js';
 import { pickBestVideo, isVisible } from './locator.js';
 import { setVideo } from './controller.js';
-import { loadSettings, getGlobalKey, saveGlobalKey } from './storage.js';
+import { loadSettings, getLocalKey, loadGlobalKey, saveGlobalKey } from './storage.js';
+import { refreshKeyArea } from './search-ui.js';
 import { initShortcuts } from './shortcuts.js';
 import { setReactHandler, updateWatcher } from './watcher.js';
 import { initEpisodeWatch } from './episode-watch.js';
@@ -54,13 +55,17 @@ function restoreSettings() {
   if (typeof saved.enhance === 'boolean') state.enhance = saved.enhance;
   if (saved.subPos === 'top' || saved.subPos === 'bottom') state.subPos = saved.subPos;
   if (saved.lang === 'en' || saved.lang === 'zh' || saved.lang === 'ja') state.lang = saved.lang;
-  // Jimaku key 走跨站存储(全站通用)。取全站 key;若为空但旧版把 key 存在了每站点设置里,迁移过去。
-  const globalKey = getGlobalKey();
-  if (globalKey) state.jimakuKey = globalKey;
-  else if (typeof saved.jimakuKey === 'string' && saved.jimakuKey) {
-    state.jimakuKey = saved.jimakuKey;
-    saveGlobalKey(saved.jimakuKey); // 一次性迁移:旧的每站点 key → 全站
-  }
+  // Jimaku key 走跨站存储(全站通用)。先用本站缓存立即恢复(若有),再异步取全站 key 覆盖
+  // (GM 存储可能是异步的);若全站为空但旧版 key 存在每站点设置里,一次性迁移。
+  state.jimakuKey = getLocalKey();
+  loadGlobalKey().then((k) => {
+    if (k) state.jimakuKey = k;
+    else if (typeof saved.jimakuKey === 'string' && saved.jimakuKey) {
+      state.jimakuKey = saved.jimakuKey;
+      saveGlobalKey(saved.jimakuKey); // 迁移:旧的每站点 key → 全站
+    }
+    refreshKeyArea(); // 若搜索面板已开着(异步解析前),刷新 key 区显示
+  });
   // 只接受「纯对象 + 有限数值」的偏移表:防脏数据(数组/字符串/嵌套/超大)污染并被回写
   if (saved.offsets && typeof saved.offsets === 'object' && !Array.isArray(saved.offsets)) {
     const clean = {};

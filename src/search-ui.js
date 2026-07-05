@@ -74,6 +74,11 @@ export function relocalizeSearch() {
   lastPrefillSig = null; // 下次打开按当前页重新预填
 }
 
+// 供外部调用:跨站 key 异步就绪后,若搜索面板已建则刷新 key 区显示(未建则无操作,打开时自会正确渲染)
+export function refreshKeyArea() {
+  if (panel) renderKeyArea();
+}
+
 // key 区两态:未存 → 输入框 + 保存;已存 → 一行「已连接 · 更换」,点更换再展开
 function renderKeyArea() {
   const area = panel.querySelector('#anysub-key-area');

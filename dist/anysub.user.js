@@ -15,6 +15,8 @@
 // @homepageURL        https://github.com/shiinayane/anysub
 // @supportURL         https://github.com/shiinayane/anysub/issues
 // @match              *://*/*
+// @grant              GM.getValue
+// @grant              GM.setValue
 // @grant              GM_getValue
 // @grant              GM_setValue
 // @run-at             document-idle
@@ -2084,7 +2086,8 @@
 	}
 	var KEY = "anysub:settings:v1";
 	var KEY_JIMAKU = "anysub:jimakuKey";
-	var hasGM = typeof GM_getValue === "function" && typeof GM_setValue === "function";
+	var gmGet = typeof GM !== "undefined" && GM && typeof GM.getValue === "function" ? (k, d) => GM.getValue(k, d) : typeof GM_getValue === "function" ? (k, d) => GM_getValue(k, d) : null;
+	var gmSet = typeof GM !== "undefined" && GM && typeof GM.setValue === "function" ? (k, v) => GM.setValue(k, v) : typeof GM_setValue === "function" ? (k, v) => GM_setValue(k, v) : null;
 	function saveState() {
 		const s = state.style;
 		saveSettings({
@@ -2112,23 +2115,24 @@
 			localStorage.setItem(KEY, JSON.stringify(obj));
 		} catch (_) {}
 	}
-	function getGlobalKey() {
-		try {
-			if (hasGM) {
-				const v = GM_getValue(KEY_JIMAKU, "");
-				if (typeof v === "string" && v) return v;
-			}
-		} catch (_) {}
+	function getLocalKey() {
 		try {
 			return localStorage.getItem(KEY_JIMAKU) || "";
 		} catch (_) {
 			return "";
 		}
 	}
+	async function loadGlobalKey() {
+		if (gmGet) try {
+			const v = await gmGet(KEY_JIMAKU, "");
+			if (typeof v === "string" && v) return v;
+		} catch (_) {}
+		return getLocalKey();
+	}
 	function saveGlobalKey(v) {
 		const val = v || "";
-		try {
-			if (hasGM) GM_setValue(KEY_JIMAKU, val);
+		if (gmSet) try {
+			Promise.resolve(gmSet(KEY_JIMAKU, val)).catch(() => {});
 		} catch (_) {}
 		try {
 			localStorage.setItem(KEY_JIMAKU, val);
@@ -2316,6 +2320,9 @@
 		if (!panel) return;
 		wireSearch();
 		lastPrefillSig = null;
+	}
+	function refreshKeyArea() {
+		if (panel) renderKeyArea();
 	}
 	function renderKeyArea() {
 		const area = panel.querySelector("#anysub-key-area");
@@ -3297,12 +3304,15 @@
 		if (typeof saved.enhance === "boolean") state.enhance = saved.enhance;
 		if (saved.subPos === "top" || saved.subPos === "bottom") state.subPos = saved.subPos;
 		if (saved.lang === "en" || saved.lang === "zh" || saved.lang === "ja") state.lang = saved.lang;
-		const globalKey = getGlobalKey();
-		if (globalKey) state.jimakuKey = globalKey;
-		else if (typeof saved.jimakuKey === "string" && saved.jimakuKey) {
-			state.jimakuKey = saved.jimakuKey;
-			saveGlobalKey(saved.jimakuKey);
-		}
+		state.jimakuKey = getLocalKey();
+		loadGlobalKey().then((k) => {
+			if (k) state.jimakuKey = k;
+			else if (typeof saved.jimakuKey === "string" && saved.jimakuKey) {
+				state.jimakuKey = saved.jimakuKey;
+				saveGlobalKey(saved.jimakuKey);
+			}
+			refreshKeyArea();
+		});
 		if (saved.offsets && typeof saved.offsets === "object" && !Array.isArray(saved.offsets)) {
 			const clean = {};
 			for (const k in saved.offsets) {
