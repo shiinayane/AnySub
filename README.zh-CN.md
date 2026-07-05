@@ -46,7 +46,7 @@
 
 | 设置面板 | 在线搜索(Jimaku) |
 | --- | --- |
-| ![设置面板](./docs/panel.png) | ![在线字幕搜索](./docs/search.png) |
+| ![设置面板](./docs/panel.png) | ![在线字幕搜索](./docs/results.png) |
 
 ## 安装
 

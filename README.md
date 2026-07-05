@@ -48,7 +48,7 @@ Pure userscript — no backend, no upload, nothing leaves your machine. Works on
 
 | Settings panel | Online search (Jimaku) |
 | --- | --- |
-| ![Settings panel](./docs/panel.png) | ![Online subtitle search](./docs/search.png) |
+| ![Settings panel](./docs/panel.png) | ![Online subtitle search](./docs/results.png) |
 
 ## Install
 

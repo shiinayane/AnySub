@@ -46,7 +46,7 @@
 
 | 設定パネル | オンライン検索(Jimaku) |
 | --- | --- |
-| ![設定パネル](./docs/panel.png) | ![オンライン字幕検索](./docs/search.png) |
+| ![設定パネル](./docs/panel.png) | ![オンライン字幕検索](./docs/results.png) |
 
 ## インストール
 

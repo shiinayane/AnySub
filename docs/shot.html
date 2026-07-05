@@ -74,6 +74,14 @@
       } else if (scene === 'search') {
         key('f');                              // 开在线搜索(ensurePanel 会建面板+搜索)
         setTimeout(tickAwhile, 200);
+      } else if (scene === 'results') {
+        key('f');                              // 开搜索,填标题并真的发起 AniList 检索(公开、无需 key)
+        setTimeout(() => {
+          const ti = document.querySelector('#anysub-title');
+          if (ti) ti.value = '薬屋のひとりごと';
+          document.querySelector('#anysub-do-search')?.click();
+        }, 250);
+        setTimeout(tickAwhile, 500);
       }
     });
   </script>
