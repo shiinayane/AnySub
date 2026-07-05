@@ -1293,7 +1293,7 @@
 	function cleanPrimeTitle(raw) {
 		return String(raw || "").split(/[|｜]/)[0].replace(/^\s*Amazon\.[a-z.]+:\s*/i, "").replace(/\s*(を観る|を視聴|を見る)\s*$/, "").trim();
 	}
-	var ADAPTERS = [DMM, {
+	var PRIME = {
 		name: "prime",
 		match: () => /(^|\.)(primevideo\.com|amazon\.[a-z.]+)$/.test(location.hostname),
 		isTarget: () => !!document.querySelector("[class*=\"atvwebplayersdk-\"]"),
@@ -1307,7 +1307,36 @@
 				episode
 			};
 		}
-	}];
+	};
+	function parseUnextEpisode(text) {
+		const s = String(text || "");
+		const m = s.match(/#\s*(\d+)/) || s.match(/第\s*(\d+)\s*話/) || s.match(/\bE(\d+)/i);
+		return m ? String(parseInt(m[1], 10)) : "";
+	}
+	function unextBox() {
+		const boxes = document.querySelectorAll("[class*=\"styles__TitleContainer-\"]");
+		for (const b of boxes) if (b.querySelector("h2")) return b;
+		return null;
+	}
+	var ADAPTERS = [
+		DMM,
+		PRIME,
+		{
+			name: "unext",
+			match: () => /(^|\.)unext\.jp$/.test(location.hostname),
+			isTarget: () => !!unextBox(),
+			watchEl: () => unextBox(),
+			detect() {
+				const box = unextBox();
+				const h2 = box && box.querySelector("h2");
+				const h3 = box && box.querySelector("h3");
+				return {
+					series: h2 ? h2.textContent.trim() : "",
+					episode: parseUnextEpisode(h3 ? h3.textContent : "")
+				};
+			}
+		}
+	];
 	function getSiteAdapter() {
 		return ADAPTERS.find((a) => a.match()) || null;
 	}

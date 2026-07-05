@@ -2,8 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 // 站点适配器读全局 location/document;node 里默认没有,逐用例注入桩再导入模块。
-// els: 选择器片段 → 元素文本(模拟 Prime 的 atvwebplayersdk-* 元素);ogTitle 走 meta。
-function stub({ hostname, pathname, href, title, ogTitle, els }) {
+// els: 选择器片段 → 元素文本(模拟 Prime 的 atvwebplayersdk-* 元素);ogTitle 走 meta;
+// boxes: 选择器片段 → [{h2, h3}](模拟 U-NEXT styled-components 容器,支持内部 h2/h3)。
+function mkBox(b) {
+  return { querySelector: (s) => (s === 'h2' && b.h2 != null) ? { textContent: b.h2 }
+                              : (s === 'h3' && b.h3 != null) ? { textContent: b.h3 } : null };
+}
+function stub({ hostname, pathname, href, title, ogTitle, els, boxes }) {
   globalThis.location = { hostname, pathname, href };
   globalThis.document = {
     title,
@@ -17,10 +22,14 @@ function stub({ hostname, pathname, href, title, ogTitle, els }) {
       }
       return null;
     },
+    querySelectorAll: (sel) => {
+      if (boxes) for (const frag in boxes) if (sel.includes(frag)) return boxes[frag].map(mkBox);
+      return [];
+    },
   };
 }
 
-const { getSiteAdapter, detectShow, parsePrimeEpisode, cleanPrimeTitle } = await import('../src/site-adapters.js');
+const { getSiteAdapter, detectShow, parsePrimeEpisode, cleanPrimeTitle, parseUnextEpisode } = await import('../src/site-adapters.js');
 
 const DMM_TITLE = 'メイドインアビス　烈日の黄金郷 第2話 還らずの都 (アニメ/2022年)｜アニメ・ドラマの動画配信ならDMM TV';
 const DMM_OG = 'メイドインアビス　烈日の黄金郷 第2話 還らずの都 (アニメ/2022年) | DMM TVで14日間無料体験';
@@ -125,4 +134,31 @@ test('Prime 提供 watchEl(剧集信息元素);DMM 不提供 → 由 episode-sig
     href: 'https://tv.dmm.com/vod/playback/on-demand/?season=S&content=C', title: 'x',
   });
   assert.equal(getSiteAdapter().watchEl, undefined); // DMM <title> 已带集数 → 无需 watchEl
+});
+
+// ── U-NEXT ──
+test('U-NEXT 播放页:标题块 h2(番名)/ h3(#集数)→ 番名 + 集数', () => {
+  stub({
+    hostname: 'video.unext.jp', pathname: '/play/xxx', href: 'https://video.unext.jp/play/xxx', title: 'U-NEXT',
+    boxes: { 'styles__TitleContainer-': [{ h2: 'ヤニねこ', h3: '#1 ニャーがヤニねこにゃ' }] },
+  });
+  assert.equal(getSiteAdapter().name, 'unext');
+  assert.deepEqual(detectShow(), { series: 'ヤニねこ', episode: '1' });
+});
+
+test('U-NEXT 无标题块 → 非目标,detectShow 回落 <title>', () => {
+  stub({
+    hostname: 'video.unext.jp', pathname: '/', href: 'https://video.unext.jp/',
+    title: '鬼滅の刃 第5話｜U-NEXT', boxes: {},
+  });
+  assert.equal(getSiteAdapter().name, 'unext');
+  assert.equal(getSiteAdapter().isTarget(), false);
+  assert.deepEqual(detectShow(), { series: '鬼滅の刃', episode: '5' });
+});
+
+test('parseUnextEpisode:#N / 第N話 / EN', () => {
+  assert.equal(parseUnextEpisode('#1 ニャーが'), '1');
+  assert.equal(parseUnextEpisode('#12 タイトル'), '12');
+  assert.equal(parseUnextEpisode('第7話 サブ'), '7');
+  assert.equal(parseUnextEpisode('劇場版'), ''); // 无集数(电影)
 });
