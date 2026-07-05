@@ -61,7 +61,7 @@ export default tseslint.config(
   },
   {
     // Node 环境:测试、构建脚本、配置
-    files: ['test/**', 'scripts/**', 'vite.config.*', 'eslint.config.*'],
+    files: ['test/**', 'scripts/**', '*.config.*'],
     languageOptions: { globals: { ...globals.node } },
   },
   // 关闭与 Prettier 冲突的格式化类规则(必须放最后)
