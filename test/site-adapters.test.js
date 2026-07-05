@@ -2,16 +2,25 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 // 站点适配器读全局 location/document;node 里默认没有,逐用例注入桩再导入模块。
-function stub({ hostname, pathname, href, title, ogTitle }) {
+// els: 选择器片段 → 元素文本(模拟 Prime 的 atvwebplayersdk-* 元素);ogTitle 走 meta。
+function stub({ hostname, pathname, href, title, ogTitle, els }) {
   globalThis.location = { hostname, pathname, href };
   globalThis.document = {
     title,
-    querySelector: (sel) =>
-      (ogTitle != null && sel.includes('og:title')) ? { getAttribute: () => ogTitle } : null,
+    querySelector: (sel) => {
+      if (ogTitle != null && sel.includes('og:title')) return { getAttribute: () => ogTitle };
+      if (sel === '[class*="atvwebplayersdk-"]') return (els && Object.keys(els).length) ? { textContent: '' } : null; // isTarget 探针
+      if (els) { // 取「最具体(最长)」匹配片段,避免 episode-info 命中 title 的桩
+        let best = null, len = -1;
+        for (const frag in els) if (sel.includes(frag) && frag.length > len) { best = els[frag]; len = frag.length; }
+        if (best != null) return { textContent: best };
+      }
+      return null;
+    },
   };
 }
 
-const { getSiteAdapter, detectShow } = await import('../src/site-adapters.js');
+const { getSiteAdapter, detectShow, parsePrimeEpisode, cleanPrimeTitle } = await import('../src/site-adapters.js');
 
 const DMM_TITLE = 'メイドインアビス　烈日の黄金郷 第2話 還らずの都 (アニメ/2022年)｜アニメ・ドラマの動画配信ならDMM TV';
 const DMM_OG = 'メイドインアビス　烈日の黄金郷 第2話 還らずの都 (アニメ/2022年) | DMM TVで14日間無料体験';
@@ -51,4 +60,51 @@ test('非已知站点:无适配器,detectShow 回落标题解析', () => {
   });
   assert.equal(getSiteAdapter(), null);
   assert.deepEqual(detectShow(), { series: '鬼滅の刃', episode: '5' });
+});
+
+// ── Prime Video ──
+test('Prime 播放页:剧集信息元素 → 番名 + 集数(用稳定的 atvwebplayersdk- 前缀,不依赖哈希类名)', () => {
+  stub({
+    hostname: 'www.amazon.co.jp', pathname: '/gp/video/detail/xxx',
+    href: 'https://www.amazon.co.jp/gp/video/detail/xxx',
+    title: 'Amazon.co.jp: 攻殻機動隊 STAND ALONE COMPLEXを観る | Prime Video',
+    els: {
+      'atvwebplayersdk-episode-info': 'S1 E1 第1話 公安9課　SECTION-9',
+      'atvwebplayersdk-title': '攻殻機動隊　STAND ALONE COMPLEX',
+    },
+  });
+  assert.equal(getSiteAdapter().name, 'prime');
+  assert.deepEqual(detectShow(), { series: '攻殻機動隊　STAND ALONE COMPLEX', episode: '1' });
+});
+
+test('Prime 无稳定标题元素时回落清洗 <title>', () => {
+  stub({
+    hostname: 'www.primevideo.com', pathname: '/detail/xxx',
+    href: 'https://www.primevideo.com/detail/xxx',
+    title: 'Amazon.co.jp: 攻殻機動隊 STAND ALONE COMPLEXを観る | Prime Video',
+    els: { 'atvwebplayersdk-episode-info': 'S2 E5 第5話 サブタイトル' },
+  });
+  assert.deepEqual(detectShow(), { series: '攻殻機動隊 STAND ALONE COMPLEX', episode: '5' });
+});
+
+test('Prime 电影(无剧集信息元素)→ 集数为空', () => {
+  stub({
+    hostname: 'www.amazon.co.jp', pathname: '/gp/video/detail/yyy',
+    href: 'https://www.amazon.co.jp/gp/video/detail/yyy',
+    title: 'Amazon.co.jp: GHOST IN THE SHELL/攻殻機動隊を観る | Prime Video',
+    els: { 'atvwebplayersdk-title': 'GHOST IN THE SHELL/攻殻機動隊' },
+  });
+  assert.deepEqual(detectShow(), { series: 'GHOST IN THE SHELL/攻殻機動隊', episode: '' });
+});
+
+test('parsePrimeEpisode:优先 E 编号,回退 第X話', () => {
+  assert.equal(parsePrimeEpisode('S1 E1 第1話 公安9課'), '1');
+  assert.equal(parsePrimeEpisode('S2 E12 something'), '12');
+  assert.equal(parsePrimeEpisode('第7話 タイトル'), '7');
+  assert.equal(parsePrimeEpisode(''), '');
+});
+
+test('cleanPrimeTitle:去 Amazon 前缀 / を観る 后缀 / 站点名', () => {
+  assert.equal(cleanPrimeTitle('Amazon.co.jp: 鬼滅の刃を観る | Prime Video'), '鬼滅の刃');
+  assert.equal(cleanPrimeTitle('Amazon.com: Attack on Titanを観る | Prime Video'), 'Attack on Titan');
 });

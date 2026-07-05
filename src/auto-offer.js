@@ -36,14 +36,13 @@ function check() {
   const ad = getSiteAdapter();
   if (!ad || !ad.isTarget()) return;             // 非播放页
   const info = ad.detect();
-  if (!info || !info.series || !info.episode) return;
-  const key = info.epKey || (info.series + '#' + info.episode);
+  if (!info || !info.series) return;             // 番名是底线;集数可空(电影/剧场版)
+  const key = info.epKey || (info.series + '#' + (info.episode || ''));
   if (key === lastOfferedKey) return;            // 同一集只提示一次(含被用户忽略后不再唠叨)
   if (!document.querySelector('video') && !collectVideos().length) return; // 得先有视频
   lastOfferedKey = key;
-  toastOffer(
-    t('offer.found', { title: info.series, ep: info.episode }),
-    t('offer.load'),
-    () => openSearch({ run: true }), // 打开搜索并自动检索(有 key+番名时)
-  );
+  const msg = info.episode
+    ? t('offer.found', { title: info.series, ep: info.episode })
+    : t('offer.foundMovie', { title: info.series }); // 无集数按电影措辞
+  toastOffer(msg, t('offer.load'), () => openSearch({ run: true }));
 }

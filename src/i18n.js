@@ -104,6 +104,7 @@ const DICT = {
 
   // ── 自动提示(站点适配) ──
   'offer.found': { en: 'Subtitles for {title} ep {ep}?', zh: '发现《{title}》第 {ep} 集字幕', ja: '{title} 第{ep}話の字幕が見つかりました' },
+  'offer.foundMovie': { en: 'Subtitles for {title}?', zh: '发现《{title}》字幕', ja: '{title} の字幕が見つかりました' },
   'offer.load': { en: 'Find', zh: '查找', ja: '探す' },
 
   // ── 搜索面板 ──

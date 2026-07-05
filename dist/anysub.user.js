@@ -753,6 +753,11 @@
 			zh: "发现《{title}》第 {ep} 集字幕",
 			ja: "{title} 第{ep}話の字幕が見つかりました"
 		},
+		"offer.foundMovie": {
+			en: "Subtitles for {title}?",
+			zh: "发现《{title}》字幕",
+			ja: "{title} の字幕が見つかりました"
+		},
 		"offer.load": {
 			en: "Find",
 			zh: "查找",
@@ -2133,7 +2138,7 @@
 			return "";
 		}
 	}
-	var ADAPTERS = [{
+	var DMM = {
 		name: "dmm",
 		match: () => /(^|\.)tv\.dmm\.(com|co\.jp)$/.test(location.hostname),
 		isTarget: () => location.pathname.includes("/vod/playback/"),
@@ -2144,6 +2149,28 @@
 				episode,
 				showKey: urlParam("season"),
 				epKey: urlParam("content")
+			};
+		}
+	};
+	function parsePrimeEpisode(text) {
+		const s = String(text || "");
+		const m = s.match(/\bE(\d+)/i) || s.match(/第\s*(\d+)\s*話/);
+		return m ? String(parseInt(m[1], 10)) : "";
+	}
+	function cleanPrimeTitle(raw) {
+		return String(raw || "").split(/[|｜]/)[0].replace(/^\s*Amazon\.[a-z.]+:\s*/i, "").replace(/\s*(を観る|を視聴|を見る)\s*$/, "").trim();
+	}
+	var ADAPTERS = [DMM, {
+		name: "prime",
+		match: () => /(^|\.)(primevideo\.com|amazon\.[a-z.]+)$/.test(location.hostname),
+		isTarget: () => !!document.querySelector("[class*=\"atvwebplayersdk-\"]"),
+		detect() {
+			const info = document.querySelector("[class*=\"atvwebplayersdk-episode-info\"]");
+			const episode = info ? parsePrimeEpisode(info.textContent) : "";
+			const titleEl = document.querySelector("[class*=\"atvwebplayersdk-title\"]");
+			return {
+				series: titleEl && titleEl.textContent.trim() || cleanPrimeTitle(document.title),
+				episode
 			};
 		}
 	}];
@@ -3066,15 +3093,15 @@
 		const ad = getSiteAdapter();
 		if (!ad || !ad.isTarget()) return;
 		const info = ad.detect();
-		if (!info || !info.series || !info.episode) return;
-		const key = info.epKey || info.series + "#" + info.episode;
+		if (!info || !info.series) return;
+		const key = info.epKey || info.series + "#" + (info.episode || "");
 		if (key === lastOfferedKey) return;
 		if (!document.querySelector("video") && !collectVideos().length) return;
 		lastOfferedKey = key;
-		toastOffer(t("offer.found", {
+		toastOffer(info.episode ? t("offer.found", {
 			title: info.series,
 			ep: info.episode
-		}), t("offer.load"), () => openSearch({ run: true }));
+		}) : t("offer.foundMovie", { title: info.series }), t("offer.load"), () => openSearch({ run: true }));
 	}
 	if (!window.__ANYSUB_LOADED__) {
 		window.__ANYSUB_LOADED__ = true;
