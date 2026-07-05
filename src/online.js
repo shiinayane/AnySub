@@ -3,12 +3,25 @@ import { state } from './state.js';
 import { detectShow } from './site-adapters.js';
 import { searchAnime } from './anilist.js';
 import { searchByAnilist, searchByQuery, getFiles } from './jimaku.js';
+import { pickExactAnime } from './match.js';
 import { loadFromBuffer } from './loader.js';
 
 const SUB_RE = /\.(ass|ssa|srt|vtt|sub|sbv)$/i; // 只要字幕文件,跳过 .7z/.zip 等压缩包
 
 export function animeCandidates(title) {
   return searchAnime(title);
+}
+
+// 站点无关的统一入口:番名(+集数)→ 定位番剧(精确匹配优先,否则最相关候选)→ 该集字幕文件。
+// 任何站点的 detectShow() 结果都走这一条路径;各触发点(自动提示核实、切集续播判断等)共用,
+// 不再各自内联「候选→选番→取文件」。返回 { anime, candidates, files, exact }。
+export async function resolveSubtitles(series, episode) {
+  const candidates = await animeCandidates(series);
+  if (!candidates.length) return { anime: null, candidates: [], files: [], exact: false };
+  const exactHit = pickExactAnime(candidates, series);
+  const anime = exactHit || candidates[0];
+  const files = await subtitleFiles(anime.anilistId, episode, [anime.native, anime.romaji, anime.english]);
+  return { anime, candidates, files, exact: !!exactHit };
 }
 
 // 给定 anilist_id + 集数,返回可用字幕文件(ass 优先)。

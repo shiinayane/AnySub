@@ -2167,6 +2167,27 @@
 	function animeCandidates(title) {
 		return searchAnime(title);
 	}
+	async function resolveSubtitles(series, episode) {
+		const candidates = await animeCandidates(series);
+		if (!candidates.length) return {
+			anime: null,
+			candidates: [],
+			files: [],
+			exact: false
+		};
+		const exactHit = pickExactAnime(candidates, series);
+		const anime = exactHit || candidates[0];
+		return {
+			anime,
+			candidates,
+			files: await subtitleFiles(anime.anilistId, episode, [
+				anime.native,
+				anime.romaji,
+				anime.english
+			]),
+			exact: !!exactHit
+		};
+	}
 	async function subtitleFiles(anilistId, episode, fallbackTitles = []) {
 		let entries = await searchByAnilist(anilistId);
 		if (!entries.length) {
@@ -3199,15 +3220,8 @@
 		lastOfferedKey = key;
 		verifying = true;
 		try {
-			const cands = await animeCandidates(info.series);
-			const anime = pickExactAnime(cands, info.series) || cands[0];
-			if (!anime) return;
-			const files = await subtitleFiles(anime.anilistId, info.episode, [
-				anime.native,
-				anime.romaji,
-				anime.english
-			]);
-			if (!files.length || state.cues.length) return;
+			const { anime, files } = await resolveSubtitles(info.series, info.episode);
+			if (!anime || !files.length || state.cues.length) return;
 			toastOffer(info.episode ? t("offer.found", {
 				title: info.series,
 				ep: info.episode,

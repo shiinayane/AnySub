@@ -9,8 +9,7 @@ import { refs } from './refs.js';
 import { getSiteAdapter } from './site-adapters.js';
 import { collectVideos } from './locator.js';
 import { toastOffer } from './notify.js';
-import { animeCandidates, subtitleFiles } from './online.js';
-import { pickExactAnime } from './match.js';
+import { resolveSubtitles } from './online.js';
 import { showCandidates } from './search-ui.js';
 import { isAutoContinuing } from './episode-watch.js';
 import { onEpisodeChange } from './episode-signal.js';
@@ -78,14 +77,11 @@ async function run(isRetry) {
   if (!state.jimakuKey) return;                  // 无 key:在线取字幕不可用 → 不自动提示
   lastOfferedKey = key;                          // 标记已尝试(无论核实结果,不再重复核实)
 
-  // 查证:真去 Jimaku 看这一集有没有字幕,有才提示、并如实报数量;没有则静默。
+  // 查证:走统一入口真查 Jimaku,有该集字幕才提示、并如实报数量;没有则静默。
   verifying = true;
   try {
-    const cands = await animeCandidates(info.series);
-    const anime = pickExactAnime(cands, info.series) || cands[0];
-    if (!anime) return;
-    const files = await subtitleFiles(anime.anilistId, info.episode, [anime.native, anime.romaji, anime.english]);
-    if (!files.length || state.cues.length) return; // 确实没字幕,或核实期间用户已手动加载 → 不弹
+    const { anime, files } = await resolveSubtitles(info.series, info.episode);
+    if (!anime || !files.length || state.cues.length) return; // 没字幕,或核实期间用户已手动加载 → 不弹
     const msg = info.episode
       ? t('offer.found', { title: info.series, ep: info.episode, n: files.length })
       : t('offer.foundMovie', { title: info.series, n: files.length });
