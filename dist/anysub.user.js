@@ -3108,9 +3108,12 @@
 			busy = false;
 		}
 	}
+	var MIN_DURATION = 120;
 	var lastOfferedKey = null;
+	var lastUrl = "", retryTimer = 0, waitTries = 0;
 	function initAutoOffer() {
 		if (!getSiteAdapter()) return;
+		lastUrl = location.href;
 		let tries = 0;
 		const poll = () => {
 			check();
@@ -3119,20 +3122,40 @@
 		setTimeout(poll, 1200);
 		onEpisodeChange(check);
 	}
+	function playingFeature() {
+		const vids = [document.querySelector("video")].concat(collectVideos()).filter(Boolean);
+		for (const v of vids) if (isFinite(v.duration) && v.duration > MIN_DURATION && !v.paused && v.currentTime > 0) return v;
+		return null;
+	}
 	function check() {
+		run(false);
+	}
+	function run(isRetry) {
+		if (!isRetry) waitTries = 0;
+		clearTimeout(retryTimer);
+		if (location.href !== lastUrl) {
+			lastUrl = location.href;
+			lastOfferedKey = null;
+		}
 		if (state.cues.length) return;
 		if (isAutoContinuing()) {
-			setTimeout(check, 600);
+			retryTimer = setTimeout(() => run(true), 600);
 			return;
 		}
 		if (refs.searchPanel && refs.searchPanel.style.display === "block") return;
 		const ad = getSiteAdapter();
 		if (!ad || !ad.isTarget()) return;
+		if (!playingFeature()) {
+			if (waitTries < 15) {
+				waitTries++;
+				retryTimer = setTimeout(() => run(true), 1e3);
+			}
+			return;
+		}
 		const info = ad.detect();
 		if (!info || !info.series) return;
 		const key = info.epKey || info.series + "#" + (info.episode || "");
 		if (key === lastOfferedKey) return;
-		if (!document.querySelector("video") && !collectVideos().length) return;
 		lastOfferedKey = key;
 		toastOffer(info.episode ? t("offer.found", {
 			title: info.series,
