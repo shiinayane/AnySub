@@ -1,0 +1,344 @@
+// 在线字幕搜索面板(独立居中模态,与主面板同一视觉语言):
+// 输入 API key + 番剧名 + 集数 → 番剧候选(带海报)→ 文件候选 → 下载载入。
+// 半自动:每一步都把候选摆出来让用户选,不静默加载。
+// 与主面板互斥(打开时收起主面板),并提供「返回主面板」按钮保持心智连贯。
+import { state } from '../state.js';
+import { refs } from '../refs.js';
+import { toast } from './notify.js';
+import { saveGlobalKey } from '../online/storage.js';
+import { animeCandidates, subtitleFiles, downloadAndLoad, markLoaded } from '../online/online.js';
+import { detectShow } from '../sites/site-adapters.js';
+import { pickExactAnime } from '../online/match.js';
+import { openPanel, ensurePanel } from './ui.js';
+import { t } from '../i18n.js';
+import type { AnimeCandidate, SubFile } from '../types.js';
+
+// 文件候选头部展示所需的最小番剧信息(showCandidates 可只带 title/anilistId)
+type AnimeLike = Partial<AnimeCandidate> & { title?: string };
+
+let panel!: HTMLElement,
+  titleInput!: HTMLInputElement,
+  epInput!: HTMLInputElement,
+  results!: HTMLElement;
+let currentAnime: AnimeLike | null = null; // 当前展开文件列表的番剧(供记录来源)
+let lastPrefillSig: string | null = null; // 上次预填所依据的「番名#集数」指纹(切集后据此刷新预填)
+let keyEditing = false; // key 已保存时默认折叠为一行;点「更换」展开输入
+
+const S = (p: string): string =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const IC = {
+  back: S('<path d="M19 12H5M11 6l-6 6 6 6"/>'),
+  search: S('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>'),
+  check: S('<path d="M20 6 9 17l-5-5"/>'),
+  photo: S(
+    '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+  ),
+  chev: S('<path d="m9 6 6 6-6 6"/>'),
+};
+
+function errMsg(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+function html(): string {
+  return `
+  <div class="as-sc-head">
+    <button id="anysub-sc-back" class="as-sc-back" title="${t('sc.backTitle')}">${IC.back}<span>${t('sc.back')}</span></button>
+    <button id="anysub-sc-close" class="as-x" title="${t('sc.close')}">✕</button>
+  </div>
+  <div class="as-sc-title"><span class="as-logo">字</span><span>${t('sc.title')}</span><span class="as-sc-tag">Jimaku</span></div>
+  <div id="anysub-key-area"></div>
+  <div class="as-sc-search">
+    <input id="anysub-title" placeholder="${t('sc.titlePlaceholder')}">
+    <input id="anysub-ep" class="as-sc-ep" placeholder="${t('sc.epPlaceholder')}" title="${t('sc.epTitle')}">
+    <button id="anysub-do-search">${IC.search}<span>${t('sc.search')}</span></button>
+  </div>
+  <div id="anysub-results" class="as-sc-results"><div class="as-sc-empty">${t('sc.prompt')}</div></div>
+`;
+}
+
+export function buildSearchUI(): void {
+  panel = document.createElement('div');
+  panel.id = 'anysub-search';
+  panel.style.display = 'none';
+  refs.uiRoot!.appendChild(panel);
+  refs.searchPanel = panel; // 供主面板互斥用
+  wireSearch();
+}
+
+// 建立/重建搜索面板内部 DOM 与事件(语言切换时复用)
+function wireSearch(): void {
+  panel.innerHTML = html();
+  titleInput = panel.querySelector<HTMLInputElement>('#anysub-title')!;
+  epInput = panel.querySelector<HTMLInputElement>('#anysub-ep')!;
+  results = panel.querySelector<HTMLElement>('#anysub-results')!;
+
+  panel.querySelector('#anysub-sc-back')!.addEventListener('click', backToPanel);
+  panel.querySelector('#anysub-sc-close')!.addEventListener('click', close);
+  panel.querySelector('#anysub-do-search')!.addEventListener('click', doSearch);
+  titleInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doSearch();
+  });
+  epInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doSearch();
+  });
+  renderKeyArea();
+}
+
+// 语言切换:重建搜索面板 DOM(丢弃未提交的搜索结果,回到初始态——切语言本就少见)
+export function relocalizeSearch(): void {
+  if (!panel) return;
+  wireSearch();
+  lastPrefillSig = null; // 下次打开按当前页重新预填
+}
+
+// 供外部调用:跨站 key 异步就绪后,若搜索面板已建则刷新 key 区显示(未建则无操作,打开时自会正确渲染)
+export function refreshKeyArea(): void {
+  if (panel) renderKeyArea();
+}
+
+// key 区两态:未存 → 输入框 + 保存;已存 → 一行「已连接 · 更换」,点更换再展开
+function renderKeyArea(): void {
+  const area = panel.querySelector<HTMLElement>('#anysub-key-area')!;
+  if (state.jimakuKey && !keyEditing) {
+    area.innerHTML = `<div class="as-sc-keyok">${IC.check}<span>${t('sc.keyOk')}</span><span class="as-sc-change" id="anysub-key-change">${t('sc.changeKey')}</span></div>`;
+    area.querySelector('#anysub-key-change')!.addEventListener('click', () => {
+      keyEditing = true;
+      renderKeyArea();
+    });
+  } else {
+    area.innerHTML = `<div class="as-sc-keyrow"><input id="anysub-key" type="password" placeholder="${t('sc.keyPlaceholder')}" autocomplete="off"><button id="anysub-key-save">${t('sc.keySave')}</button></div>
+      <div class="as-sc-hint">${t('sc.keyHint')}</div>`;
+    const ki = area.querySelector<HTMLInputElement>('#anysub-key')!;
+    ki.value = state.jimakuKey || '';
+    area.querySelector('#anysub-key-save')!.addEventListener('click', () => saveKey(ki.value));
+    ki.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveKey(ki.value);
+    });
+  }
+}
+
+export function openSearch(): void {
+  ensurePanel(); // 懒建面板+搜索 DOM(含本模块的 panel)
+  if (refs.panel) refs.panel.style.display = 'none'; // 与主面板互斥
+  show();
+  renderKeyArea();
+  // 预填「番剧名 + 集数」(站点适配)。首次为空时填;此后仅当探测到的番名/集数变化才刷新——
+  // 用 detectShow() 指纹判断而非 document.title:Prime 换集时 <title> 不变、集数在 DOM 里,
+  // 若仍按标题判断会残留上一集信息。同一集内保留用户手动修改。
+  const det = detectShow();
+  const detSig = (det.series || '') + '#' + (det.episode || '');
+  const first = !titleInput.value && !epInput.value;
+  if (first || detSig !== lastPrefillSig) {
+    titleInput.value = det.series;
+    epInput.value = det.episode || '';
+    lastPrefillSig = detSig;
+    setResults(`<div class="as-sc-empty">${t('sc.prompt')}</div>`);
+  }
+  (state.jimakuKey
+    ? titleInput
+    : panel.querySelector<HTMLElement>('#anysub-key') || titleInput
+  ).focus();
+}
+
+function show(): void {
+  panel.style.display = 'block';
+  panel.classList.remove('as-in');
+  void panel.offsetWidth;
+  panel.classList.add('as-in'); // 重放入场动画
+}
+
+function close(): void {
+  panel.style.display = 'none';
+}
+
+// 返回主面板:收起搜索,显式打开主面板(与「关闭」区分——关闭是彻底 dismiss)
+function backToPanel(): void {
+  panel.style.display = 'none';
+  openPanel();
+}
+
+function saveKey(val: string): void {
+  state.jimakuKey = (val || '').trim();
+  saveGlobalKey(state.jimakuKey); // 跨站存储:一处设置,DMM/Prime/U-NEXT 等全站通用
+  keyEditing = false;
+  renderKeyArea();
+  toast(state.jimakuKey ? t('toast.keySaved') : t('toast.keyCleared'));
+  if (state.jimakuKey) titleInput.focus();
+}
+
+async function doSearch(): Promise<void> {
+  const title = titleInput.value.trim();
+  if (!state.jimakuKey) {
+    toast(t('toast.keyNeeded'));
+    keyEditing = true;
+    renderKeyArea();
+    return;
+  }
+  if (!title) {
+    toast(t('toast.titleNeeded'));
+    return;
+  }
+  setResults(`<div class="as-sc-empty">${t('sc.searching')}</div>`);
+  try {
+    const list = await animeCandidates(title);
+    if (!list.length) {
+      setResults(`<div class="as-sc-empty">${t('sc.notFound')}</div>`);
+      return;
+    }
+    const exact = pickExactAnime(list, title); // 精确命中唯一 → 自动选番,省去人工选(仍从文件候选选)
+    if (exact) {
+      loadFilesFor(exact);
+      return;
+    }
+    renderAnime(list);
+  } catch (err) {
+    setResults(`<div class="as-sc-empty">${t('sc.error', { msg: esc(errMsg(err)) })}</div>`);
+  }
+}
+
+// 海报:优先 AniList 封面,加载失败(CSP/网络)则移除 img 回落到占位图标
+function poster(url: string | null | undefined): string {
+  return `<span class="as-sc-poster">${IC.photo}${url ? `<img src="${escAttr(url)}" alt="">` : ''}</span>`;
+}
+function metaOf(a: AnimeCandidate): string {
+  const bits: string[] = [];
+  if (a.format) bits.push(esc(a.format));
+  if (a.year) bits.push(String(a.year));
+  if (a.episodes) bits.push(t('sc.episodes', { n: a.episodes }));
+  return bits.join(' · ');
+}
+
+function renderAnime(list: AnimeCandidate[]): void {
+  results.innerHTML = '';
+  results.appendChild(sec(t('sc.selectAnime')));
+  for (const a of list) {
+    const row = document.createElement('div');
+    row.className = 'as-sc-anime';
+    if (a.romaji) row.title = a.romaji;
+    row.innerHTML = `${poster(a.cover)}
+      <div class="as-sc-anime-main">
+        <div class="as-sc-anime-t">${esc(a.title)}</div>
+        <div class="as-sc-anime-s">${metaOf(a)}</div>
+      </div>
+      <span class="as-sc-chev">${IC.chev}</span>`;
+    wirePoster(row);
+    row.addEventListener('click', () => loadFilesFor(a));
+    results.appendChild(row);
+  }
+}
+
+async function loadFilesFor(anime: AnimeCandidate): Promise<void> {
+  setResults(`<div class="as-sc-empty">${t('sc.fetchingFiles')}</div>`);
+  try {
+    const files = await subtitleFiles(anime.anilistId, epInput.value.trim(), [
+      anime.native,
+      anime.romaji,
+      anime.english,
+    ]); // anilist_id 无条目时的自由搜兜底
+    if (!files.length) {
+      results.innerHTML = '';
+      results.appendChild(backLink(t('sc.backToAnime'), doSearch));
+      const ep = epInput.value ? t('sc.epSuffix', { ep: esc(epInput.value) }) : '';
+      results.appendChild(empty(t('sc.noSubsFor', { title: esc(anime.title), ep })));
+      return;
+    }
+    renderFiles(anime, files);
+  } catch (err) {
+    results.innerHTML = '';
+    results.appendChild(backLink(t('sc.backToAnime'), doSearch));
+    results.appendChild(empty(t('sc.error', { msg: esc(errMsg(err)) })));
+  }
+}
+
+// 直接展示某番剧的文件候选(切集找不到同源时回退用;自动提示核实后也复用)。
+// anilistId 可显式传入(自动提示已解析出番剧);缺省则沿用上次在线来源,供文件加载后记来源(切集接续)。
+export function showCandidates(
+  seriesTitle: string,
+  files: SubFile[],
+  anilistId?: number | null,
+): void {
+  ensurePanel();
+  if (refs.panel) refs.panel.style.display = 'none';
+  show();
+  renderKeyArea();
+  if (seriesTitle) titleInput.value = seriesTitle;
+  const d = detectShow();
+  lastPrefillSig = (d.series || '') + '#' + (d.episode || ''); // 视为已按当前集预填,避免重开时被覆盖
+  const id = anilistId != null ? anilistId : state.lastOnline?.anilistId;
+  renderFiles({ title: seriesTitle, anilistId: id }, files);
+}
+
+function renderFiles(anime: AnimeLike, files: SubFile[]): void {
+  currentAnime = anime;
+  results.innerHTML = '';
+  results.appendChild(backLink(t('sc.backToAnime'), doSearch));
+  results.appendChild(sec(t('sc.selectSub', { title: esc(anime.title), n: files.length })));
+  for (const f of files) {
+    const row = document.createElement('div');
+    row.className = 'as-sc-file';
+    row.innerHTML = `<div class="as-sc-file-t">${esc(f.name)}</div>
+      <div class="as-sc-file-s">${fmtSize(f.size)}${f.entryName ? ' · ' + esc(f.entryName) : ''}</div>`;
+    row.addEventListener('click', () => pickFile(f, row));
+    results.appendChild(row);
+  }
+}
+
+async function pickFile(f: SubFile, row: HTMLElement): Promise<void> {
+  row.classList.add('loading');
+  try {
+    const ok = await downloadAndLoad(f.url, f.name);
+    if (ok) {
+      markLoaded(currentAnime && currentAnime.anilistId, f.name); // 记录来源,供切集自动接续
+      toast(t('toast.mountedFile', { name: f.name }));
+      close();
+    }
+  } catch (err) {
+    toast(t('toast.downloadFailed', { msg: errMsg(err) }));
+  } finally {
+    row.classList.remove('loading');
+  }
+}
+
+// ── DOM 小工具 ──
+function sec(text: string): HTMLDivElement {
+  const d = document.createElement('div');
+  d.className = 'as-sc-sec';
+  d.textContent = text;
+  return d;
+}
+function empty(htmlStr: string): HTMLDivElement {
+  const d = document.createElement('div');
+  d.className = 'as-sc-empty';
+  d.innerHTML = htmlStr;
+  return d;
+}
+function backLink(text: string, fn: () => void): HTMLDivElement {
+  const d = document.createElement('div');
+  d.className = 'as-sc-back2';
+  d.innerHTML = `${IC.back}<span></span>`;
+  d.querySelector('span')!.textContent = text.replace(/^←\s*/, '');
+  d.addEventListener('click', fn);
+  return d;
+}
+function wirePoster(row: HTMLElement): void {
+  const img = row.querySelector<HTMLImageElement>('.as-sc-poster img');
+  if (img) img.addEventListener('error', () => img.remove()); // 失败回落占位图标(位于 img 之下)
+}
+function setResults(htmlStr: string): void {
+  results.innerHTML = htmlStr;
+}
+
+function fmtSize(n?: number): string {
+  if (!n) return '';
+  return n > 1e6 ? (n / 1e6).toFixed(1) + 'MB' : Math.round(n / 1024) + 'KB';
+}
+function esc(s: unknown): string {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+function escAttr(s: unknown): string {
+  return esc(s).replace(/"/g, '&quot;');
+}

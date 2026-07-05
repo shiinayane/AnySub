@@ -343,7 +343,8 @@
 		lastRectKey = "";
 	}
 	function fullscreenEl() {
-		return document.fullscreenElement || document.webkitFullscreenElement || null;
+		const d = document;
+		return d.fullscreenElement || d.webkitFullscreenElement || null;
 	}
 	function getHost() {
 		const fs = fullscreenEl();
@@ -351,6 +352,7 @@
 		return document.body;
 	}
 	function ensureMounted(el) {
+		if (!el) return;
 		const host = getHost();
 		if (el.parentNode !== host) host.appendChild(el);
 	}
@@ -367,6 +369,10 @@
 		lastRectKey = key;
 		lastRect = r;
 		const o = refs.overlay;
+		if (!o) return {
+			rect: r,
+			changed: true
+		};
 		o.style.display = "block";
 		o.style.left = r.left + "px";
 		o.style.top = r.top + "px";
@@ -382,15 +388,19 @@
 		"zh",
 		"ja"
 	];
+	function isLocale(x) {
+		return x != null && SUPPORTED.includes(x);
+	}
 	function getLocale() {
-		if (state.lang && SUPPORTED.includes(state.lang)) return state.lang;
-		const l = (navigator.language || navigator.userLanguage || "en").toLowerCase();
+		if (isLocale(state.lang)) return state.lang;
+		const nav = navigator;
+		const l = (nav.language || nav.userLanguage || "en").toLowerCase();
 		if (l.startsWith("zh")) return "zh";
 		if (l.startsWith("ja")) return "ja";
 		return "en";
 	}
 	function setLang(lang) {
-		state.lang = SUPPORTED.includes(lang) ? lang : null;
+		state.lang = isLocale(lang) ? lang : null;
 	}
 	var LANG_OPTIONS = [
 		{
@@ -892,22 +902,26 @@
 		if (!entry) return key;
 		const loc = getLocale();
 		let s = entry[loc] != null ? entry[loc] : entry.en;
-		if (params) for (const k in params) s = s.replace("{" + k + "}", () => params[k]);
+		if (params) for (const k in params) {
+			const v = params[k];
+			s = s.replace("{" + k + "}", () => String(v));
+		}
 		return s;
 	}
 	var toastTimer;
 	function toast(msg) {
-		let t = document.getElementById("anysub-toast");
-		if (!t) {
-			t = document.createElement("div");
-			t.id = "anysub-toast";
-			(refs.uiRoot || document.body).appendChild(t);
+		let el = document.getElementById("anysub-toast");
+		if (!el) {
+			el = document.createElement("div");
+			el.id = "anysub-toast";
+			(refs.uiRoot || document.body).appendChild(el);
 		}
-		t.textContent = msg;
-		t.style.opacity = "1";
+		const box = el;
+		box.textContent = msg;
+		box.style.opacity = "1";
 		clearTimeout(toastTimer);
 		toastTimer = setTimeout(() => {
-			t.style.opacity = "0";
+			box.style.opacity = "0";
 		}, 2500);
 	}
 	function toastOffer(msg, actionLabel, onAction) {
@@ -948,7 +962,7 @@
 		refs.statusEl.classList.toggle("as-loaded", loaded);
 		refs.statusEl.title = loaded ? state.fileName : "";
 	}
-	var mo$1 = null, timer = 0, onReact = () => {};
+	var mo$1 = null, timer, onReact = () => {};
 	function setReactHandler(fn) {
 		onReact = fn;
 	}
@@ -969,7 +983,7 @@
 			clearTimeout(timer);
 		}
 	}
-	var intervalId = 0, driversAttached = false;
+	var intervalId, driversAttached = false;
 	var renderer = null;
 	var onScroll, onResize, onFs, onVis;
 	function setRenderer(r) {
@@ -996,7 +1010,7 @@
 		state.active = false;
 		if (intervalId) {
 			clearInterval(intervalId);
-			intervalId = 0;
+			intervalId = void 0;
 		}
 		detachDrivers();
 		hideOverlay();
@@ -1201,32 +1215,32 @@
 		return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 	}
 	var KANJI = {
-		"〇": 0,
-		"零": 0,
-		"一": 1,
-		"二": 2,
-		"三": 3,
-		"四": 4,
-		"五": 5,
-		"六": 6,
-		"七": 7,
-		"八": 8,
-		"九": 9,
-		"壱": 1,
-		"弐": 2,
-		"参": 3,
-		"肆": 4,
-		"伍": 5,
-		"陸": 6,
-		"漆": 7,
-		"捌": 8,
-		"玖": 9
+		〇: 0,
+		零: 0,
+		一: 1,
+		二: 2,
+		三: 3,
+		四: 4,
+		五: 5,
+		六: 6,
+		七: 7,
+		八: 8,
+		九: 9,
+		壱: 1,
+		弐: 2,
+		参: 3,
+		肆: 4,
+		伍: 5,
+		陸: 6,
+		漆: 7,
+		捌: 8,
+		玖: 9
 	};
 	var UNITS = {
-		"十": 10,
-		"拾": 10,
-		"百": 100,
-		"千": 1e3
+		十: 10,
+		拾: 10,
+		百: 100,
+		千: 1e3
 	};
 	function toHalfDigits(s) {
 		return s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248));
@@ -1248,7 +1262,7 @@
 	function parseVideoTitle(raw) {
 		let t = (raw || "").trim();
 		t = t.split(/[|｜]/)[0].trim();
-		t = t.replace(/\s*[(（【\[][^)）】\]]*[)）】\]]\s*$/g, "").trim();
+		t = t.replace(/\s*[(（【[][^)）】\]]*[)）】\]]\s*$/g, "").trim();
 		let episode = "";
 		let m = t.match(/第\s*([0-9０-９〇零一二三四五六七八九十百千壱弐参肆伍陸漆捌玖拾]+)\s*[話话回]/);
 		if (!m) m = t.match(/(?:#|＃|Ep\.?\s*|Episode\s*|EP\s*)([0-9０-９]+)/i);
@@ -1304,9 +1318,8 @@
 		detect() {
 			const info = document.querySelector("[class*=\"atvwebplayersdk-episode-info\"]");
 			const episode = info ? parsePrimeEpisode(info.textContent) : "";
-			const titleEl = document.querySelector("[class*=\"atvwebplayersdk-title-text\"]");
 			return {
-				series: titleEl && titleEl.textContent.trim() || cleanPrimeTitle(document.title),
+				series: document.querySelector("[class*=\"atvwebplayersdk-title-text\"]")?.textContent?.trim() || cleanPrimeTitle(document.title),
 				episode
 			};
 		}
@@ -1334,7 +1347,7 @@
 				const h2 = box && box.querySelector("h2");
 				const h3 = box && box.querySelector("h3");
 				return {
-					series: h2 ? h2.textContent.trim() : "",
+					series: h2 ? (h2.textContent || "").trim() : "",
 					episode: parseUnextEpisode(h3 ? h3.textContent : "")
 				};
 			}
@@ -1574,26 +1587,26 @@
 		return out;
 	}
 	var VOICE = {
-		"か": ["が"],
-		"き": ["ぎ"],
-		"く": ["ぐ"],
-		"け": ["げ"],
-		"こ": ["ご"],
-		"さ": ["ざ"],
-		"し": ["じ"],
-		"す": ["ず"],
-		"せ": ["ぜ"],
-		"そ": ["ぞ"],
-		"た": ["だ"],
-		"ち": ["ぢ"],
-		"つ": ["づ"],
-		"て": ["で"],
-		"と": ["ど"],
-		"は": ["ば", "ぱ"],
-		"ひ": ["び", "ぴ"],
-		"ふ": ["ぶ", "ぷ"],
-		"へ": ["べ", "ぺ"],
-		"ほ": ["ぼ", "ぽ"]
+		か: ["が"],
+		き: ["ぎ"],
+		く: ["ぐ"],
+		け: ["げ"],
+		こ: ["ご"],
+		さ: ["ざ"],
+		し: ["じ"],
+		す: ["ず"],
+		せ: ["ぜ"],
+		そ: ["ぞ"],
+		た: ["だ"],
+		ち: ["ぢ"],
+		つ: ["づ"],
+		て: ["で"],
+		と: ["ど"],
+		は: ["ば", "ぱ"],
+		ひ: ["び", "ぴ"],
+		ふ: ["ぶ", "ぷ"],
+		へ: ["べ", "ぺ"],
+		ほ: ["ぼ", "ぽ"]
 	};
 	function rendakuForms(s) {
 		const v = VOICE[s[0]];
@@ -1662,9 +1675,9 @@
 	function applyRuby(text, allowParen) {
 		if (!text) return text;
 		if (!/[《｜]/.test(text) && !(allowParen && /[（(]/.test(text))) return text;
-		text = text.replace(RE_AOZORA_BAR, (m, base, ruby) => tag(base, ruby));
-		text = text.replace(RE_AOZORA, (m, base, ruby) => tag(base, ruby));
-		if (allowParen) text = text.replace(RE_PAREN, (m, base, ruby) => tag(base, ruby));
+		text = text.replace(RE_AOZORA_BAR, (_m, base, ruby) => tag(base, ruby));
+		text = text.replace(RE_AOZORA, (_m, base, ruby) => tag(base, ruby));
+		if (allowParen) text = text.replace(RE_PAREN, (_m, base, ruby) => tag(base, ruby));
 		return text;
 	}
 	function tag(base, ruby) {
@@ -1686,7 +1699,7 @@
 			case "book": return `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
 			case "lyric": return `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
 			case "speaker": return `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
-			case "dialogue": return `<span class="anysub-spk">（${applyRuby(c.name, state.rubyParen)}）</span>${applyRuby(c.rest, state.rubyParen)}`;
+			case "dialogue": return `<span class="anysub-spk">（${applyRuby(c.name ?? "", state.rubyParen)}）</span>${applyRuby(c.rest ?? "", state.rubyParen)}`;
 			default: return applyRuby(text, state.rubyParen);
 		}
 	}
@@ -1758,7 +1771,7 @@
 				refs.overlay.appendChild(boxTop);
 				refs.overlay.appendChild(boxBottom);
 				lastKey = "";
-				this.applyStyle();
+				eachBox(styleBox);
 			},
 			setVisible(v) {
 				visible = v;
@@ -1768,7 +1781,7 @@
 				else lastKey = "";
 			},
 			renderAt(v, rect, layoutChanged) {
-				if (!boxTop) return;
+				if (!boxTop || !boxBottom) return;
 				if (!visible) {
 					eachBox((b) => {
 						b.style.display = "none";
@@ -1894,7 +1907,7 @@
 						lastSizeKey = "";
 						sizeCanvas();
 						drive();
-						if (state.hidden) assCanvas.style.display = "none";
+						if (state.hidden && assCanvas) assCanvas.style.display = "none";
 						toast(t("toast.assHiFi"));
 					},
 					onError: (e) => {
@@ -1907,7 +1920,7 @@
 			});
 		}
 		function sizeCanvas() {
-			if (!octopus || !assCanvas) return;
+			if (!octopus || !assCanvas || !refs.overlay) return;
 			const w = refs.overlay.clientWidth, h = refs.overlay.clientHeight;
 			if (!w || !h) return;
 			const dpr = window.devicePixelRatio || 1;
@@ -1922,11 +1935,11 @@
 		}
 		function drive() {
 			if (!octopus || !state.video) return;
-			const t = Math.max(0, state.video.currentTime - state.offset);
-			if (t === lastDriveT) return;
-			lastDriveT = t;
+			const time = Math.max(0, state.video.currentTime - state.offset);
+			if (time === lastDriveT) return;
+			lastDriveT = time;
 			try {
-				octopus.setCurrentTime(t);
+				octopus.setCurrentTime(time);
 			} catch (_) {}
 		}
 		function safeDispose() {
@@ -2033,7 +2046,7 @@
 			cues: parseAss(text),
 			assText: text
 		}),
-		create: (parsed) => createAssRenderer(parsed.assText)
+		create: (parsed) => createAssRenderer(parsed.assText || "")
 	}, {
 		test: () => true,
 		parse: (text, name) => ({ cues: parseSubtitle(text, name) }),
@@ -2086,8 +2099,9 @@
 	}
 	var KEY = "anysub:settings:v1";
 	var KEY_JIMAKU = "anysub:jimakuKey";
-	var gmGet = typeof GM !== "undefined" && GM && typeof GM.getValue === "function" ? (k, d) => GM.getValue(k, d) : typeof GM_getValue === "function" ? (k, d) => GM_getValue(k, d) : null;
-	var gmSet = typeof GM !== "undefined" && GM && typeof GM.setValue === "function" ? (k, v) => GM.setValue(k, v) : typeof GM_setValue === "function" ? (k, v) => GM_setValue(k, v) : null;
+	var g = globalThis;
+	var gmGet = g.GM && typeof g.GM.getValue === "function" ? (k, d) => g.GM.getValue(k, d) : typeof g.GM_getValue === "function" ? (k, d) => g.GM_getValue(k, d) : null;
+	var gmSet = g.GM && typeof g.GM.setValue === "function" ? (k, v) => g.GM.setValue(k, v) : typeof g.GM_setValue === "function" ? (k, v) => g.GM_setValue(k, v) : null;
 	function saveState() {
 		const s = state.style;
 		saveSettings({
@@ -2105,7 +2119,7 @@
 	}
 	function loadSettings() {
 		try {
-			return JSON.parse(localStorage.getItem(KEY)) || {};
+			return JSON.parse(localStorage.getItem(KEY) || "null") || {};
 		} catch (_) {
 			return {};
 		}
@@ -2154,8 +2168,7 @@
 		});
 		if (res.status === 429) throw new Error("AniList 请求过于频繁,请稍后再试");
 		if (!res.ok) throw new Error("AniList 查询失败 " + res.status);
-		const data = await res.json();
-		return (data && data.data && data.data.Page && data.data.Page.media || []).map((m) => ({
+		return ((await res.json())?.data?.Page?.media || []).map((m) => ({
 			anilistId: m.id,
 			title: m.title.native || m.title.romaji || m.title.english || String(m.id),
 			native: m.title.native || "",
@@ -2163,8 +2176,8 @@
 			english: m.title.english || "",
 			episodes: m.episodes || 0,
 			format: m.format || "",
-			year: m.startDate && m.startDate.year || "",
-			cover: m.coverImage && m.coverImage.medium || ""
+			year: m.startDate?.year || "",
+			cover: m.coverImage?.medium || ""
 		}));
 	}
 	var BASE = "https://jimaku.cc/api";
@@ -2276,6 +2289,9 @@
 		photo: S("<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"8.5\" cy=\"8.5\" r=\"1.5\"/><path d=\"m21 15-5-5L5 21\"/>"),
 		chev: S("<path d=\"m9 6 6 6-6 6\"/>")
 	};
+	function errMsg(e) {
+		return e instanceof Error ? e.message : String(e);
+	}
 	function html() {
 		return `
   <div class="as-sc-head">
@@ -2405,7 +2421,7 @@
 			}
 			renderAnime(list);
 		} catch (err) {
-			setResults(`<div class="as-sc-empty">${t("sc.error", { msg: esc(err.message) })}</div>`);
+			setResults(`<div class="as-sc-empty">${t("sc.error", { msg: esc(errMsg(err)) })}</div>`);
 		}
 	}
 	function poster(url) {
@@ -2458,7 +2474,7 @@
 		} catch (err) {
 			results.innerHTML = "";
 			results.appendChild(backLink(t("sc.backToAnime"), doSearch));
-			results.appendChild(empty(t("sc.error", { msg: esc(err.message) })));
+			results.appendChild(empty(t("sc.error", { msg: esc(errMsg(err)) })));
 		}
 	}
 	function showCandidates(seriesTitle, files, anilistId) {
@@ -2471,7 +2487,7 @@
 		lastPrefillSig = (d.series || "") + "#" + (d.episode || "");
 		renderFiles({
 			title: seriesTitle,
-			anilistId: anilistId != null ? anilistId : state.lastOnline && state.lastOnline.anilistId
+			anilistId: anilistId != null ? anilistId : state.lastOnline?.anilistId
 		}, files);
 	}
 	function renderFiles(anime, files) {
@@ -2500,7 +2516,7 @@
 				close();
 			}
 		} catch (err) {
-			toast(t("toast.downloadFailed", { msg: err.message }));
+			toast(t("toast.downloadFailed", { msg: errMsg(err) }));
 		} finally {
 			row.classList.remove("loading");
 		}
@@ -2511,10 +2527,10 @@
 		d.textContent = text;
 		return d;
 	}
-	function empty(html) {
+	function empty(htmlStr) {
 		const d = document.createElement("div");
 		d.className = "as-sc-empty";
-		d.innerHTML = html;
+		d.innerHTML = htmlStr;
 		return d;
 	}
 	function backLink(text, fn) {
@@ -2529,8 +2545,8 @@
 		const img = row.querySelector(".as-sc-poster img");
 		if (img) img.addEventListener("error", () => img.remove());
 	}
-	function setResults(html) {
-		results.innerHTML = html;
+	function setResults(htmlStr) {
+		results.innerHTML = htmlStr;
 	}
 	function fmtSize(n) {
 		if (!n) return "";
@@ -2687,7 +2703,8 @@
 			togglePanel();
 		});
 		fileInput.addEventListener("change", () => {
-			if (fileInput.files[0]) loadFile(fileInput.files[0]);
+			const f = fileInput.files && fileInput.files[0];
+			if (f) loadFile(f);
 			fileInput.value = "";
 		});
 		makeDraggable(fab);
@@ -2709,7 +2726,7 @@
 	}
 	function relocalize() {
 		if (!panelBuilt) return;
-		const { panel } = refs;
+		const panel = refs.panel;
 		panel.innerHTML = panelHtml();
 		refs.statusEl = panel.querySelector("#anysub-status");
 		wirePanel();
@@ -2762,7 +2779,7 @@
 		persist();
 	}
 	function wirePanel() {
-		const { panel } = refs;
+		const panel = refs.panel;
 		panel.querySelector("#anysub-close").addEventListener("click", () => {
 			panel.style.display = "none";
 		});
@@ -2777,7 +2794,7 @@
 			toggleSubtitles();
 			syncVisBtn();
 		});
-		panel.querySelectorAll("[data-off]").forEach((b) => b.addEventListener("click", () => adjustOffset(parseFloat(b.dataset.off))));
+		panel.querySelectorAll("[data-off]").forEach((b) => b.addEventListener("click", () => adjustOffset(parseFloat(b.dataset.off || "0"))));
 		panel.querySelector("#anysub-offset").addEventListener("input", (e) => {
 			const val = parseFloat(e.target.value);
 			if (!isNaN(val)) {
@@ -2845,12 +2862,14 @@
 		syncControls();
 	}
 	function updateFabVisibility() {
+		const fab = refs.fab;
+		if (!fab) return;
 		if (!state.showFab) {
-			refs.fab.style.display = "none";
+			fab.style.display = "none";
 			return;
 		}
 		const hasVideo = !!document.querySelector("video") || collectVideos().length > 0;
-		refs.fab.style.display = hasVideo ? "" : "none";
+		fab.style.display = hasVideo ? "" : "none";
 	}
 	function syncVisBtn() {
 		const b = refs.panel.querySelector("#anysub-vis");
@@ -2859,9 +2878,10 @@
 		b.title = state.hidden ? t("panel.show") : t("panel.hide");
 	}
 	function syncToggles() {
-		const rb = refs.panel.querySelector("#anysub-tg-ruby");
-		const en = refs.panel.querySelector("#anysub-tg-enh");
-		const fb = refs.panel.querySelector("#anysub-tg-fab");
+		const panel = refs.panel;
+		const rb = panel.querySelector("#anysub-tg-ruby");
+		const en = panel.querySelector("#anysub-tg-enh");
+		const fb = panel.querySelector("#anysub-tg-fab");
 		rb.classList.toggle("on", state.rubyParen);
 		rb.setAttribute("aria-checked", String(state.rubyParen));
 		en.classList.toggle("on", state.enhance);
@@ -2870,11 +2890,11 @@
 		fb.setAttribute("aria-checked", String(state.showFab));
 	}
 	function syncControls() {
-		const { panel } = refs;
+		const panel = refs.panel;
 		const s = state.style;
-		panel.querySelector("#anysub-font").value = s.fontPct;
+		panel.querySelector("#anysub-font").value = String(s.fontPct);
 		panel.querySelector("#anysub-fontval").textContent = s.fontPct + "%";
-		panel.querySelector("#anysub-pos").value = s.bottomPct;
+		panel.querySelector("#anysub-pos").value = String(s.bottomPct);
 		panel.querySelector("#anysub-posval").textContent = s.bottomPct + "%";
 		setSegActive("#anysub-bg", "bg", s.bg);
 		setSegActive("#anysub-color", "color", s.color);
@@ -2890,7 +2910,7 @@
 		group.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
 			group.querySelectorAll("button").forEach((x) => x.classList.remove("on"));
 			b.classList.add("on");
-			cb(b.dataset[attr]);
+			cb(b.dataset[attr] || "");
 		}));
 	}
 	function setupDrop(el) {
@@ -2956,7 +2976,7 @@
 		el.classList.add(onRight ? "dock-right" : "dock-left");
 	}
 	function positionPanel() {
-		const { fab, panel } = refs;
+		const fab = refs.fab, panel = refs.panel;
 		const W = window.innerWidth || document.documentElement.clientWidth || 1;
 		const H = window.innerHeight || document.documentElement.clientHeight || 800;
 		panel.style.left = "";
@@ -3083,7 +3103,7 @@
 		return false;
 	}
 	var subs = [];
-	var mo = null, debounce = 0, poll = 0, armed = null, lastSig = null;
+	var mo = null, debounce, poll, armed = null, lastSig = null;
 	function onEpisodeChange(fn) {
 		subs.push(fn);
 	}
@@ -3134,7 +3154,7 @@
 			if (ad.isTarget()) n = 0;
 			else if (++n > 20) {
 				clearInterval(poll);
-				poll = 0;
+				poll = void 0;
 			}
 		}, 1500);
 	}
@@ -3150,12 +3170,12 @@
 		const { series, episode } = info;
 		if (episode === "") return;
 		if (series === state.loadedSeries && String(episode) === String(state.loadedEpisode)) return;
-		const sameShow = series === state.loadedSeries && state.lastOnline;
+		const ctx = series === state.loadedSeries ? state.lastOnline : null;
 		clearSubtitle();
-		if (sameShow) {
+		if (ctx) {
 			state.loadedSeries = series;
 			state.loadedEpisode = episode;
-			autoContinue(state.lastOnline, series, episode);
+			autoContinue(ctx, series, episode);
 		} else {
 			state.loadedSeries = "";
 			state.loadedEpisode = "";
@@ -3184,7 +3204,7 @@
 				showCandidates(series, files);
 			}
 		} catch (err) {
-			toast(t("toast.epFailed", { msg: err && err.message }));
+			toast(t("toast.epFailed", { msg: err instanceof Error ? err.message : String(err) }));
 		} finally {
 			busy = false;
 		}
@@ -3192,7 +3212,8 @@
 	var MIN_DURATION = 120;
 	var MIN_COVER = .6;
 	var lastOfferedKey = null;
-	var lastUrl = "", retryTimer = 0, waitTries = 0, verifying = false;
+	var lastUrl = "";
+	var retryTimer, waitTries = 0, verifying = false;
 	function initAutoOffer() {
 		if (!getSiteAdapter()) return;
 		lastUrl = location.href;

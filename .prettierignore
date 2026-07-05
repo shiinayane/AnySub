@@ -1,0 +1,7 @@
+dist
+node_modules
+coverage
+package-lock.json
+src/subtitle/kanji-readings.ts
+docs
+*.md

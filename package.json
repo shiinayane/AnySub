@@ -9,11 +9,30 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test test/*.test.js",
-    "build:readings": "curl -sL https://www.edrdg.org/kanjidic/kanjidic2.xml.gz | gunzip | node scripts/build-readings.mjs /dev/stdin > src/kanji-readings.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build:readings": "curl -sL https://www.edrdg.org/kanjidic/kanjidic2.xml.gz | gunzip | node scripts/build-readings.mjs /dev/stdin > src/subtitle/kanji-readings.ts"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.1.0",
+    "@types/tampermonkey": "^5.0.5",
+    "@vitest/coverage-v8": "^4.1.9",
+    "eslint": "^10.6.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.7.0",
+    "jiti": "^2.7.0",
+    "prettier": "^3.9.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.1",
     "vite": "^8.1.3",
-    "vite-plugin-monkey": "^8.0.6"
+    "vite-plugin-monkey": "^8.0.6",
+    "vitest": "^4.1.9"
   }
 }
