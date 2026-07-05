@@ -10,7 +10,7 @@ export function saveState() {
   saveSettings({
     fontPct: s.fontPct, bottomPct: s.bottomPct, bg: s.bg, color: s.color,
     showFab: state.showFab, rubyParen: state.rubyParen, enhance: state.enhance, jimakuKey: state.jimakuKey,
-    subPos: state.subPos, offsets: state.offsets,
+    subPos: state.subPos, offsets: state.offsets, lang: state.lang,
   });
 }
 

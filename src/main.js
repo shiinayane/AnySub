@@ -50,6 +50,7 @@ function restoreSettings() {
   if (typeof saved.enhance === 'boolean') state.enhance = saved.enhance;
   if (saved.subPos === 'top' || saved.subPos === 'bottom') state.subPos = saved.subPos;
   if (typeof saved.jimakuKey === 'string') state.jimakuKey = saved.jimakuKey;
+  if (saved.lang === 'en' || saved.lang === 'zh' || saved.lang === 'ja') state.lang = saved.lang;
   // 只接受「纯对象 + 有限数值」的偏移表:防脏数据(数组/字符串/嵌套/超大)污染并被回写
   if (saved.offsets && typeof saved.offsets === 'object' && !Array.isArray(saved.offsets)) {
     const clean = {};

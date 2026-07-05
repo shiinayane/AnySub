@@ -7,6 +7,7 @@ import { refs } from './refs.js';
 import { createTextRenderer } from './render-text.js';
 import { loadOctopus } from './octopus-loader.js';
 import { toast } from './notify.js';
+import { t } from './i18n.js';
 
 export function createAssRenderer(assText) {
   const textRenderer = createTextRenderer(); // 文本保底,渲染 state.cues(loader 已用 parseAss 填充)
@@ -39,14 +40,14 @@ export function createAssRenderer(assText) {
             sizeCanvas();             // 首次定尺寸
             drive();                  // 立即渲染当前帧
             if (state.hidden) assCanvas.style.display = 'none';
-            toast('已启用 ASS 高保真渲染');
+            toast(t('toast.assHiFi'));
           },
           onError: (e) => { console.warn('[AnySub] libass 渲染出错,保留文本', e); },
         });
       })
       .catch((err) => {
         console.warn('[AnySub] 无法加载 libass,使用文本渲染:', err && err.message);
-        toast('ASS 按文本显示(高保真渲染不可用)');
+        toast(t('toast.assText'));
       });
   }
 

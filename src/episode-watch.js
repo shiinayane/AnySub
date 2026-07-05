@@ -8,6 +8,7 @@ import { pickSameSource } from './match.js';
 import { showCandidates } from './search-ui.js';
 import { setOffset } from './ui.js';
 import { toast } from './notify.js';
+import { t } from './i18n.js';
 
 let timer = 0;
 let busy = false;
@@ -34,7 +35,7 @@ function onTitleChange() {
     autoContinue(state.lastOnline, series, episode);
   } else {
     state.loadedSeries = ''; state.loadedEpisode = '';
-    toast('已切集,已清除旧字幕');
+    toast(t('toast.epCleared'));
   }
 }
 
@@ -44,24 +45,24 @@ async function autoContinue(ctx, series, episode) {
   // 必须显式带过去:pickSameSource 是宽松匹配,而 offsetKey 用精确源 token,
   // 两集文件名的非集数 token 略有差异时 key 不同 → 加载会把 offset 重置为 0。
   const carryOffset = state.offset;
-  toast(`检测到切集,正在找第 ${episode} 集字幕…`);
+  toast(t('toast.epFinding', { ep: episode }));
   try {
     const files = await subtitleFiles(ctx.anilistId, episode);
-    if (!files.length) { toast(`第 ${episode} 集暂无字幕`); return; }
+    if (!files.length) { toast(t('toast.epNone', { ep: episode })); return; }
     const best = pickSameSource(files, ctx.name);
     if (best) {
       const ok = await downloadAndLoad(best.url, best.name);
       if (ok) {
         markLoaded(ctx.anilistId, best.name);
         if (carryOffset) setOffset(carryOffset); // 同源:把上一集偏移带到新集(并记忆到新 key)
-        toast(`已自动加载第 ${episode} 集字幕`);
+        toast(t('toast.epAuto', { ep: episode }));
       }
     } else {
-      toast('未找到同源字幕,请从候选中选择');
+      toast(t('toast.epNoSame'));
       showCandidates(series, files); // 回退:弹出候选让用户选
     }
   } catch (err) {
-    toast('自动找字幕失败:' + (err && err.message));
+    toast(t('toast.epFailed', { msg: (err && err.message) }));
   } finally {
     busy = false;
   }

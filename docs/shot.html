@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>薬屋のひとりごと 第3話 - Anime</title>
+<script>
+  // 截图前置:固定英文 UI + 一个假 key(仅本地,让搜索面板显示「已连接」态)。
+  // 必须在主脚本之前写入,主脚本 init 时才会读到。
+  try {
+    localStorage.setItem('anysub:settings:v1', JSON.stringify({
+      lang: 'en', enhance: true, rubyParen: true, bg: 'translucent',
+      jimakuKey: 'demo-key-for-screenshot-only',
+    }));
+  } catch (e) {}
+</script>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; }
+  /* 影视感底图:模拟一帧动画画面,给覆盖层一个可对齐的「视频」矩形 */
+  #stage {
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(120% 90% at 72% 18%, rgba(120,150,220,.28), transparent 55%),
+      radial-gradient(90% 80% at 20% 85%, rgba(200,120,90,.22), transparent 60%),
+      linear-gradient(160deg, #1a2233 0%, #0d1220 55%, #070a12 100%);
+  }
+  #v { position: absolute; inset: 0; width: 100%; height: 100%; background: transparent; }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <video id="v" muted playsinline
+      poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='9'%3E%3C/svg%3E"></video>
+  </div>
+  <script src="../dist/anysub.user.js"></script>
+  <script>
+    const scene = (location.hash.slice(1) || 'hero');
+
+    const JA_SRT = `1\n00:00:00,000 --> 09:59:00,000\n（マオマオ）この薬草（やくそう）は\\n猫猫（マオマオ）が採取（さいしゅ）した\n\n2\n00:00:00,000 --> 09:59:00,000\n（扉（とびら）が開く音）\n`;
+
+    function dropSub() {
+      const srt = JA_SRT.replace(/\\n/g, '\n');
+      const file = new File([srt], 'demo.ja.srt', { type: 'text/plain' });
+      const dt = new DataTransfer(); dt.items.add(file);
+      const drop = document.querySelector('#anysub-drop');
+      drop.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    }
+    function key(k) {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: k, code: 'Key' + k.toUpperCase(), ctrlKey: true, shiftKey: true, bubbles: true }));
+    }
+    function forceTick() {
+      const v = document.querySelector('#v');
+      if (v) v.dispatchEvent(new Event('timeupdate'));
+    }
+    function whenReady(fn, n = 0) {
+      if (document.querySelector('#anysub-overlay')) return fn();
+      if (n > 200) return;
+      setTimeout(() => whenReady(fn, n + 1), 20);
+    }
+
+    // 覆盖层兜底 tick 250ms;主动多踢几下确保截图时已渲染完成
+    function tickAwhile() { let i = 0; const id = setInterval(() => { forceTick(); if (++i > 30) clearInterval(id); }, 50); }
+
+    whenReady(() => {
+      if (scene === 'hero') {
+        key('s');                              // 先开面板 → 建出 #anysub-drop
+        setTimeout(dropSub, 150);              // 面板已建 → 投放字幕
+        setTimeout(() => key('s'), 450);       // 关面板,只留字幕
+        setTimeout(tickAwhile, 550);
+      } else if (scene === 'panel') {
+        key('s');                              // 开面板
+        setTimeout(dropSub, 150);              // 载入字幕让状态栏显示已加载
+        setTimeout(tickAwhile, 250);
+      } else if (scene === 'search') {
+        key('f');                              // 开在线搜索(ensurePanel 会建面板+搜索)
+        setTimeout(tickAwhile, 200);
+      }
+    });
+  </script>
+</body>
+</html>

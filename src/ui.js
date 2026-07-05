@@ -8,7 +8,8 @@ import { collectVideos, isVisible } from './locator.js';
 import { toast, updateStatus } from './notify.js';
 import { saveState } from './storage.js';
 import { updateWatcher } from './watcher.js';
-import { buildSearchUI, openSearch } from './search-ui.js';
+import { buildSearchUI, relocalizeSearch, openSearch } from './search-ui.js';
+import { t, setLang, LANG_OPTIONS } from './i18n.js';
 
 const persist = saveState;
 
@@ -24,97 +25,111 @@ const ICON = {
   upload: SVG('<path d="M12 15V4M8 8l4-4 4 4M5 20h14"/>'),
 };
 
-const PANEL_HTML = `
+function langOptions() {
+  const cur = state.lang || '';
+  return LANG_OPTIONS.map((o) =>
+    `<option value="${o.value}"${o.value === cur ? ' selected' : ''}>${o.label}</option>`).join('');
+}
+
+// 面板 HTML 随语言生成(可运行时重建以切换语言)
+function panelHtml() {
+  return `
   <div class="as-head">
     <div class="as-brand"><span class="as-logo">字</span><span>AnySub</span></div>
-    <button id="anysub-close" class="as-x" title="关闭 (Ctrl/Alt+Shift+S)">✕</button>
+    <button id="anysub-close" class="as-x" title="${t('panel.close')}">✕</button>
   </div>
 
   <div class="as-actions">
-    <button id="anysub-choose" class="as-btn as-btn-primary">${ICON.file}<span>选择文件</span></button>
-    <button id="anysub-online" class="as-btn as-btn-primary">${ICON.search}<span>在线字幕</span></button>
+    <button id="anysub-choose" class="as-btn as-btn-primary">${ICON.file}<span>${t('panel.chooseFile')}</span></button>
+    <button id="anysub-online" class="as-btn as-btn-primary">${ICON.search}<span>${t('panel.online')}</span></button>
   </div>
-  <div class="as-drop" id="anysub-drop">${ICON.upload}<span>拖字幕文件到这里</span></div>
+  <div class="as-drop" id="anysub-drop">${ICON.upload}<span>${t('panel.dropHint')}</span></div>
 
   <div class="as-status-row">
-    <span class="as-status" id="anysub-status">未加载字幕</span>
+    <span class="as-status" id="anysub-status">${t('panel.statusEmpty')}</span>
     <div class="as-status-actions">
-      <button id="anysub-pickvid" class="as-icon-btn" title="选视频(页面多视频时指定)">${ICON.video}</button>
-      <button id="anysub-vis" class="as-icon-btn" title="隐藏字幕"><span class="as-eye">${ICON.eye}</span><span class="as-eye-off">${ICON.eyeOff}</span></button>
-      <button id="anysub-clear" class="as-icon-btn" title="清除字幕">${ICON.trash}</button>
+      <button id="anysub-pickvid" class="as-icon-btn" title="${t('panel.pickVideo')}">${ICON.video}</button>
+      <button id="anysub-vis" class="as-icon-btn" title="${t('panel.hide')}"><span class="as-eye">${ICON.eye}</span><span class="as-eye-off">${ICON.eyeOff}</span></button>
+      <button id="anysub-clear" class="as-icon-btn" title="${t('panel.clear')}">${ICON.trash}</button>
     </div>
   </div>
 
   <div class="as-divider"></div>
 
   <div class="as-field">
-    <label class="as-label">时间偏移</label>
+    <label class="as-label">${t('panel.offset')}</label>
     <div class="as-offset">
       <button data-off="-1" class="as-step">−1</button>
       <button data-off="-0.1" class="as-step">−.1</button>
-      <input type="number" id="anysub-offset" value="0.0" step="0.1" title="可手动输入,单位秒">
+      <input type="number" id="anysub-offset" value="0.0" step="0.1" title="${t('panel.offsetTitle')}">
       <button data-off="0.1" class="as-step">+.1</button>
       <button data-off="1" class="as-step">+1</button>
     </div>
   </div>
 
   <div class="as-field">
-    <label class="as-label">字号 <span class="as-val" id="anysub-fontval">100%</span></label>
+    <label class="as-label">${t('panel.fontSize')} <span class="as-val" id="anysub-fontval">100%</span></label>
     <input type="range" id="anysub-font" class="as-range" min="50" max="250" value="100" step="5">
   </div>
 
   <div class="as-field">
-    <label class="as-label">边距 <span class="as-val" id="anysub-posval">8%</span></label>
+    <label class="as-label">${t('panel.margin')} <span class="as-val" id="anysub-posval">8%</span></label>
     <input type="range" id="anysub-pos" class="as-range" min="2" max="40" value="8" step="1">
   </div>
 
   <div class="as-field">
-    <label class="as-label">说话位置</label>
+    <label class="as-label">${t('panel.speakerPos')}</label>
     <div class="as-seg" id="anysub-anchor">
-      <button data-pos="bottom" class="on">底部</button>
-      <button data-pos="top">顶部</button>
+      <button data-pos="bottom" class="on">${t('panel.posBottom')}</button>
+      <button data-pos="top">${t('panel.posTop')}</button>
     </div>
   </div>
 
   <div class="as-field">
-    <label class="as-label">背景</label>
+    <label class="as-label">${t('panel.background')}</label>
     <div class="as-seg" id="anysub-bg">
-      <button data-bg="outline">描边</button>
-      <button data-bg="translucent" class="on">半透</button>
-      <button data-bg="solid">黑底</button>
-      <button data-bg="none">无</button>
+      <button data-bg="outline">${t('panel.bgOutline')}</button>
+      <button data-bg="translucent" class="on">${t('panel.bgTranslucent')}</button>
+      <button data-bg="solid">${t('panel.bgSolid')}</button>
+      <button data-bg="none">${t('panel.bgNone')}</button>
     </div>
   </div>
 
   <div class="as-field">
-    <label class="as-label">颜色</label>
+    <label class="as-label">${t('panel.color')}</label>
     <div class="as-swatches" id="anysub-color">
-      <button data-color="#ffffff" class="on" style="--sw:#ffffff" title="白"></button>
-      <button data-color="#ffe100" style="--sw:#ffe100" title="黄"></button>
-      <button data-color="#00e5ff" style="--sw:#00e5ff" title="青"></button>
-      <button data-color="#7CFC00" style="--sw:#7cfc00" title="绿"></button>
+      <button data-color="#ffffff" class="on" style="--sw:#ffffff" title="${t('panel.colWhite')}"></button>
+      <button data-color="#ffe100" style="--sw:#ffe100" title="${t('panel.colYellow')}"></button>
+      <button data-color="#00e5ff" style="--sw:#00e5ff" title="${t('panel.colCyan')}"></button>
+      <button data-color="#7CFC00" style="--sw:#7cfc00" title="${t('panel.colGreen')}"></button>
     </div>
   </div>
 
   <div class="as-divider"></div>
 
   <div class="as-switch-row">
-    <span class="as-switch-label">日文注音</span>
-    <button id="anysub-tg-ruby" class="as-switch" role="switch" title="将 温厚（おんこう) 显示为注音"><span class="as-knob"></span></button>
+    <span class="as-switch-label">${t('panel.ruby')}</span>
+    <button id="anysub-tg-ruby" class="as-switch" role="switch" title="${t('panel.rubyTitle')}"><span class="as-knob"></span></button>
   </div>
   <div class="as-switch-row">
-    <span class="as-switch-label">话者·音效标记</span>
-    <button id="anysub-tg-enh" class="as-switch" role="switch" title="（人名)淡化为话者名、独立（…)音效/动作斜体、♪ 歌词斜体"><span class="as-knob"></span></button>
+    <span class="as-switch-label">${t('panel.enhance')}</span>
+    <button id="anysub-tg-enh" class="as-switch" role="switch" title="${t('panel.enhanceTitle')}"><span class="as-knob"></span></button>
   </div>
   <div class="as-switch-row">
-    <span class="as-switch-label">悬浮球</span>
-    <button id="anysub-tg-fab" class="as-switch" role="switch" title="页面右侧常驻小球"><span class="as-knob"></span></button>
+    <span class="as-switch-label">${t('panel.fab')}</span>
+    <button id="anysub-tg-fab" class="as-switch" role="switch" title="${t('panel.fabTitle')}"><span class="as-knob"></span></button>
+  </div>
+
+  <div class="as-field as-field-lang">
+    <label class="as-label">${t('panel.language')}</label>
+    <select id="anysub-lang" class="as-select">${langOptions()}</select>
   </div>
 
   <div class="as-hints">
-    <kbd>Ctrl/Alt</kbd>+<kbd>Shift</kbd> 加 <kbd>S</kbd> 面板 · <kbd>F</kbd> 在线 · <kbd>V</kbd> 显隐 · <kbd>O</kbd> 本地 · <kbd>←/→</kbd> 偏移
+    <kbd>Ctrl/Alt</kbd>+<kbd>Shift</kbd> ${t('hint.then')} <kbd>S</kbd> ${t('hint.panel')} · <kbd>F</kbd> ${t('hint.online')} · <kbd>V</kbd> ${t('hint.toggle')} · <kbd>O</kbd> ${t('hint.local')} · <kbd>←/→</kbd> ${t('hint.offset')}
   </div>
 `;
+}
 
 export function buildUI() {
   const uiRoot = document.createElement('div');
@@ -129,7 +144,7 @@ export function buildUI() {
   fab.id = 'anysub-fab';
   fab.className = 'dock-right';
   fab.textContent = '字';
-  fab.title = 'AnySub · 点击打开字幕面板(可拖动)';
+  fab.title = t('panel.fabTip');
   fab.style.display = 'none'; // 默认隐藏,靠快捷键;可在面板里开启
 
   const fileInput = document.createElement('input');
@@ -164,13 +179,25 @@ export function ensurePanel() {
   const panel = document.createElement('div');
   panel.id = 'anysub-panel';
   panel.style.display = 'none';
-  panel.innerHTML = PANEL_HTML;
+  panel.innerHTML = panelHtml();
   refs.uiRoot.appendChild(panel);
   refs.panel = panel;
   refs.statusEl = panel.querySelector('#anysub-status');
   buildSearchUI();
   wirePanel();
   updateStatus(); // 首建即反映当前加载状态
+}
+
+// 运行时切换语言:重建面板+搜索 DOM 并重新接线/同步(无需刷新页面)
+export function relocalize() {
+  if (!panelBuilt) return;
+  const { panel } = refs;
+  panel.innerHTML = panelHtml();
+  refs.statusEl = panel.querySelector('#anysub-status');
+  wirePanel();
+  relocalizeSearch();
+  updateStatus();
+  refs.fab.title = t('panel.fabTip');
 }
 
 // 供快捷键调用:打开在线搜索
@@ -205,7 +232,7 @@ export function adjustOffset(delta) {
   if (inp) inp.value = state.offset.toFixed(1);
   refresh();
   rememberOffset();
-  toast('偏移 ' + state.offset.toFixed(1) + 's');
+  toast(t('toast.offset', { v: state.offset.toFixed(1) }));
 }
 
 // 绝对设置偏移(供切集同源续播沿用上一集偏移):更新值 + 同步输入框 + 重渲染 + 记忆
@@ -278,6 +305,10 @@ function wirePanel() {
     syncToggles(); updateFabVisibility(); updateWatcher(); persist();
   });
 
+  panel.querySelector('#anysub-lang').addEventListener('change', (e) => {
+    setLang(e.target.value); persist(); relocalize();
+  });
+
   setupDrop(panel.querySelector('#anysub-drop')); // 仅面板区域接收拖放,避免劫持页面拖放
   syncControls();
 }
@@ -294,7 +325,7 @@ function syncVisBtn() {
   const b = refs.panel.querySelector('#anysub-vis');
   if (!b) return;
   b.classList.toggle('off', state.hidden); // 图标切 eye/eye-off,不改结构
-  b.title = state.hidden ? '显示字幕' : '隐藏字幕';
+  b.title = state.hidden ? t('panel.show') : t('panel.hide');
 }
 
 function syncToggles() {
@@ -414,9 +445,9 @@ let picking = false;
 function startPickVideo() {
   if (picking) return;
   const vids = collectVideos().filter(isVisible);
-  if (!vids.length) { toast('未找到视频'); return; }
+  if (!vids.length) { toast(t('toast.noVideo')); return; }
   picking = true;
-  toast('点击要挂载字幕的视频画面');
+  toast(t('toast.clickVideo'));
   const overlays = vids.map((v) => {
     const r = v.getBoundingClientRect();
     const o = document.createElement('div');
@@ -424,7 +455,7 @@ function startPickVideo() {
     o.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;`;
     o.addEventListener('click', (e) => {
       e.stopPropagation(); e.preventDefault();
-      setVideo(v); cleanup(); toast('已选定视频');
+      setVideo(v); cleanup(); toast(t('toast.videoSelected'));
     });
     refs.uiRoot.appendChild(o);
     return o;

@@ -14,6 +14,7 @@ export const state = {
   speakers: null,      // 当前字幕的话者名词表(载入时构建,不持久化)
   subPos: 'bottom',    // 说话(台词)锚点 'bottom' | 'top';非语音(音效/书面)恒放对侧(持久化)
   jimakuKey: '',       // Jimaku API key(持久化,按站点)
+  lang: null,          // UI 语言 'en'|'zh'|'ja';null = 跟随浏览器(持久化)
   loadedSeries: '',    // 当前字幕对应的番剧名(取自页面标题,用于切集检测)
   loadedEpisode: '',   // 当前字幕对应的集数
   lastOnline: null,    // 最近一次在线来源 { anilistId, tokens }(用于切集自动接下一集·同源优先)

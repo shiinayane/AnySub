@@ -9,6 +9,7 @@ import { saveState } from './storage.js';
 import { animeCandidates, subtitleFiles, downloadAndLoad, markLoaded } from './online.js';
 import { parseVideoTitle } from './title-parse.js';
 import { openPanel, ensurePanel } from './ui.js';
+import { t } from './i18n.js';
 
 let panel, titleInput, epInput, results;
 let currentAnime = null;    // 当前展开文件列表的番剧(供记录来源)
@@ -24,29 +25,35 @@ const IC = {
   chev: S('<path d="m9 6 6 6-6 6"/>'),
 };
 
-const HTML = `
+function html() {
+  return `
   <div class="as-sc-head">
-    <button id="anysub-sc-back" class="as-sc-back" title="返回主面板">${IC.back}<span>主面板</span></button>
-    <button id="anysub-sc-close" class="as-x" title="关闭">✕</button>
+    <button id="anysub-sc-back" class="as-sc-back" title="${t('sc.backTitle')}">${IC.back}<span>${t('sc.back')}</span></button>
+    <button id="anysub-sc-close" class="as-x" title="${t('sc.close')}">✕</button>
   </div>
-  <div class="as-sc-title"><span class="as-logo">字</span><span>在线字幕</span><span class="as-sc-tag">Jimaku</span></div>
+  <div class="as-sc-title"><span class="as-logo">字</span><span>${t('sc.title')}</span><span class="as-sc-tag">Jimaku</span></div>
   <div id="anysub-key-area"></div>
   <div class="as-sc-search">
-    <input id="anysub-title" placeholder="番剧名(日文最准)">
-    <input id="anysub-ep" class="as-sc-ep" placeholder="集" title="集数">
-    <button id="anysub-do-search">${IC.search}<span>搜索</span></button>
+    <input id="anysub-title" placeholder="${t('sc.titlePlaceholder')}">
+    <input id="anysub-ep" class="as-sc-ep" placeholder="${t('sc.epPlaceholder')}" title="${t('sc.epTitle')}">
+    <button id="anysub-do-search">${IC.search}<span>${t('sc.search')}</span></button>
   </div>
-  <div id="anysub-results" class="as-sc-results"><div class="as-sc-empty">输入番剧名后点搜索</div></div>
+  <div id="anysub-results" class="as-sc-results"><div class="as-sc-empty">${t('sc.prompt')}</div></div>
 `;
+}
 
 export function buildSearchUI() {
   panel = document.createElement('div');
   panel.id = 'anysub-search';
   panel.style.display = 'none';
-  panel.innerHTML = HTML;
   refs.uiRoot.appendChild(panel);
   refs.searchPanel = panel; // 供主面板互斥用
+  wireSearch();
+}
 
+// 建立/重建搜索面板内部 DOM 与事件(语言切换时复用)
+function wireSearch() {
+  panel.innerHTML = html();
   titleInput = panel.querySelector('#anysub-title');
   epInput = panel.querySelector('#anysub-ep');
   results = panel.querySelector('#anysub-results');
@@ -59,15 +66,22 @@ export function buildSearchUI() {
   renderKeyArea();
 }
 
+// 语言切换:重建搜索面板 DOM(丢弃未提交的搜索结果,回到初始态——切语言本就少见)
+export function relocalizeSearch() {
+  if (!panel) return;
+  wireSearch();
+  lastPrefillTitle = null; // 下次打开按当前页重新预填
+}
+
 // key 区两态:未存 → 输入框 + 保存;已存 → 一行「已连接 · 更换」,点更换再展开
 function renderKeyArea() {
   const area = panel.querySelector('#anysub-key-area');
   if (state.jimakuKey && !keyEditing) {
-    area.innerHTML = `<div class="as-sc-keyok">${IC.check}<span>已连接 Jimaku</span><span class="as-sc-change" id="anysub-key-change">更换 key</span></div>`;
+    area.innerHTML = `<div class="as-sc-keyok">${IC.check}<span>${t('sc.keyOk')}</span><span class="as-sc-change" id="anysub-key-change">${t('sc.changeKey')}</span></div>`;
     area.querySelector('#anysub-key-change').addEventListener('click', () => { keyEditing = true; renderKeyArea(); });
   } else {
-    area.innerHTML = `<div class="as-sc-keyrow"><input id="anysub-key" type="password" placeholder="Jimaku API key" autocomplete="off"><button id="anysub-key-save">保存</button></div>
-      <div class="as-sc-hint">key 在 jimaku.cc 登录后账号页生成,仅存于本机</div>`;
+    area.innerHTML = `<div class="as-sc-keyrow"><input id="anysub-key" type="password" placeholder="${t('sc.keyPlaceholder')}" autocomplete="off"><button id="anysub-key-save">${t('sc.keySave')}</button></div>
+      <div class="as-sc-hint">${t('sc.keyHint')}</div>`;
     const ki = area.querySelector('#anysub-key');
     ki.value = state.jimakuKey || '';
     area.querySelector('#anysub-key-save').addEventListener('click', () => saveKey(ki.value));
@@ -89,7 +103,7 @@ export function openSearch() {
     titleInput.value = series;
     epInput.value = episode || '';
     lastPrefillTitle = curTitle;
-    setResults('<div class="as-sc-empty">输入番剧名后点搜索</div>');
+    setResults(`<div class="as-sc-empty">${t('sc.prompt')}</div>`);
   }
   (state.jimakuKey ? titleInput : (panel.querySelector('#anysub-key') || titleInput)).focus();
 }
@@ -109,21 +123,21 @@ function saveKey(val) {
   saveState();
   keyEditing = false;
   renderKeyArea();
-  toast(state.jimakuKey ? 'API key 已保存' : 'API key 已清空');
+  toast(state.jimakuKey ? t('toast.keySaved') : t('toast.keyCleared'));
   if (state.jimakuKey) titleInput.focus();
 }
 
 async function doSearch() {
   const title = titleInput.value.trim();
-  if (!state.jimakuKey) { toast('请先填写并保存 Jimaku API key'); keyEditing = true; renderKeyArea(); return; }
-  if (!title) { toast('请输入番剧名'); return; }
-  setResults('<div class="as-sc-empty">搜索中…</div>');
+  if (!state.jimakuKey) { toast(t('toast.keyNeeded')); keyEditing = true; renderKeyArea(); return; }
+  if (!title) { toast(t('toast.titleNeeded')); return; }
+  setResults(`<div class="as-sc-empty">${t('sc.searching')}</div>`);
   try {
     const list = await animeCandidates(title);
-    if (!list.length) { setResults('<div class="as-sc-empty">未找到番剧,换个写法试试</div>'); return; }
+    if (!list.length) { setResults(`<div class="as-sc-empty">${t('sc.notFound')}</div>`); return; }
     renderAnime(list);
   } catch (err) {
-    setResults(`<div class="as-sc-empty">出错:${esc(err.message)}</div>`);
+    setResults(`<div class="as-sc-empty">${t('sc.error', { msg: esc(err.message) })}</div>`);
   }
 }
 
@@ -135,13 +149,13 @@ function metaOf(a) {
   const bits = [];
   if (a.format) bits.push(esc(a.format));
   if (a.year) bits.push(String(a.year));
-  if (a.episodes) bits.push(a.episodes + ' 话');
+  if (a.episodes) bits.push(t('sc.episodes', { n: a.episodes }));
   return bits.join(' · ');
 }
 
 function renderAnime(list) {
   results.innerHTML = '';
-  results.appendChild(sec('选择番剧'));
+  results.appendChild(sec(t('sc.selectAnime')));
   for (const a of list) {
     const row = document.createElement('div');
     row.className = 'as-sc-anime';
@@ -159,20 +173,21 @@ function renderAnime(list) {
 }
 
 async function loadFilesFor(anime) {
-  setResults('<div class="as-sc-empty">获取字幕文件中…</div>');
+  setResults(`<div class="as-sc-empty">${t('sc.fetchingFiles')}</div>`);
   try {
     const files = await subtitleFiles(anime.anilistId, epInput.value.trim());
     if (!files.length) {
       results.innerHTML = '';
-      results.appendChild(backLink('← 返回番剧列表', doSearch));
-      results.appendChild(empty(`${esc(anime.title)} 暂无字幕${epInput.value ? '(第 ' + esc(epInput.value) + ' 集)' : ''}`));
+      results.appendChild(backLink(t('sc.backToAnime'), doSearch));
+      const ep = epInput.value ? t('sc.epSuffix', { ep: esc(epInput.value) }) : '';
+      results.appendChild(empty(t('sc.noSubsFor', { title: esc(anime.title), ep })));
       return;
     }
     renderFiles(anime, files);
   } catch (err) {
     results.innerHTML = '';
-    results.appendChild(backLink('← 返回番剧列表', doSearch));
-    results.appendChild(empty('出错:' + esc(err.message)));
+    results.appendChild(backLink(t('sc.backToAnime'), doSearch));
+    results.appendChild(empty(t('sc.error', { msg: esc(err.message) })));
   }
 }
 
@@ -191,8 +206,8 @@ export function showCandidates(seriesTitle, files) {
 function renderFiles(anime, files) {
   currentAnime = anime;
   results.innerHTML = '';
-  results.appendChild(backLink('← 返回番剧列表', doSearch));
-  results.appendChild(sec(`${esc(anime.title)} · 选择字幕(${files.length})`));
+  results.appendChild(backLink(t('sc.backToAnime'), doSearch));
+  results.appendChild(sec(t('sc.selectSub', { title: esc(anime.title), n: files.length })));
   for (const f of files) {
     const row = document.createElement('div');
     row.className = 'as-sc-file';
@@ -209,11 +224,11 @@ async function pickFile(f, row) {
     const ok = await downloadAndLoad(f.url, f.name);
     if (ok) {
       markLoaded(currentAnime && currentAnime.anilistId, f.name); // 记录来源,供切集自动接续
-      toast('已挂载:' + f.name);
+      toast(t('toast.mountedFile', { name: f.name }));
       close();
     }
   } catch (err) {
-    toast('下载失败:' + err.message);
+    toast(t('toast.downloadFailed', { msg: err.message }));
   } finally {
     row.classList.remove('loading');
   }

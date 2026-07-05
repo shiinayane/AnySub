@@ -135,6 +135,15 @@ const CSS = `
   #anysub-panel .as-label{display:flex;align-items:center;justify-content:space-between;color:var(--as-fg2);font-size:11.5px;font-weight:550;margin-bottom:7px;}
   #anysub-panel .as-val{color:var(--as-val);font-variant-numeric:tabular-nums;font-weight:600;}
 
+  /* 语言选择:label 左、select 右,同一行紧凑排布 */
+  #anysub-panel .as-field-lang{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 8px;}
+  #anysub-panel .as-field-lang .as-label{margin:0;}
+  #anysub-panel .as-select{appearance:none;-webkit-appearance:none;background:var(--as-inset);color:var(--as-fg-strong);
+    border:1px solid var(--as-inset-bd);border-radius:8px;padding:5px 26px 5px 9px;font-size:12px;font-weight:550;cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,var(--as-fg2) 50%),linear-gradient(135deg,var(--as-fg2) 50%,transparent 50%);
+    background-position:calc(100% - 13px) 50%,calc(100% - 8px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;}
+  #anysub-panel .as-select:focus{outline:none;border-color:var(--as-accent-focus);background-color:var(--as-inset-focus);}
+
   #anysub-panel .as-offset{display:flex;align-items:center;gap:5px;}
   #anysub-panel .as-step{flex:1;padding:6px 0;font-size:12px;font-variant-numeric:tabular-nums;}
   #anysub-panel .as-step:hover{background:var(--as-btn-hover);}

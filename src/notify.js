@@ -1,6 +1,7 @@
 // 轻量提示 + 状态栏更新
 import { refs } from './refs.js';
 import { state } from './state.js';
+import { t } from './i18n.js';
 
 let toastTimer;
 
@@ -21,8 +22,8 @@ export function updateStatus() {
   if (!refs.statusEl) return;
   const loaded = state.cues.length > 0;
   refs.statusEl.textContent = loaded
-    ? `${state.fileName} · ${state.cues.length} 条`
-    : '未加载字幕';
+    ? t('panel.statusLoaded', { name: state.fileName, n: state.cues.length })
+    : t('panel.statusEmpty');
   refs.statusEl.classList.toggle('as-loaded', loaded);
   refs.statusEl.title = loaded ? state.fileName : ''; // 悬停看全名(状态行会省略)
 }

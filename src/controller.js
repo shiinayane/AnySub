@@ -4,6 +4,7 @@ import { refs } from './refs.js';
 import { positionOverlay, ensureMounted, hideOverlay, invalidateLayout } from './overlay.js';
 import { toast, updateStatus } from './notify.js';
 import { updateWatcher } from './watcher.js';
+import { t } from './i18n.js';
 
 let intervalId = 0, driversAttached = false;
 let renderer = null;
@@ -92,21 +93,21 @@ export function setVideo(v) {
 
 // 临时隐藏/显示字幕(不清除,不持久化)
 export function toggleSubtitles() {
-  if (!state.cues.length) { toast('未加载字幕'); return; }
+  if (!state.cues.length) { toast(t('toast.noSubs')); return; }
   state.hidden = !state.hidden;
   if (renderer && renderer.setVisible) renderer.setVisible(!state.hidden);
   renderTick();
-  toast(state.hidden ? '字幕已隐藏' : '字幕已显示');
+  toast(state.hidden ? t('toast.hidden') : t('toast.shown'));
   return state.hidden;
 }
 
 export function clearSubtitle() {
-  if (!state.cues.length) { toast('当前没有字幕'); return; }
+  if (!state.cues.length) { toast(t('toast.noSubsNow')); return; }
   state.cues = [];
   state.fileName = '';
   stopRender();
   if (renderer) { renderer.destroy(); renderer = null; }
   updateStatus();
   updateWatcher(); // 字幕已清除 → 若也没开悬浮球,断开观察器
-  toast('已清除字幕');
+  toast(t('toast.cleared'));
 }

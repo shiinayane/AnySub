@@ -13,6 +13,7 @@ import { createAssRenderer } from './render-ass.js';
 import { parseAss } from './parse-ass.js';
 import { toast, updateStatus } from './notify.js';
 import { updateWatcher } from './watcher.js';
+import { t } from './i18n.js';
 
 // 格式注册表:test 命中即用其 parse(填充文本保底 cues)+ create(渲染器)。
 const FORMATS = [
@@ -32,7 +33,7 @@ export function loadFile(file) {
   if (!file) return;
   readSubtitleFile(file)
     .then((text) => loadFromText(text, file.name))
-    .catch((err) => { console.error('[AnySub]', err); toast('读取字幕失败:' + err.message); });
+    .catch((err) => { console.error('[AnySub]', err); toast(t('toast.readFailed', { msg: err.message })); });
 }
 
 // 从字节流载入(在线下载复用:先做编码探测再走统一路径)
@@ -46,12 +47,12 @@ export function loadFromText(text, name) {
     const v = pickBestVideo();
     if (v) setVideo(v);
   }
-  if (!state.video) { toast('未在页面找到视频元素'); return false; }
+  if (!state.video) { toast(t('toast.noVideoOnPage')); return false; }
 
   const fmt = FORMATS.find((f) => f.test(name, text)) || FORMATS[FORMATS.length - 1];
   const parsed = fmt.parse(text, name);
   if (!parsed.cues || !parsed.cues.length) {
-    toast('未解析出字幕(格式不支持或文件为空)');
+    toast(t('toast.noCues'));
     return false;
   }
   state.cues = parsed.cues;
@@ -73,6 +74,6 @@ export function loadFromText(text, name) {
   startRender();
   updateWatcher(); // 字幕已加载 → 需要观察 SPA 换视频
   updateStatus();
-  toast(`已挂载 ${parsed.cues.length} 条字幕`);
+  toast(t('toast.mounted', { n: parsed.cues.length }));
   return true;
 }

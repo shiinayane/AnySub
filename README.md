@@ -1,169 +1,153 @@
-# AnySub · 通用字幕挂载
+# AnySub · Japanese Immersion Subtitles for Any Video
 
-给**任意网站**的 HTML5 视频挂载**本地字幕文件**。纯用户脚本,无需后端、不上传文件、不联网。
+**English** · [中文](./README.zh-CN.md) · [日本語](./README.ja.md)
 
-Chrome / Edge / Safari / Firefox 通用。
+Turn **any** website's HTML5 video into a Japanese-immersion tool. AnySub mounts subtitle files onto the video and adds the things immersion learners actually want — **accurate per-kanji furigana**, **one-click [Jimaku](https://jimaku.cc) subtitles with auto next-episode**, and **semantic caption formatting** that tells speaker names, sound effects and inner-voice apart at a glance.
 
-## 功能(v0.9.0)
+Pure userscript — no backend, no upload, nothing leaves your machine. Works on Chrome / Edge / Safari / Firefox. UI in **English / 中文 / 日本語** (auto-detected, switchable).
 
-- 🔍 **在线字幕**([Jimaku](https://jimaku.cc)):`Alt+Shift+F` 搜番剧 → 选番剧 → 选文件 → 一键挂载(动画向)
-  - 半自动、候选列表让你选,绝不静默加载错字幕;番剧名经 AniList 定位,ASS 优先
-  - 搜索框从页面标题**智能预填**番剧名+集数(第X話/#X、汉数字含旧字体 第壱話→1)
-  - 需 Jimaku API key(账号页生成,仅存本机);全程 `@grant none` 直连,不碰 GM 特权
-- ⏭️ **切集自动接续**:SPA 换集(页面标题集数变化)→ 自动清除旧字幕 → **同源优先**
-  自动加载下一集(跨集匹配同一字幕组/压制源);找不到同源才弹候选。追番零手工
-- 📂 本地字幕文件挂载(选择 / 拖拽 / **清除**),**文件不出本机**(SRT/VTT 全程离线)
-- 🎬 支持 **SRT / VTT / ASS / SSA**
-- ✨ **ASS/SSA 高保真渲染**:懒加载 [libass-wasm](https://github.com/libass/JavascriptSubtitlesOctopus),
-  还原斜体/粗体/描边/定位/特效/字体;**加载失败(无网/CSP)自动降级为纯文本**,字幕始终可见
-- 🎨 **自绘覆盖层渲染**:样式完全可控且跨浏览器一致(不受 Safari `::cue` 限制)
-  - 背景:描边 / **半透明(默认)** / 黑底 / 无
-  - 颜色:白 / 黄 / 青 / 绿
-  - **字号随播放器高度等比缩放**,窗口/全屏下观感一致
-  - 位置(距底部)可调
-- 🖥️ **全屏跟随**:进入全屏后覆盖层自动挂到全屏元素上
-- 🈁 **日文注音(ruby)**:文本字幕里 `温厚（おんこう）`/`使徒《しと》` 显示为汉字上方假名。
-  《》式始终转;括号启发式可在面板开关(仅文本路径,ASS 高保真受 libass 限制不支持)
-  - **逐字对齐**:内置 KANJIDIC2 读音表(常用+人名用,~3000 字)+ 对齐算法,把读音精确落到各汉字并处理连浊/促音。
-    `近接猟兵（りょうへい）` 只把 りょう/へい 注到 `猟兵`、`近接` 留白,不再铺满整串;熟字訓(`今日→きょう`)对不齐时回退整串注音。
-    读音表随脚本本地内置、首次注音才 `JSON.parse`,零运行时网络
-- 🎭 **语义排版**(动画字幕向,可开关):按日文 CC 常见约定重排,只排版不删字
-  - **话者名** `（マオマオ)台词` → 名字淡化缩小,视线直达台词
-  - **非语音** 独立 `（ドアが開く音)`/`（ざわざわ)`(音效·动作·心声)→ 斜体淡化
-  - **画外音/心声** `〈…〉`/`＜…＞`(电话·旁白·内心)→ 斜体
-  - **书面/引用** `《…》`(书信·念白·画面读字;与注音 `漢字《かな》` 消歧)→ 切衬线体(明朝/宋体),像"写出来的字",无底色
-  - **跨行/跨 cue 跨度**:`〈…` 开在一句、`…〉` 闭在几句之后,中间无括号的行也连续标记(书面 `《》`、歌曲 `♪…♪` 同理)。状态机跟踪未闭合跨度;跨 cue 仅在相邻不重叠时延续(重叠=多人同时/大间隔则重置)
-  - **歌词** 行首 `♪` → 斜体
-  - 两遍扫描消歧:先收集「行首名+台词」的话者名词表,独立 `（X)` 若 X 在表中记作话者名、否则记作音效(纯逻辑,有单测)
-- 🧭 **说话在下,非语音在上**(心智统一):「说话位置 底/顶」切换台词锚点(默认底部);
-  **说话**(对白/话者名/画外音/歌词)放该锚点、多说话人叠放靠话者名区分;
-  仅**真·音效**(独立 `（…)`)恒放对侧(默认顶部;书面 `《…》` 多是念出来的→仍留底部)。ASS 的定位由 libass 按 `\an` 处理
-- 🈶 自动**编码探测**:UTF-8 → GBK → Big5 →(日文)Shift-JIS / EUC-JP 回退
-- ⏱️ **时间轴偏移**:±0.1 / ±1 步进按钮,或**手动输入**任意秒数
-- 🔎 **穿透 Shadow DOM** 定位视频;页面多个视频时可手动「选视频」
-- 🔄 `MutationObserver` 监听,SPA 切换视频后自动重新挂载
-- ⌨️ **键盘快捷键**(`Ctrl+Shift` 或 `Alt+Shift` 皆可,几乎不与站点单键冲突):
-  - `S` 打开/关闭面板 · `F` 在线找字幕 · `V` 显示/隐藏字幕 · `O` 打开本地文件
-  - `←/→` 偏移 ∓0.1s
-  - 🕒 **偏移记忆**:按「番剧 + 字幕源」记住偏移并持久化,同番剧同源(切集/重开)自动恢复,换番剧/换源各自独立
-  - 输入框内不响应;capture 阶段只吞自己的组合、不破坏站点快捷键;**恒启用**(不设关闭开关,防止与「无悬浮球」叠加导致无法打开面板)
-- 🫧 **极简 UI**:默认无常驻悬浮球、无任何弹窗打扰,快捷键唤出面板(可在面板里开启悬浮球)
-- 🪶 **零空闲开销**:未加载字幕且未开悬浮球时不连接任何观察器/定时器,注入每个页面几乎无成本
-- 💾 **设置持久化**:字号 / 位置 / 背景 / 颜色偏好自动记住(localStorage,按站点)
-- ⚙️ 渲染**事件驱动 + 定时兜底**(不依赖 rAF),后台标签/PiP 也稳定
+![AnySub rendering furigana and semantic caption layout over a video](./docs/hero.png)
 
-## 安装
+> Also a perfectly good *general* subtitle loader: drop any SRT / VTT / ASS / SSA onto any video, style it, done. The Japanese features are opt-in and stay out of your way.
 
-> 安装的是构建产物 [`dist/anysub.user.js`](./dist/anysub.user.js)(源码在 `src/`,见下方「开发」)。
+## Why AnySub for learning Japanese
+
+- 🈁 **Accurate per-kanji furigana.** Text subtitles like `温厚（おんこう）` / `使徒《しと》` render as kana above the kanji. Unlike naive tools, AnySub **aligns readings to the right characters**: `近接猟兵（りょうへい）` puts りょう/へい over `猟兵` only and leaves `近接` bare, instead of smearing the reading across the whole run. It ships a compact KANJIDIC2 reading table (jōyō + jinmeiyō, ~3000 kanji) and a rendaku/gemination-aware alignment algorithm — **no multi-megabyte tokenizer, no runtime network**.
+- 🎭 **Semantic caption formatting** (anime-oriented, toggleable). Japanese closed captions carry meaning in their punctuation; AnySub re-typesets it (formatting only, never dropping text):
+  - **Speaker name** `（マオマオ）dialogue` → the name dims and shrinks so your eye jumps straight to the line.
+  - **Non-speech** standalone `（ドアが開く音）` / `（ざわざわ）` (SFX / action) → italic, dimmed.
+  - **Off-screen / inner voice** `〈…〉` / `＜…＞` (phone, narration, thoughts) → italic.
+  - **Written / quoted** `《…》` (letters, on-screen text, read-aloud) → switches to a serif face, like "written words" (disambiguated from ruby `漢字《かな》`).
+  - **Lyrics** leading `♪` → italic.
+  - **Cross-line / cross-cue spans**: an `〈…` that opens in one line and closes `…〉` several lines later keeps every line in between marked (same for `《》` and `♪…♪`).
+- 🔍 **One-click online subtitles ([Jimaku](https://jimaku.cc)).** `Alt+Shift+F` → search anime → pick title → pick file → mounted. Semi-automatic: candidates are always shown, never a silent wrong-subtitle load. Titles are resolved via AniList, ASS preferred. The search box **pre-fills the title + episode from the page title**.
+- ⏭️ **Auto next-episode.** When an SPA changes episodes (page-title episode number changes), AnySub clears the old subtitle and **auto-loads the next episode from the same source** (same fansub/release), falling back to candidates only if no same-source match. Binge with zero manual steps.
+
+## Everything else
+
+- 📂 Local subtitle files (pick / drag-drop / **clear**) — **files never leave your device** (SRT/VTT fully offline).
+- 🎬 Supports **SRT / VTT / ASS / SSA**.
+- ✨ **High-fidelity ASS/SSA** via lazily-loaded [libass-wasm](https://github.com/libass/JavascriptSubtitlesOctopus): italics, bold, outlines, positioning, effects, fonts. **Falls back to plain text automatically** if it can't load (offline / CSP), so subtitles are always visible.
+- 🎨 **Custom overlay renderer** — full style control, consistent across browsers (not limited by Safari's `::cue`):
+  - Background: outline / **dim (default)** / solid / none.
+  - Color: white / yellow / cyan / green.
+  - **Font scales with player height**, so it looks the same windowed or fullscreen.
+  - Adjustable margin from the edge.
+- 🧭 **Speech at the bottom, non-speech on top** (one consistent mental model): a Bottom/Top toggle sets the speech anchor (default bottom); dialogue / speaker names / off-screen voice / lyrics go there, multiple speakers stack and are told apart by name; only **true SFX** (standalone `（…）`) sit on the opposite edge.
+- 🖥️ **Fullscreen following**: the overlay re-attaches to the fullscreen element automatically.
+- 🈶 Automatic **encoding detection**: UTF-8 → GBK → Big5 → (Japanese) Shift-JIS / EUC-JP fallback.
+- ⏱️ **Timeline offset**: ±0.1 / ±1 step buttons, or type any number of seconds. **Offset memory**: remembered per "anime + subtitle source" and restored automatically across episodes / reopens.
+- 🔎 Locates video **through Shadow DOM**; a "pick video" button when a page has several.
+- ⌨️ **Keyboard shortcuts** (`Ctrl+Shift` or `Alt+Shift`, barely ever collide with a site's single keys): `S` panel · `F` online · `V` show/hide · `O` local file · `←/→` offset ∓0.1s. Ignored while typing.
+- 🫧 **Minimal UI**: no floating ball by default, no popups — summon the panel with a shortcut (the floating ball is opt-in).
+- 🪶 **Zero idle cost**: with no subtitle loaded and the ball off, it connects no observers/timers — injecting into every page is practically free.
+- 💾 **Settings persist** (font / position / background / color / language, per site via localStorage).
+- ⚙️ Rendering is **event-driven + interval fallback** (not rAF), so background tabs / PiP stay stable.
+
+## Screenshots
+
+| Settings panel | Online search (Jimaku) |
+| --- | --- |
+| ![Settings panel](./docs/panel.png) | ![Online subtitle search](./docs/search.png) |
+
+## Install
+
+> You install the build output [`dist/anysub.user.js`](./dist/anysub.user.js) (source is in `src/`, see [Development](#development)).
 
 ### Chrome / Edge / Firefox
 
-1. 安装 [Tampermonkey](https://www.tampermonkey.net/) 或 [Violentmonkey](https://violentmonkey.github.io/)
-2. 打开 [`dist/anysub.user.js`](./dist/anysub.user.js) 原始文件,管理器会自动识别并提示安装
-   - 或:Tampermonkey → 新建脚本 → 粘贴 `dist/anysub.user.js` 全部内容 → 保存
+1. Install [Tampermonkey](https://www.tampermonkey.net/) or [Violentmonkey](https://violentmonkey.github.io/).
+2. Open the raw [`dist/anysub.user.js`](./dist/anysub.user.js) — the manager detects it and offers to install.
+   - Or: Tampermonkey → New script → paste the whole contents of `dist/anysub.user.js` → Save.
 
-### Safari(macOS / iOS)
+### Safari (macOS / iOS)
 
-1. App Store 安装 [Userscripts](https://apps.apple.com/us/app/userscripts/id1463298887)(开源、免费)
-2. Safari → 设置 → 扩展 → 启用 Userscripts,并在网站权限中允许
-3. 点工具栏 Userscripts 图标 →「Open App」→ 把 `dist/anysub.user.js` 放入其脚本目录
-   - 本脚本仅用标准 Web API(`@grant none`),不依赖 GM 特权接口,故 Safari 完整可用
+1. Install [Userscripts](https://apps.apple.com/us/app/userscripts/id1463298887) from the App Store (open-source, free).
+2. Safari → Settings → Extensions → enable Userscripts and allow it on websites.
+3. Toolbar Userscripts icon → "Open App" → drop `dist/anysub.user.js` into its scripts folder.
+   - AnySub uses only standard Web APIs (`@grant none`), no GM-privileged interfaces, so Safari support is complete.
 
-## 使用
+## Usage
 
-1. 打开任意带视频的网页
-2. 点右下角 **「字幕」** 按钮
-3. 「选择字幕文件」或把字幕文件**拖到面板**
-4. 按需调节偏移 / 字号
+1. Open any page with a video.
+2. Press **`Alt+Shift+S`** (or `Ctrl+Shift+S`) to open the panel — or enable the floating ball in the panel.
+3. **Open file** / drag a subtitle onto the panel — or **Online subs** (`Alt+Shift+F`) to fetch from Jimaku.
+4. Tune offset / font size as needed. Toggle **Furigana** and **Speaker · SFX tags** for the Japanese features.
 
-## 开发
+## Development
 
-源码按功能拆分为 ES 模块(`src/`),用 [Vite](https://vitejs.dev) + [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 打包成单个带 `==UserScript==` 头的 `dist/anysub.user.js`。
+Source is split into ES modules (`src/`) and bundled by [Vite](https://vitejs.dev) + [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) into a single `dist/anysub.user.js` with a `==UserScript==` header.
 
 ```bash
-npm install       # 安装依赖
-npm run build     # 构建 → dist/anysub.user.js
-npm run dev       # 开发服务器:改代码自动重载 + 一键安装到脚本管理器
-npm test          # 跑单元测试(Node 内置 node:test,零额外依赖)
+npm install       # install dependencies
+npm run build     # build → dist/anysub.user.js
+npm run dev       # dev server: hot reload + one-click install into your manager
+npm test          # unit tests (Node's built-in node:test, zero extra deps)
 ```
 
-### 测试
+Pure-logic modules have unit regression tests (`test/`, via `node --test`) covering past pitfalls: parsing (XSS escaping, blank lines, NaN/time ordering), ASS parsing, title parsing (old-form kanji episode numbers), furigana ruby & per-kanji alignment, semantic caption classification, same-source episode matching, encoding detection. DOM / rendering / network are verified via `demo.html` in a browser.
 
-纯逻辑模块有单元回归测试(`test/`,用 `node --test`),覆盖历次踩坑点:
-解析(XSS 转义、空行不截断、NaN/时间序)、ASS 解析、标题解析(旧字体集号)、
-注音 ruby、**切集同源匹配**(EVA/薬屋 真实文件名)、编码探测。DOM/渲染/网络
-部分靠 `demo.html` + 浏览器手动验证。
-
-### 目录结构
+### Layout
 
 ```
 src/
-├── main.js         入口:init + 动态视频监听(MutationObserver)
-├── state.js        全局状态 + 常量
-├── refs.js         共享 DOM 引用(由 ui 填充,其余模块只读)
-├── locator.js      穿透 Shadow DOM 定位 <video>
-├── decode.js       读取文件 + 编码探测(UTF-8→GBK→Big5)
-├── parse.js        SRT/VTT → 统一 cue 结构(XSS 安全、时间排序)
-├── parse-ass.js    ASS/SSA → cue(文本保底用)
-├── overlay.js      覆盖层定位 / 全屏跟随(格式无关)
-├── render-text.js  文本渲染器(实现 renderer 接口)
-├── render-ass.js   ASS 渲染器:文本保底 + libass 升级
-├── octopus-loader.js  懒加载 libass-wasm(blob worker + CDN wasm/字体)
-├── controller.js   渲染循环 + 视频生命周期 + 当前渲染器
-├── loader.js       载入流程 + 格式注册表(本地/在线共用)
-├── anilist.js      番剧名 → AniList 候选(无鉴权)
-├── jimaku.js       Jimaku API 客户端(需 key)
-├── online.js       在线编排:定位番剧 → 取文件 → 下载
-├── match.js        跨集「同源」匹配(纯逻辑,有单测)
-├── search-ui.js    在线搜索面板(候选列表)
-├── title-parse.js  页面标题 → 番剧名 + 集数(含日文/旧字体)
-├── ruby.js         日文注音(《》/｜/括号 → <ruby>,逐字对齐)
-├── furigana-align.js  读音→逐字对齐(连浊/促音/后缀读音,纯逻辑有单测)
-├── kanji-readings.js  内置汉字读音表(构建期由 scripts/build-readings.mjs 生成)
-├── episode-watch.js 切集检测 + 同源自动接续
-├── ui.js           设置面板 + 悬浮球 + 拖拽 + 选视频
-├── shortcuts.js    键盘快捷键(Alt+Shift,capture 拦截)
-├── watcher.js      DOM 观察器按需生命周期(空闲断开)
-├── styles.js       注入 CSS
-├── storage.js      设置持久化(localStorage)
-└── notify.js       toast + 状态栏
+├── main.js         entry: init + dynamic video watching (MutationObserver)
+├── state.js        global state + constants
+├── i18n.js         UI localization (en / zh / ja, browser-detected + switchable)
+├── locator.js      locate <video> through Shadow DOM
+├── decode.js       read file + encoding detection
+├── parse.js        SRT/VTT → unified cue structure (XSS-safe, time-sorted)
+├── parse-ass.js    ASS/SSA → cue (text fallback)
+├── overlay.js      overlay positioning / fullscreen following (format-agnostic)
+├── render-text.js  text renderer (implements the renderer interface)
+├── render-ass.js   ASS renderer: text fallback + libass upgrade
+├── octopus-loader.js  lazy-load libass-wasm (blob worker + CDN wasm/fonts)
+├── controller.js   render loop + video lifecycle + current renderer
+├── loader.js       load flow + format registry (shared local/online)
+├── cue-format.js   semantic caption classification (pure logic, unit-tested)
+├── anilist.js      title → AniList candidates (no auth)
+├── jimaku.js       Jimaku API client (needs key)
+├── online.js       online orchestration: locate → list files → download
+├── match.js        cross-episode "same source" matching (pure logic, tested)
+├── search-ui.js    online search panel (candidate list)
+├── title-parse.js  page title → anime name + episode (JP / old-form kanji)
+├── ruby.js         Japanese furigana (《》/｜/parens → <ruby>, per-kanji)
+├── furigana-align.js  reading → per-kanji alignment (rendaku/gemination; tested)
+├── kanji-readings.js  bundled kanji reading table (generated at build time)
+├── episode-watch.js episode-change detection + same-source auto-continue
+├── ui.js           settings panel + floating ball + drag + pick-video
+├── shortcuts.js    keyboard shortcuts (Alt+Shift, capture-phase)
+├── watcher.js      on-demand DOM-observer lifecycle (disconnects when idle)
+├── styles.js       injected CSS (light/dark tokens)
+├── storage.js      settings persistence (localStorage)
+└── notify.js       toast + status bar
 ```
 
-**渲染层为可插拔架构**:`controller` 驱动循环并持有一个「渲染器」;渲染器实现统一接口 `{ mount, renderAt(video, rect, layoutChanged), applyStyle, destroy }`。`overlay` 负责与视频对齐的盒子(格式无关),渲染器渲染进这个盒子。`loader` 里的**格式注册表**按文件类型选渲染器。
+**The render layer is pluggable**: `controller` drives the loop and holds one "renderer" implementing `{ mount, renderAt(video, rect, layoutChanged), applyStyle, destroy }`. `overlay` owns the video-aligned box (format-agnostic); the renderer draws into it. A **format registry** in `loader` picks the renderer by file type.
 
-加 ASS/SSA 高保真只需:新增 `render-ass.js`(libass-wasm 渲染到 canvas,实现同一接口),在注册表里加一条 `{ test: 匹配 .ass/.ssa, create: createAssRenderer }`——无需改动 controller / overlay / ui。
+### Design notes
 
-### 本地测试
+**Rendering** uses a custom overlay (a `div` layered over the video, updated on `timeupdate`): versus native `TextTrack` / `::cue` it gives full control of background/outline/color/position, scales font by player height, and is consistent across browsers (Safari especially). It's **event-driven + interval fallback** rather than `requestAnimationFrame` — rAF is paused in background tabs, and event-driven is lighter on CPU. In fullscreen the overlay re-attaches to `document.fullscreenElement`.
 
-```bash
-npm run build && python3 -m http.server 8000
-# 浏览器访问 http://localhost:8000/demo.html
-```
+All local files are read via standard `<input type=file>` / drag-drop — no `GM_*` interfaces — for full Safari compatibility.
 
-`demo.html` 内联加载 `dist/anysub.user.js` + 一个联网示例视频,配 `sample.srt` 可完整走通流程。
+**High-fidelity ASS** is "fallback first, upgrade later": opening `.ass/.ssa` shows the text renderer immediately (works offline) while libass-wasm lazy-loads in the background (blob `<script>` to avoid eval/CSP-inline; worker bundled into a blob with `Module.locateFile` pointing wasm/fonts at a CDN). Once ready it swaps to canvas high-fidelity; if any step is blocked by network or site CSP, it **keeps the text renderer** so subtitles stay visible.
 
-## 路线图
+**Furigana per-kanji alignment** avoids a general tokenizer (kuromoji-class ones load megabytes of dictionary at runtime). Instead it bundles a compact "kanji → readings" table extracted from [KANJIDIC2](https://www.edrdg.org/kanjidic/kanjidic2.xml.gz) (jōyō + jinmeiyō, ~3000 kanji, hiragana-normalized, ~35KB gzipped), stored with the script and `JSON.parse`d only on first use. Alignment is a memoized DFS: each kanji's reading candidates consume the kana in the parens, generating rendaku (は→ば) and gemination (がく→がっ) variants; when the whole run won't align it peels kanji from the left to find the longest cover (handles "reading covers only a suffix"), and falls back to whole-run ruby for jukujikun (e.g. `今日→きょう`).
 
-- [x] ~~自绘覆盖层:样式可控、字号随播放器缩放、全屏跟随~~(v0.2.0)
-- [x] ~~设置持久化(字号 / 位置 / 背景 / 颜色)~~(v0.4.0)
-- [x] ~~ASS/SSA 高保真渲染(libass-wasm),失败降级纯文本~~(v0.7.0)
-- [x] ~~在线字幕搜索(Jimaku,半自动候选)~~(v0.9.0)
-- [x] ~~标题智能预填 + 切集自动接续(同源优先)~~(v0.10.0)
-- [ ] 跨域 iframe 内视频支持
-- [ ] 更多格式(SUB/SBV/LRC/SMI/TTML)
-- [ ] ASS 自定义字体(内嵌 / 用户提供,改善冷门字体还原)
-- [ ] 快捷键自定义重绑(撞键时可改;目前固定 Alt+Shift 组合)
+> Dictionary data © [EDRDG](https://www.edrdg.org/) KANJIDIC2, used under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 
-## 设计说明
+## Roadmap
 
-**渲染层**用自绘覆盖层(在视频上叠一层 `div`,按 `timeupdate` 显示当前字幕):相比原生 `TextTrack` / `::cue`,能完全掌控背景/描边/颜色/位置,且字号按播放器高度等比缩放,跨浏览器(尤其 Safari)一致。渲染采用**事件驱动 + 120ms 定时兜底**而非 `requestAnimationFrame`——rAF 在后台标签会被暂停,事件驱动同时更省 CPU。全屏时把覆盖层重新挂到 `document.fullscreenElement` 上以避免被顶层遮挡。
-
-所有本地文件通过标准 `<input type=file>` / 拖拽读取,不使用任何 `GM_*` 接口,以保证 Safari 完整兼容。
-
-**ASS 高保真**采用「先保底、后升级」:打开 `.ass/.ssa` 时先用文本渲染器立即显示(离线可用),同时后台懒加载 libass-wasm——主脚本经 blob `<script>` 注入(避开 `eval`/CSP inline),worker 整段包进 blob 并预置 `Module.locateFile` 使 wasm/字体从 CDN(jsdelivr)加载(绕过跨域 worker 限制)。就绪后切换到 canvas 高保真渲染并撤下文本;若任一步被网络或站点 CSP(`worker-src`/`connect-src`/`script-src`)拦截,则**保留文本渲染**,字幕始终可见。libass-wasm 不含字体,故指定含 CJK 的 Noto Sans SC 作 fallback,避免渲染空白。
-
-> 已知限制:若站点对**裸 `<video>` 元素**(而非其容器)请求全屏,DOM 覆盖层无法叠加其上;绝大多数站点全屏的是播放器容器,不受影响。
-
-**注音逐字对齐**不走通用分词器(kuromoji 那类需运行时加载数 MB 词典),而是内置一张从 [KANJIDIC2](https://www.edrdg.org/kanjidic/kanjidic2.xml.gz) 抽取的精简「汉字→读音」表(常用+人名用约 3000 字,平假名归一,gzip ~35KB),随脚本本地存储、首次注音才 `JSON.parse`。对齐用递归匹配:拿每个汉字的读音候选去消费括号里的假名串,动态生成连浊(は→ば)、促音(がく→がっ)变体;整串对不齐时从左逐字剥离取最长覆盖解(治「读音只覆盖后缀」),再对不齐则回退整串注音(熟字訓如 `今日→きょう`)。
-
-> 词典数据 © [EDRDG](https://www.edrdg.org/) KANJIDIC2,依 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 使用。
+- [x] ~~Custom overlay renderer (style control, player-relative scaling, fullscreen following)~~ (v0.2.0)
+- [x] ~~Settings persistence~~ (v0.4.0)
+- [x] ~~High-fidelity ASS/SSA (libass-wasm), text fallback~~ (v0.7.0)
+- [x] ~~Online subtitle search (Jimaku, semi-automatic candidates)~~ (v0.9.0)
+- [x] ~~Title pre-fill + auto next-episode (same-source first)~~ (v0.10.0)
+- [x] ~~Per-kanji furigana alignment (KANJIDIC2)~~ (v0.13.0)
+- [x] ~~Semantic caption formatting + speech/non-speech positioning~~ (v0.14.0)
+- [x] ~~UI i18n (English / 中文 / 日本語)~~ (v0.15.0)
+- [ ] Cross-origin iframe video support
+- [ ] More formats (SUB/SBV/LRC/SMI/TTML)
+- [ ] Custom ASS fonts (embedded / user-provided)
+- [ ] Rebindable keyboard shortcuts

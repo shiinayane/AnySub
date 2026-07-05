@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         AnySub · 通用字幕挂载
+// @name         AnySub · 日语沉浸式字幕挂载
 // @namespace    https://github.com/shiinayane/anysub
-// @version      0.14.0
+// @version      0.15.0
 // @author       shiinayane
-// @description  给任意网站的 HTML5 视频挂载本地字幕文件(SRT / VTT),自绘覆盖层渲染:样式可控、字号随播放器等比缩放、全屏跟随。Chrome / Edge / Safari / Firefox 通用。
+// @description  把任意网站的 HTML5 视频变成日语沉浸学习工具:逐字精准注音(furigana)、一键 Jimaku 在线字幕并自动接续下一集、话者/音效/心声语义排版。也支持任意 SRT/VTT/ASS 本地字幕、样式可控、全屏跟随。EN/中/日界面。
 // @match        *://*/*
 // @grant        none
 // @run-at       document-idle
@@ -27,6 +27,7 @@
 		speakers: null,
 		subPos: "bottom",
 		jimakuKey: "",
+		lang: null,
 		loadedSeries: "",
 		loadedEpisode: "",
 		lastOnline: null,
@@ -169,6 +170,15 @@
   #anysub-panel .as-field{margin:10px 0;}
   #anysub-panel .as-label{display:flex;align-items:center;justify-content:space-between;color:var(--as-fg2);font-size:11.5px;font-weight:550;margin-bottom:7px;}
   #anysub-panel .as-val{color:var(--as-val);font-variant-numeric:tabular-nums;font-weight:600;}
+
+  /* 语言选择:label 左、select 右,同一行紧凑排布 */
+  #anysub-panel .as-field-lang{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 8px;}
+  #anysub-panel .as-field-lang .as-label{margin:0;}
+  #anysub-panel .as-select{appearance:none;-webkit-appearance:none;background:var(--as-inset);color:var(--as-fg-strong);
+    border:1px solid var(--as-inset-bd);border-radius:8px;padding:5px 26px 5px 9px;font-size:12px;font-weight:550;cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,var(--as-fg2) 50%),linear-gradient(135deg,var(--as-fg2) 50%,transparent 50%);
+    background-position:calc(100% - 13px) 50%,calc(100% - 8px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;}
+  #anysub-panel .as-select:focus{outline:none;border-color:var(--as-accent-focus);background-color:var(--as-inset-focus);}
 
   #anysub-panel .as-offset{display:flex;align-items:center;gap:5px;}
   #anysub-panel .as-step{flex:1;padding:6px 0;font-size:12px;font-variant-numeric:tabular-nums;}
@@ -336,6 +346,509 @@
 			changed: true
 		};
 	}
+	var SUPPORTED = [
+		"en",
+		"zh",
+		"ja"
+	];
+	function getLocale() {
+		if (state.lang && SUPPORTED.includes(state.lang)) return state.lang;
+		const l = (navigator.language || navigator.userLanguage || "en").toLowerCase();
+		if (l.startsWith("zh")) return "zh";
+		if (l.startsWith("ja")) return "ja";
+		return "en";
+	}
+	function setLang(lang) {
+		state.lang = SUPPORTED.includes(lang) ? lang : null;
+	}
+	var LANG_OPTIONS = [
+		{
+			value: "",
+			label: "Auto"
+		},
+		{
+			value: "en",
+			label: "English"
+		},
+		{
+			value: "zh",
+			label: "中文"
+		},
+		{
+			value: "ja",
+			label: "日本語"
+		}
+	];
+	var DICT = {
+		"panel.close": {
+			en: "Close (Ctrl/Alt+Shift+S)",
+			zh: "关闭 (Ctrl/Alt+Shift+S)",
+			ja: "閉じる (Ctrl/Alt+Shift+S)"
+		},
+		"panel.chooseFile": {
+			en: "Open file",
+			zh: "选择文件",
+			ja: "ファイルを開く"
+		},
+		"panel.online": {
+			en: "Online subs",
+			zh: "在线字幕",
+			ja: "オンライン字幕"
+		},
+		"panel.dropHint": {
+			en: "Drop a subtitle file here",
+			zh: "拖字幕文件到这里",
+			ja: "字幕ファイルをドロップ"
+		},
+		"panel.statusEmpty": {
+			en: "No subtitles loaded",
+			zh: "未加载字幕",
+			ja: "字幕未読み込み"
+		},
+		"panel.statusLoaded": {
+			en: "{name} · {n} cues",
+			zh: "{name} · {n} 条",
+			ja: "{name} · {n} 件"
+		},
+		"panel.pickVideo": {
+			en: "Pick video (when the page has several)",
+			zh: "选视频(页面多视频时指定)",
+			ja: "動画を選ぶ(複数ある場合)"
+		},
+		"panel.hide": {
+			en: "Hide subtitles",
+			zh: "隐藏字幕",
+			ja: "字幕を隠す"
+		},
+		"panel.show": {
+			en: "Show subtitles",
+			zh: "显示字幕",
+			ja: "字幕を表示"
+		},
+		"panel.clear": {
+			en: "Clear subtitles",
+			zh: "清除字幕",
+			ja: "字幕をクリア"
+		},
+		"panel.offset": {
+			en: "Time offset",
+			zh: "时间偏移",
+			ja: "タイムオフセット"
+		},
+		"panel.offsetTitle": {
+			en: "Type a value in seconds",
+			zh: "可手动输入,单位秒",
+			ja: "手入力可・単位は秒"
+		},
+		"panel.fontSize": {
+			en: "Font size",
+			zh: "字号",
+			ja: "文字サイズ"
+		},
+		"panel.margin": {
+			en: "Margin",
+			zh: "边距",
+			ja: "余白"
+		},
+		"panel.speakerPos": {
+			en: "Speech position",
+			zh: "说话位置",
+			ja: "セリフの位置"
+		},
+		"panel.posBottom": {
+			en: "Bottom",
+			zh: "底部",
+			ja: "下"
+		},
+		"panel.posTop": {
+			en: "Top",
+			zh: "顶部",
+			ja: "上"
+		},
+		"panel.background": {
+			en: "Background",
+			zh: "背景",
+			ja: "背景"
+		},
+		"panel.bgOutline": {
+			en: "Outline",
+			zh: "描边",
+			ja: "縁取り"
+		},
+		"panel.bgTranslucent": {
+			en: "Dim",
+			zh: "半透",
+			ja: "半透明"
+		},
+		"panel.bgSolid": {
+			en: "Solid",
+			zh: "黑底",
+			ja: "黒地"
+		},
+		"panel.bgNone": {
+			en: "None",
+			zh: "无",
+			ja: "なし"
+		},
+		"panel.color": {
+			en: "Color",
+			zh: "颜色",
+			ja: "色"
+		},
+		"panel.colWhite": {
+			en: "White",
+			zh: "白",
+			ja: "白"
+		},
+		"panel.colYellow": {
+			en: "Yellow",
+			zh: "黄",
+			ja: "黄"
+		},
+		"panel.colCyan": {
+			en: "Cyan",
+			zh: "青",
+			ja: "シアン"
+		},
+		"panel.colGreen": {
+			en: "Green",
+			zh: "绿",
+			ja: "緑"
+		},
+		"panel.ruby": {
+			en: "Furigana",
+			zh: "日文注音",
+			ja: "ふりがな"
+		},
+		"panel.rubyTitle": {
+			en: "Show 温厚（おんこう） as ruby readings over kanji",
+			zh: "将 温厚（おんこう） 显示为注音",
+			ja: "温厚（おんこう） を漢字上のルビで表示"
+		},
+		"panel.enhance": {
+			en: "Speaker · SFX tags",
+			zh: "话者·音效标记",
+			ja: "話者・効果音タグ"
+		},
+		"panel.enhanceTitle": {
+			en: "（Name）dims to a speaker tag; standalone （…） SFX/action and ♪ lyrics go italic",
+			zh: "（人名)淡化为话者名、独立（…)音效/动作斜体、♪ 歌词斜体",
+			ja: "（人名）を話者名として淡色化、単独（…）効果音/動作を斜体、♪ 歌詞を斜体"
+		},
+		"panel.fab": {
+			en: "Floating button",
+			zh: "悬浮球",
+			ja: "フローティングボタン"
+		},
+		"panel.fabTitle": {
+			en: "A small ball docked at the page edge",
+			zh: "页面右侧常驻小球",
+			ja: "ページ端に常駐する小さなボタン"
+		},
+		"panel.language": {
+			en: "Language",
+			zh: "语言",
+			ja: "言語"
+		},
+		"panel.fabTip": {
+			en: "AnySub · click to open the subtitle panel (draggable)",
+			zh: "AnySub · 点击打开字幕面板(可拖动)",
+			ja: "AnySub · クリックで字幕パネルを開く(ドラッグ可)"
+		},
+		"hint.then": {
+			en: "then",
+			zh: "加",
+			ja: "＋"
+		},
+		"hint.panel": {
+			en: "panel",
+			zh: "面板",
+			ja: "パネル"
+		},
+		"hint.online": {
+			en: "online",
+			zh: "在线",
+			ja: "オンライン"
+		},
+		"hint.toggle": {
+			en: "toggle",
+			zh: "显隐",
+			ja: "表示"
+		},
+		"hint.local": {
+			en: "local",
+			zh: "本地",
+			ja: "ローカル"
+		},
+		"hint.offset": {
+			en: "offset",
+			zh: "偏移",
+			ja: "オフセット"
+		},
+		"toast.offset": {
+			en: "Offset {v}s",
+			zh: "偏移 {v}s",
+			ja: "オフセット {v}s"
+		},
+		"toast.noVideo": {
+			en: "No video found",
+			zh: "未找到视频",
+			ja: "動画が見つかりません"
+		},
+		"toast.clickVideo": {
+			en: "Click the video to attach subtitles to",
+			zh: "点击要挂载字幕的视频画面",
+			ja: "字幕を付ける動画をクリック"
+		},
+		"toast.videoSelected": {
+			en: "Video selected",
+			zh: "已选定视频",
+			ja: "動画を選択しました"
+		},
+		"toast.readFailed": {
+			en: "Failed to read subtitles: {msg}",
+			zh: "读取字幕失败:{msg}",
+			ja: "字幕の読み込みに失敗: {msg}"
+		},
+		"toast.noVideoOnPage": {
+			en: "No video element found on the page",
+			zh: "未在页面找到视频元素",
+			ja: "ページに動画要素が見つかりません"
+		},
+		"toast.noCues": {
+			en: "No subtitles parsed (unsupported format or empty file)",
+			zh: "未解析出字幕(格式不支持或文件为空)",
+			ja: "字幕を解析できません(非対応形式か空ファイル)"
+		},
+		"toast.mounted": {
+			en: "Mounted {n} subtitle cues",
+			zh: "已挂载 {n} 条字幕",
+			ja: "{n} 件の字幕を読み込みました"
+		},
+		"toast.noSubs": {
+			en: "No subtitles loaded",
+			zh: "未加载字幕",
+			ja: "字幕が読み込まれていません"
+		},
+		"toast.hidden": {
+			en: "Subtitles hidden",
+			zh: "字幕已隐藏",
+			ja: "字幕を隠しました"
+		},
+		"toast.shown": {
+			en: "Subtitles shown",
+			zh: "字幕已显示",
+			ja: "字幕を表示しました"
+		},
+		"toast.noSubsNow": {
+			en: "No subtitles right now",
+			zh: "当前没有字幕",
+			ja: "現在字幕はありません"
+		},
+		"toast.cleared": {
+			en: "Subtitles cleared",
+			zh: "已清除字幕",
+			ja: "字幕をクリアしました"
+		},
+		"toast.epCleared": {
+			en: "Episode changed — old subtitles cleared",
+			zh: "已切集,已清除旧字幕",
+			ja: "エピソード変更 — 古い字幕をクリア"
+		},
+		"toast.epFinding": {
+			en: "Episode changed — looking for episode {ep} subtitles…",
+			zh: "检测到切集,正在找第 {ep} 集字幕…",
+			ja: "エピソード変更 — 第 {ep} 話の字幕を検索中…"
+		},
+		"toast.epNone": {
+			en: "No subtitles for episode {ep} yet",
+			zh: "第 {ep} 集暂无字幕",
+			ja: "第 {ep} 話の字幕はまだありません"
+		},
+		"toast.epAuto": {
+			en: "Auto-loaded episode {ep} subtitles",
+			zh: "已自动加载第 {ep} 集字幕",
+			ja: "第 {ep} 話の字幕を自動読み込み"
+		},
+		"toast.epNoSame": {
+			en: "No same-source subtitles — pick one from the list",
+			zh: "未找到同源字幕,请从候选中选择",
+			ja: "同じ出典の字幕なし — 候補から選択してください"
+		},
+		"toast.epFailed": {
+			en: "Auto subtitle search failed: {msg}",
+			zh: "自动找字幕失败:{msg}",
+			ja: "字幕の自動検索に失敗: {msg}"
+		},
+		"toast.keySaved": {
+			en: "API key saved",
+			zh: "API key 已保存",
+			ja: "API キーを保存しました"
+		},
+		"toast.keyCleared": {
+			en: "API key cleared",
+			zh: "API key 已清空",
+			ja: "API キーをクリアしました"
+		},
+		"toast.keyNeeded": {
+			en: "Enter and save your Jimaku API key first",
+			zh: "请先填写并保存 Jimaku API key",
+			ja: "先に Jimaku API キーを入力・保存してください"
+		},
+		"toast.titleNeeded": {
+			en: "Enter an anime title",
+			zh: "请输入番剧名",
+			ja: "アニメ名を入力してください"
+		},
+		"toast.mountedFile": {
+			en: "Mounted: {name}",
+			zh: "已挂载:{name}",
+			ja: "読み込み: {name}"
+		},
+		"toast.downloadFailed": {
+			en: "Download failed: {msg}",
+			zh: "下载失败:{msg}",
+			ja: "ダウンロード失敗: {msg}"
+		},
+		"toast.assHiFi": {
+			en: "ASS high-fidelity rendering enabled",
+			zh: "已启用 ASS 高保真渲染",
+			ja: "ASS 高精度レンダリングを有効化"
+		},
+		"toast.assText": {
+			en: "ASS shown as plain text (high-fidelity rendering unavailable)",
+			zh: "ASS 按文本显示(高保真渲染不可用)",
+			ja: "ASS をテキスト表示(高精度レンダリング不可)"
+		},
+		"sc.back": {
+			en: "Panel",
+			zh: "主面板",
+			ja: "パネル"
+		},
+		"sc.backTitle": {
+			en: "Back to main panel",
+			zh: "返回主面板",
+			ja: "メインパネルへ戻る"
+		},
+		"sc.close": {
+			en: "Close",
+			zh: "关闭",
+			ja: "閉じる"
+		},
+		"sc.title": {
+			en: "Online subtitles",
+			zh: "在线字幕",
+			ja: "オンライン字幕"
+		},
+		"sc.keyOk": {
+			en: "Connected to Jimaku",
+			zh: "已连接 Jimaku",
+			ja: "Jimaku に接続済み"
+		},
+		"sc.changeKey": {
+			en: "change key",
+			zh: "更换 key",
+			ja: "キーを変更"
+		},
+		"sc.keyPlaceholder": {
+			en: "Jimaku API key",
+			zh: "Jimaku API key",
+			ja: "Jimaku API キー"
+		},
+		"sc.keySave": {
+			en: "Save",
+			zh: "保存",
+			ja: "保存"
+		},
+		"sc.keyHint": {
+			en: "Generate a key on your jimaku.cc account page. Stored only on this device.",
+			zh: "key 在 jimaku.cc 登录后账号页生成,仅存于本机",
+			ja: "jimaku.cc のアカウントページでキーを生成。この端末にのみ保存。"
+		},
+		"sc.titlePlaceholder": {
+			en: "Anime title (Japanese is most accurate)",
+			zh: "番剧名(日文最准)",
+			ja: "アニメ名(日本語が最も正確)"
+		},
+		"sc.epPlaceholder": {
+			en: "Ep",
+			zh: "集",
+			ja: "話"
+		},
+		"sc.epTitle": {
+			en: "Episode number",
+			zh: "集数",
+			ja: "話数"
+		},
+		"sc.search": {
+			en: "Search",
+			zh: "搜索",
+			ja: "検索"
+		},
+		"sc.prompt": {
+			en: "Enter a title and hit search",
+			zh: "输入番剧名后点搜索",
+			ja: "アニメ名を入力して検索"
+		},
+		"sc.searching": {
+			en: "Searching…",
+			zh: "搜索中…",
+			ja: "検索中…"
+		},
+		"sc.notFound": {
+			en: "No anime found — try another spelling",
+			zh: "未找到番剧,换个写法试试",
+			ja: "アニメが見つかりません — 別の表記でお試しを"
+		},
+		"sc.error": {
+			en: "Error: {msg}",
+			zh: "出错:{msg}",
+			ja: "エラー: {msg}"
+		},
+		"sc.selectAnime": {
+			en: "Select anime",
+			zh: "选择番剧",
+			ja: "アニメを選択"
+		},
+		"sc.episodes": {
+			en: "{n} eps",
+			zh: "{n} 话",
+			ja: "{n} 話"
+		},
+		"sc.fetchingFiles": {
+			en: "Fetching subtitle files…",
+			zh: "获取字幕文件中…",
+			ja: "字幕ファイルを取得中…"
+		},
+		"sc.backToAnime": {
+			en: "Back to anime list",
+			zh: "返回番剧列表",
+			ja: "アニメ一覧へ戻る"
+		},
+		"sc.noSubsFor": {
+			en: "No subtitles for {title}{ep}",
+			zh: "{title} 暂无字幕{ep}",
+			ja: "{title} の字幕なし{ep}"
+		},
+		"sc.epSuffix": {
+			en: " (episode {ep})",
+			zh: "(第 {ep} 集)",
+			ja: "(第 {ep} 話)"
+		},
+		"sc.selectSub": {
+			en: "{title} · select subtitle ({n})",
+			zh: "{title} · 选择字幕({n})",
+			ja: "{title} · 字幕を選択({n})"
+		}
+	};
+	function t(key, params) {
+		const entry = DICT[key];
+		if (!entry) return key;
+		const loc = getLocale();
+		let s = entry[loc] != null ? entry[loc] : entry.en;
+		if (params) for (const k in params) s = s.replace("{" + k + "}", params[k]);
+		return s;
+	}
 	var toastTimer;
 	function toast(msg) {
 		let t = document.getElementById("anysub-toast");
@@ -354,7 +867,10 @@
 	function updateStatus() {
 		if (!refs.statusEl) return;
 		const loaded = state.cues.length > 0;
-		refs.statusEl.textContent = loaded ? `${state.fileName} · ${state.cues.length} 条` : "未加载字幕";
+		refs.statusEl.textContent = loaded ? t("panel.statusLoaded", {
+			name: state.fileName,
+			n: state.cues.length
+		}) : t("panel.statusEmpty");
 		refs.statusEl.classList.toggle("as-loaded", loaded);
 		refs.statusEl.title = loaded ? state.fileName : "";
 	}
@@ -471,18 +987,18 @@
 	}
 	function toggleSubtitles() {
 		if (!state.cues.length) {
-			toast("未加载字幕");
+			toast(t("toast.noSubs"));
 			return;
 		}
 		state.hidden = !state.hidden;
 		if (renderer && renderer.setVisible) renderer.setVisible(!state.hidden);
 		renderTick();
-		toast(state.hidden ? "字幕已隐藏" : "字幕已显示");
+		toast(state.hidden ? t("toast.hidden") : t("toast.shown"));
 		return state.hidden;
 	}
 	function clearSubtitle() {
 		if (!state.cues.length) {
-			toast("当前没有字幕");
+			toast(t("toast.noSubsNow"));
 			return;
 		}
 		state.cues = [];
@@ -494,7 +1010,7 @@
 		}
 		updateStatus();
 		updateWatcher();
-		toast("已清除字幕");
+		toast(t("toast.cleared"));
 	}
 	function readSubtitleFile(file) {
 		return file.arrayBuffer().then((buf) => decodeBuffer(new Uint8Array(buf)));
@@ -1203,7 +1719,7 @@
 						sizeCanvas();
 						drive();
 						if (state.hidden) assCanvas.style.display = "none";
-						toast("已启用 ASS 高保真渲染");
+						toast(t("toast.assHiFi"));
 					},
 					onError: (e) => {
 						console.warn("[AnySub] libass 渲染出错,保留文本", e);
@@ -1211,7 +1727,7 @@
 				});
 			}).catch((err) => {
 				console.warn("[AnySub] 无法加载 libass,使用文本渲染:", err && err.message);
-				toast("ASS 按文本显示(高保真渲染不可用)");
+				toast(t("toast.assText"));
 			});
 		}
 		function sizeCanvas() {
@@ -1351,7 +1867,7 @@
 		if (!file) return;
 		readSubtitleFile(file).then((text) => loadFromText(text, file.name)).catch((err) => {
 			console.error("[AnySub]", err);
-			toast("读取字幕失败:" + err.message);
+			toast(t("toast.readFailed", { msg: err.message }));
 		});
 	}
 	function loadFromBuffer(buffer, name) {
@@ -1363,13 +1879,13 @@
 			if (v) setVideo(v);
 		}
 		if (!state.video) {
-			toast("未在页面找到视频元素");
+			toast(t("toast.noVideoOnPage"));
 			return false;
 		}
 		const fmt = FORMATS.find((f) => f.test(name, text)) || FORMATS[FORMATS.length - 1];
 		const parsed = fmt.parse(text, name);
 		if (!parsed.cues || !parsed.cues.length) {
-			toast("未解析出字幕(格式不支持或文件为空)");
+			toast(t("toast.noCues"));
 			return false;
 		}
 		state.cues = parsed.cues;
@@ -1389,7 +1905,7 @@
 		startRender();
 		updateWatcher();
 		updateStatus();
-		toast(`已挂载 ${parsed.cues.length} 条字幕`);
+		toast(t("toast.mounted", { n: parsed.cues.length }));
 		return true;
 	}
 	var KEY = "anysub:settings:v1";
@@ -1405,7 +1921,8 @@
 			enhance: state.enhance,
 			jimakuKey: state.jimakuKey,
 			subPos: state.subPos,
-			offsets: state.offsets
+			offsets: state.offsets,
+			lang: state.lang
 		});
 	}
 	function loadSettings() {
@@ -1522,27 +2039,32 @@
 		photo: S("<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"8.5\" cy=\"8.5\" r=\"1.5\"/><path d=\"m21 15-5-5L5 21\"/>"),
 		chev: S("<path d=\"m9 6 6 6-6 6\"/>")
 	};
-	var HTML = `
+	function html() {
+		return `
   <div class="as-sc-head">
-    <button id="anysub-sc-back" class="as-sc-back" title="返回主面板">${IC.back}<span>主面板</span></button>
-    <button id="anysub-sc-close" class="as-x" title="关闭">✕</button>
+    <button id="anysub-sc-back" class="as-sc-back" title="${t("sc.backTitle")}">${IC.back}<span>${t("sc.back")}</span></button>
+    <button id="anysub-sc-close" class="as-x" title="${t("sc.close")}">✕</button>
   </div>
-  <div class="as-sc-title"><span class="as-logo">字</span><span>在线字幕</span><span class="as-sc-tag">Jimaku</span></div>
+  <div class="as-sc-title"><span class="as-logo">字</span><span>${t("sc.title")}</span><span class="as-sc-tag">Jimaku</span></div>
   <div id="anysub-key-area"></div>
   <div class="as-sc-search">
-    <input id="anysub-title" placeholder="番剧名(日文最准)">
-    <input id="anysub-ep" class="as-sc-ep" placeholder="集" title="集数">
-    <button id="anysub-do-search">${IC.search}<span>搜索</span></button>
+    <input id="anysub-title" placeholder="${t("sc.titlePlaceholder")}">
+    <input id="anysub-ep" class="as-sc-ep" placeholder="${t("sc.epPlaceholder")}" title="${t("sc.epTitle")}">
+    <button id="anysub-do-search">${IC.search}<span>${t("sc.search")}</span></button>
   </div>
-  <div id="anysub-results" class="as-sc-results"><div class="as-sc-empty">输入番剧名后点搜索</div></div>
+  <div id="anysub-results" class="as-sc-results"><div class="as-sc-empty">${t("sc.prompt")}</div></div>
 `;
+	}
 	function buildSearchUI() {
 		panel = document.createElement("div");
 		panel.id = "anysub-search";
 		panel.style.display = "none";
-		panel.innerHTML = HTML;
 		refs.uiRoot.appendChild(panel);
 		refs.searchPanel = panel;
+		wireSearch();
+	}
+	function wireSearch() {
+		panel.innerHTML = html();
 		titleInput = panel.querySelector("#anysub-title");
 		epInput = panel.querySelector("#anysub-ep");
 		results = panel.querySelector("#anysub-results");
@@ -1557,17 +2079,22 @@
 		});
 		renderKeyArea();
 	}
+	function relocalizeSearch() {
+		if (!panel) return;
+		wireSearch();
+		lastPrefillTitle = null;
+	}
 	function renderKeyArea() {
 		const area = panel.querySelector("#anysub-key-area");
 		if (state.jimakuKey && !keyEditing) {
-			area.innerHTML = `<div class="as-sc-keyok">${IC.check}<span>已连接 Jimaku</span><span class="as-sc-change" id="anysub-key-change">更换 key</span></div>`;
+			area.innerHTML = `<div class="as-sc-keyok">${IC.check}<span>${t("sc.keyOk")}</span><span class="as-sc-change" id="anysub-key-change">${t("sc.changeKey")}</span></div>`;
 			area.querySelector("#anysub-key-change").addEventListener("click", () => {
 				keyEditing = true;
 				renderKeyArea();
 			});
 		} else {
-			area.innerHTML = `<div class="as-sc-keyrow"><input id="anysub-key" type="password" placeholder="Jimaku API key" autocomplete="off"><button id="anysub-key-save">保存</button></div>
-      <div class="as-sc-hint">key 在 jimaku.cc 登录后账号页生成,仅存于本机</div>`;
+			area.innerHTML = `<div class="as-sc-keyrow"><input id="anysub-key" type="password" placeholder="${t("sc.keyPlaceholder")}" autocomplete="off"><button id="anysub-key-save">${t("sc.keySave")}</button></div>
+      <div class="as-sc-hint">${t("sc.keyHint")}</div>`;
 			const ki = area.querySelector("#anysub-key");
 			ki.value = state.jimakuKey || "";
 			area.querySelector("#anysub-key-save").addEventListener("click", () => saveKey(ki.value));
@@ -1587,7 +2114,7 @@
 			titleInput.value = series;
 			epInput.value = episode || "";
 			lastPrefillTitle = curTitle;
-			setResults("<div class=\"as-sc-empty\">输入番剧名后点搜索</div>");
+			setResults(`<div class="as-sc-empty">${t("sc.prompt")}</div>`);
 		}
 		(state.jimakuKey ? titleInput : panel.querySelector("#anysub-key") || titleInput).focus();
 	}
@@ -1609,31 +2136,31 @@
 		saveState();
 		keyEditing = false;
 		renderKeyArea();
-		toast(state.jimakuKey ? "API key 已保存" : "API key 已清空");
+		toast(state.jimakuKey ? t("toast.keySaved") : t("toast.keyCleared"));
 		if (state.jimakuKey) titleInput.focus();
 	}
 	async function doSearch() {
 		const title = titleInput.value.trim();
 		if (!state.jimakuKey) {
-			toast("请先填写并保存 Jimaku API key");
+			toast(t("toast.keyNeeded"));
 			keyEditing = true;
 			renderKeyArea();
 			return;
 		}
 		if (!title) {
-			toast("请输入番剧名");
+			toast(t("toast.titleNeeded"));
 			return;
 		}
-		setResults("<div class=\"as-sc-empty\">搜索中…</div>");
+		setResults(`<div class="as-sc-empty">${t("sc.searching")}</div>`);
 		try {
 			const list = await animeCandidates(title);
 			if (!list.length) {
-				setResults("<div class=\"as-sc-empty\">未找到番剧,换个写法试试</div>");
+				setResults(`<div class="as-sc-empty">${t("sc.notFound")}</div>`);
 				return;
 			}
 			renderAnime(list);
 		} catch (err) {
-			setResults(`<div class="as-sc-empty">出错:${esc(err.message)}</div>`);
+			setResults(`<div class="as-sc-empty">${t("sc.error", { msg: esc(err.message) })}</div>`);
 		}
 	}
 	function poster(url) {
@@ -1643,12 +2170,12 @@
 		const bits = [];
 		if (a.format) bits.push(esc(a.format));
 		if (a.year) bits.push(String(a.year));
-		if (a.episodes) bits.push(a.episodes + " 话");
+		if (a.episodes) bits.push(t("sc.episodes", { n: a.episodes }));
 		return bits.join(" · ");
 	}
 	function renderAnime(list) {
 		results.innerHTML = "";
-		results.appendChild(sec("选择番剧"));
+		results.appendChild(sec(t("sc.selectAnime")));
 		for (const a of list) {
 			const row = document.createElement("div");
 			row.className = "as-sc-anime";
@@ -1665,20 +2192,24 @@
 		}
 	}
 	async function loadFilesFor(anime) {
-		setResults("<div class=\"as-sc-empty\">获取字幕文件中…</div>");
+		setResults(`<div class="as-sc-empty">${t("sc.fetchingFiles")}</div>`);
 		try {
 			const files = await subtitleFiles(anime.anilistId, epInput.value.trim());
 			if (!files.length) {
 				results.innerHTML = "";
-				results.appendChild(backLink("← 返回番剧列表", doSearch));
-				results.appendChild(empty(`${esc(anime.title)} 暂无字幕${epInput.value ? "(第 " + esc(epInput.value) + " 集)" : ""}`));
+				results.appendChild(backLink(t("sc.backToAnime"), doSearch));
+				const ep = epInput.value ? t("sc.epSuffix", { ep: esc(epInput.value) }) : "";
+				results.appendChild(empty(t("sc.noSubsFor", {
+					title: esc(anime.title),
+					ep
+				})));
 				return;
 			}
 			renderFiles(anime, files);
 		} catch (err) {
 			results.innerHTML = "";
-			results.appendChild(backLink("← 返回番剧列表", doSearch));
-			results.appendChild(empty("出错:" + esc(err.message)));
+			results.appendChild(backLink(t("sc.backToAnime"), doSearch));
+			results.appendChild(empty(t("sc.error", { msg: esc(err.message) })));
 		}
 	}
 	function showCandidates(seriesTitle, files) {
@@ -1696,8 +2227,11 @@
 	function renderFiles(anime, files) {
 		currentAnime = anime;
 		results.innerHTML = "";
-		results.appendChild(backLink("← 返回番剧列表", doSearch));
-		results.appendChild(sec(`${esc(anime.title)} · 选择字幕(${files.length})`));
+		results.appendChild(backLink(t("sc.backToAnime"), doSearch));
+		results.appendChild(sec(t("sc.selectSub", {
+			title: esc(anime.title),
+			n: files.length
+		})));
 		for (const f of files) {
 			const row = document.createElement("div");
 			row.className = "as-sc-file";
@@ -1712,11 +2246,11 @@
 		try {
 			if (await downloadAndLoad(f.url, f.name)) {
 				markLoaded(currentAnime && currentAnime.anilistId, f.name);
-				toast("已挂载:" + f.name);
+				toast(t("toast.mountedFile", { name: f.name }));
 				close();
 			}
 		} catch (err) {
-			toast("下载失败:" + err.message);
+			toast(t("toast.downloadFailed", { msg: err.message }));
 		} finally {
 			row.classList.remove("loading");
 		}
@@ -1769,97 +2303,108 @@
 		trash: SVG("<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3\"/>"),
 		upload: SVG("<path d=\"M12 15V4M8 8l4-4 4 4M5 20h14\"/>")
 	};
-	var PANEL_HTML = `
+	function langOptions() {
+		const cur = state.lang || "";
+		return LANG_OPTIONS.map((o) => `<option value="${o.value}"${o.value === cur ? " selected" : ""}>${o.label}</option>`).join("");
+	}
+	function panelHtml() {
+		return `
   <div class="as-head">
     <div class="as-brand"><span class="as-logo">字</span><span>AnySub</span></div>
-    <button id="anysub-close" class="as-x" title="关闭 (Ctrl/Alt+Shift+S)">✕</button>
+    <button id="anysub-close" class="as-x" title="${t("panel.close")}">✕</button>
   </div>
 
   <div class="as-actions">
-    <button id="anysub-choose" class="as-btn as-btn-primary">${ICON.file}<span>选择文件</span></button>
-    <button id="anysub-online" class="as-btn as-btn-primary">${ICON.search}<span>在线字幕</span></button>
+    <button id="anysub-choose" class="as-btn as-btn-primary">${ICON.file}<span>${t("panel.chooseFile")}</span></button>
+    <button id="anysub-online" class="as-btn as-btn-primary">${ICON.search}<span>${t("panel.online")}</span></button>
   </div>
-  <div class="as-drop" id="anysub-drop">${ICON.upload}<span>拖字幕文件到这里</span></div>
+  <div class="as-drop" id="anysub-drop">${ICON.upload}<span>${t("panel.dropHint")}</span></div>
 
   <div class="as-status-row">
-    <span class="as-status" id="anysub-status">未加载字幕</span>
+    <span class="as-status" id="anysub-status">${t("panel.statusEmpty")}</span>
     <div class="as-status-actions">
-      <button id="anysub-pickvid" class="as-icon-btn" title="选视频(页面多视频时指定)">${ICON.video}</button>
-      <button id="anysub-vis" class="as-icon-btn" title="隐藏字幕"><span class="as-eye">${ICON.eye}</span><span class="as-eye-off">${ICON.eyeOff}</span></button>
-      <button id="anysub-clear" class="as-icon-btn" title="清除字幕">${ICON.trash}</button>
+      <button id="anysub-pickvid" class="as-icon-btn" title="${t("panel.pickVideo")}">${ICON.video}</button>
+      <button id="anysub-vis" class="as-icon-btn" title="${t("panel.hide")}"><span class="as-eye">${ICON.eye}</span><span class="as-eye-off">${ICON.eyeOff}</span></button>
+      <button id="anysub-clear" class="as-icon-btn" title="${t("panel.clear")}">${ICON.trash}</button>
     </div>
   </div>
 
   <div class="as-divider"></div>
 
   <div class="as-field">
-    <label class="as-label">时间偏移</label>
+    <label class="as-label">${t("panel.offset")}</label>
     <div class="as-offset">
       <button data-off="-1" class="as-step">−1</button>
       <button data-off="-0.1" class="as-step">−.1</button>
-      <input type="number" id="anysub-offset" value="0.0" step="0.1" title="可手动输入,单位秒">
+      <input type="number" id="anysub-offset" value="0.0" step="0.1" title="${t("panel.offsetTitle")}">
       <button data-off="0.1" class="as-step">+.1</button>
       <button data-off="1" class="as-step">+1</button>
     </div>
   </div>
 
   <div class="as-field">
-    <label class="as-label">字号 <span class="as-val" id="anysub-fontval">100%</span></label>
+    <label class="as-label">${t("panel.fontSize")} <span class="as-val" id="anysub-fontval">100%</span></label>
     <input type="range" id="anysub-font" class="as-range" min="50" max="250" value="100" step="5">
   </div>
 
   <div class="as-field">
-    <label class="as-label">边距 <span class="as-val" id="anysub-posval">8%</span></label>
+    <label class="as-label">${t("panel.margin")} <span class="as-val" id="anysub-posval">8%</span></label>
     <input type="range" id="anysub-pos" class="as-range" min="2" max="40" value="8" step="1">
   </div>
 
   <div class="as-field">
-    <label class="as-label">说话位置</label>
+    <label class="as-label">${t("panel.speakerPos")}</label>
     <div class="as-seg" id="anysub-anchor">
-      <button data-pos="bottom" class="on">底部</button>
-      <button data-pos="top">顶部</button>
+      <button data-pos="bottom" class="on">${t("panel.posBottom")}</button>
+      <button data-pos="top">${t("panel.posTop")}</button>
     </div>
   </div>
 
   <div class="as-field">
-    <label class="as-label">背景</label>
+    <label class="as-label">${t("panel.background")}</label>
     <div class="as-seg" id="anysub-bg">
-      <button data-bg="outline">描边</button>
-      <button data-bg="translucent" class="on">半透</button>
-      <button data-bg="solid">黑底</button>
-      <button data-bg="none">无</button>
+      <button data-bg="outline">${t("panel.bgOutline")}</button>
+      <button data-bg="translucent" class="on">${t("panel.bgTranslucent")}</button>
+      <button data-bg="solid">${t("panel.bgSolid")}</button>
+      <button data-bg="none">${t("panel.bgNone")}</button>
     </div>
   </div>
 
   <div class="as-field">
-    <label class="as-label">颜色</label>
+    <label class="as-label">${t("panel.color")}</label>
     <div class="as-swatches" id="anysub-color">
-      <button data-color="#ffffff" class="on" style="--sw:#ffffff" title="白"></button>
-      <button data-color="#ffe100" style="--sw:#ffe100" title="黄"></button>
-      <button data-color="#00e5ff" style="--sw:#00e5ff" title="青"></button>
-      <button data-color="#7CFC00" style="--sw:#7cfc00" title="绿"></button>
+      <button data-color="#ffffff" class="on" style="--sw:#ffffff" title="${t("panel.colWhite")}"></button>
+      <button data-color="#ffe100" style="--sw:#ffe100" title="${t("panel.colYellow")}"></button>
+      <button data-color="#00e5ff" style="--sw:#00e5ff" title="${t("panel.colCyan")}"></button>
+      <button data-color="#7CFC00" style="--sw:#7cfc00" title="${t("panel.colGreen")}"></button>
     </div>
   </div>
 
   <div class="as-divider"></div>
 
   <div class="as-switch-row">
-    <span class="as-switch-label">日文注音</span>
-    <button id="anysub-tg-ruby" class="as-switch" role="switch" title="将 温厚（おんこう) 显示为注音"><span class="as-knob"></span></button>
+    <span class="as-switch-label">${t("panel.ruby")}</span>
+    <button id="anysub-tg-ruby" class="as-switch" role="switch" title="${t("panel.rubyTitle")}"><span class="as-knob"></span></button>
   </div>
   <div class="as-switch-row">
-    <span class="as-switch-label">话者·音效标记</span>
-    <button id="anysub-tg-enh" class="as-switch" role="switch" title="（人名)淡化为话者名、独立（…)音效/动作斜体、♪ 歌词斜体"><span class="as-knob"></span></button>
+    <span class="as-switch-label">${t("panel.enhance")}</span>
+    <button id="anysub-tg-enh" class="as-switch" role="switch" title="${t("panel.enhanceTitle")}"><span class="as-knob"></span></button>
   </div>
   <div class="as-switch-row">
-    <span class="as-switch-label">悬浮球</span>
-    <button id="anysub-tg-fab" class="as-switch" role="switch" title="页面右侧常驻小球"><span class="as-knob"></span></button>
+    <span class="as-switch-label">${t("panel.fab")}</span>
+    <button id="anysub-tg-fab" class="as-switch" role="switch" title="${t("panel.fabTitle")}"><span class="as-knob"></span></button>
+  </div>
+
+  <div class="as-field as-field-lang">
+    <label class="as-label">${t("panel.language")}</label>
+    <select id="anysub-lang" class="as-select">${langOptions()}</select>
   </div>
 
   <div class="as-hints">
-    <kbd>Ctrl/Alt</kbd>+<kbd>Shift</kbd> 加 <kbd>S</kbd> 面板 · <kbd>F</kbd> 在线 · <kbd>V</kbd> 显隐 · <kbd>O</kbd> 本地 · <kbd>←/→</kbd> 偏移
+    <kbd>Ctrl/Alt</kbd>+<kbd>Shift</kbd> ${t("hint.then")} <kbd>S</kbd> ${t("hint.panel")} · <kbd>F</kbd> ${t("hint.online")} · <kbd>V</kbd> ${t("hint.toggle")} · <kbd>O</kbd> ${t("hint.local")} · <kbd>←/→</kbd> ${t("hint.offset")}
   </div>
 `;
+	}
 	function buildUI() {
 		const uiRoot = document.createElement("div");
 		uiRoot.id = "anysub-root";
@@ -1870,7 +2415,7 @@
 		fab.id = "anysub-fab";
 		fab.className = "dock-right";
 		fab.textContent = "字";
-		fab.title = "AnySub · 点击打开字幕面板(可拖动)";
+		fab.title = t("panel.fabTip");
 		fab.style.display = "none";
 		const fileInput = document.createElement("input");
 		fileInput.type = "file";
@@ -1904,13 +2449,23 @@
 		const panel = document.createElement("div");
 		panel.id = "anysub-panel";
 		panel.style.display = "none";
-		panel.innerHTML = PANEL_HTML;
+		panel.innerHTML = panelHtml();
 		refs.uiRoot.appendChild(panel);
 		refs.panel = panel;
 		refs.statusEl = panel.querySelector("#anysub-status");
 		buildSearchUI();
 		wirePanel();
 		updateStatus();
+	}
+	function relocalize() {
+		if (!panelBuilt) return;
+		const { panel } = refs;
+		panel.innerHTML = panelHtml();
+		refs.statusEl = panel.querySelector("#anysub-status");
+		wirePanel();
+		relocalizeSearch();
+		updateStatus();
+		refs.fab.title = t("panel.fabTip");
 	}
 	function togglePanel() {
 		ensurePanel();
@@ -1940,7 +2495,7 @@
 		if (inp) inp.value = state.offset.toFixed(1);
 		refresh();
 		rememberOffset();
-		toast("偏移 " + state.offset.toFixed(1) + "s");
+		toast(t("toast.offset", { v: state.offset.toFixed(1) }));
 	}
 	function setOffset(val) {
 		state.offset = Math.round(val * 10) / 10;
@@ -2031,6 +2586,11 @@
 			updateWatcher();
 			persist();
 		});
+		panel.querySelector("#anysub-lang").addEventListener("change", (e) => {
+			setLang(e.target.value);
+			persist();
+			relocalize();
+		});
 		setupDrop(panel.querySelector("#anysub-drop"));
 		syncControls();
 	}
@@ -2046,7 +2606,7 @@
 		const b = refs.panel.querySelector("#anysub-vis");
 		if (!b) return;
 		b.classList.toggle("off", state.hidden);
-		b.title = state.hidden ? "显示字幕" : "隐藏字幕";
+		b.title = state.hidden ? t("panel.show") : t("panel.hide");
 	}
 	function syncToggles() {
 		const rb = refs.panel.querySelector("#anysub-tg-ruby");
@@ -2169,11 +2729,11 @@
 		if (picking) return;
 		const vids = collectVideos().filter(isVisible);
 		if (!vids.length) {
-			toast("未找到视频");
+			toast(t("toast.noVideo"));
 			return;
 		}
 		picking = true;
-		toast("点击要挂载字幕的视频画面");
+		toast(t("toast.clickVideo"));
 		const overlays = vids.map((v) => {
 			const r = v.getBoundingClientRect();
 			const o = document.createElement("div");
@@ -2184,7 +2744,7 @@
 				e.preventDefault();
 				setVideo(v);
 				cleanup();
-				toast("已选定视频");
+				toast(t("toast.videoSelected"));
 			});
 			refs.uiRoot.appendChild(o);
 			return o;
@@ -2299,17 +2859,17 @@
 		else {
 			state.loadedSeries = "";
 			state.loadedEpisode = "";
-			toast("已切集,已清除旧字幕");
+			toast(t("toast.epCleared"));
 		}
 	}
 	async function autoContinue(ctx, series, episode) {
 		busy = true;
 		const carryOffset = state.offset;
-		toast(`检测到切集,正在找第 ${episode} 集字幕…`);
+		toast(t("toast.epFinding", { ep: episode }));
 		try {
 			const files = await subtitleFiles(ctx.anilistId, episode);
 			if (!files.length) {
-				toast(`第 ${episode} 集暂无字幕`);
+				toast(t("toast.epNone", { ep: episode }));
 				return;
 			}
 			const best = pickSameSource(files, ctx.name);
@@ -2317,14 +2877,14 @@
 				if (await downloadAndLoad(best.url, best.name)) {
 					markLoaded(ctx.anilistId, best.name);
 					if (carryOffset) setOffset(carryOffset);
-					toast(`已自动加载第 ${episode} 集字幕`);
+					toast(t("toast.epAuto", { ep: episode }));
 				}
 			} else {
-				toast("未找到同源字幕,请从候选中选择");
+				toast(t("toast.epNoSame"));
 				showCandidates(series, files);
 			}
 		} catch (err) {
-			toast("自动找字幕失败:" + (err && err.message));
+			toast(t("toast.epFailed", { msg: err && err.message }));
 		} finally {
 			busy = false;
 		}
@@ -2366,6 +2926,7 @@
 		if (typeof saved.enhance === "boolean") state.enhance = saved.enhance;
 		if (saved.subPos === "top" || saved.subPos === "bottom") state.subPos = saved.subPos;
 		if (typeof saved.jimakuKey === "string") state.jimakuKey = saved.jimakuKey;
+		if (saved.lang === "en" || saved.lang === "zh" || saved.lang === "ja") state.lang = saved.lang;
 		if (saved.offsets && typeof saved.offsets === "object" && !Array.isArray(saved.offsets)) {
 			const clean = {};
 			for (const k in saved.offsets) {
