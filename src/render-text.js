@@ -10,7 +10,7 @@ import { stepCueLine, INIT_SPAN } from './cue-format.js';
 // 单行 + 其分类 → HTML(语义排版 + 注音)。text/rest 已是转义安全的 HTML。
 function typedHtml(text, c) {
   switch (c.type) {
-    case 'sfx': return `<span class="anysub-sfx">${text}</span>`;
+    case 'sfx': return `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
     case 'voice': return `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
     case 'book': return `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
     case 'lyric': return `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;

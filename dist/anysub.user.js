@@ -1511,7 +1511,7 @@
 	}
 	function typedHtml(text, c) {
 		switch (c.type) {
-			case "sfx": return `<span class="anysub-sfx">${text}</span>`;
+			case "sfx": return `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
 			case "voice": return `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
 			case "book": return `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
 			case "lyric": return `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
