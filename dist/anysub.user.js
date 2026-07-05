@@ -309,7 +309,10 @@
     display:flex;align-items:center;gap:10px;max-width:88vw;box-sizing:border-box;pointer-events:auto;
     color:var(--as-fg);font:13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
     background:linear-gradient(180deg,var(--as-grad-top),var(--as-grad-bot));border:1px solid var(--as-border);
-    border-radius:12px;padding:9px 10px 9px 14px;box-shadow:var(--as-shadow);animation:as-pop .14s cubic-bezier(.2,.7,.3,1);}
+    border-radius:12px;padding:9px 10px 9px 14px;box-shadow:var(--as-shadow);animation:as-pop-x .14s cubic-bezier(.2,.7,.3,1);}
+  /* 复用 as-pop 的 to{transform:none} 会冲掉本元素居中用的 translateX(-50%),
+     导致入场时先贴右侧、动画结束才瞬移回中间——故用专用 keyframe 保留该偏移 */
+  @keyframes as-pop-x{from{opacity:0;transform:translateX(-50%) translateY(5px) scale(.985);}to{opacity:1;transform:translateX(-50%);}}
   #anysub-offer .as-offer-msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw;}
   #anysub-offer button{font-family:inherit;cursor:pointer;border-radius:8px;transition:background .15s,border-color .15s;}
   #anysub-offer .as-offer-act{flex:none;padding:6px 14px;font-size:12.5px;font-weight:550;
