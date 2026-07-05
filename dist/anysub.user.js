@@ -3118,6 +3118,7 @@
 		};
 		setTimeout(poll, 1200);
 		onEpisodeChange(check);
+		document.addEventListener("play", check, true);
 	}
 	function isFeatureVideo(v, vw, vh) {
 		if (!v || !(isFinite(v.duration) && v.duration > MIN_DURATION && !v.paused && v.currentTime > 0)) return false;

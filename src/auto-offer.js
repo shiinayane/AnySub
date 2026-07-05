@@ -32,6 +32,10 @@ export function initAutoOffer() {
   };
   pollTimer = setTimeout(poll, 1200);
   onEpisodeChange(check); // 切集后(由 episode-signal 统一探测)再探:新一集仍没字幕则再核实提示
+  // 关键时机:视频「开始播放」即检查——不受进页面后停留多久影响(切集信号在同集内不会触发,
+  // 轮询重试窗口也会过期)。play 事件不冒泡,capture 阶段全局监听。预览的静音自动播放也会触发,
+  // 但被 playingFeature 的「有声/大视口」过滤掉。
+  document.addEventListener('play', check, true);
 }
 
 // 「用户在看正片」判定(纯函数,便于单测):时长够长 + 已起播未暂停(排除首页预加载但暂停的
