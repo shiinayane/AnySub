@@ -2,10 +2,12 @@
 // 弹一个可点 toast「发现字幕 — 加载?」,点了才打开搜索(仍让用户从候选选,守住不静默加载)。
 // 仅在有适配器的站点启用,避免在任意页面打扰;同一集只提示一次。
 import { state } from './state.js';
+import { refs } from './refs.js';
 import { getSiteAdapter } from './site-adapters.js';
 import { collectVideos } from './locator.js';
 import { toastOffer } from './notify.js';
 import { openSearch } from './search-ui.js';
+import { isAutoContinuing } from './episode-watch.js';
 import { t } from './i18n.js';
 
 let lastOfferedKey = null;
@@ -29,6 +31,8 @@ export function initAutoOffer() {
 
 function check() {
   if (state.cues.length) return;                 // 已有字幕(含切集自动接续),不打扰
+  if (isAutoContinuing()) { timer = setTimeout(check, 600); return; } // 同源自动接续正在跑,等结果出来再判断——否则会在它加载成功前抢先弹出
+  if (refs.searchPanel && refs.searchPanel.style.display === 'block') return; // 候选面板已开(如接续找不到同源时的回退候选),不重复提示
   const ad = getSiteAdapter();
   if (!ad || !ad.isTarget()) return;             // 非播放页
   const info = ad.detect();

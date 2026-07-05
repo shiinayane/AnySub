@@ -2961,6 +2961,9 @@
 	}
 	var timer$1 = 0;
 	var busy = false;
+	function isAutoContinuing() {
+		return busy;
+	}
 	function initEpisodeWatch() {
 		const titleEl = document.querySelector("title");
 		if (!titleEl) return;
@@ -3036,6 +3039,11 @@
 	}
 	function check() {
 		if (state.cues.length) return;
+		if (isAutoContinuing()) {
+			timer = setTimeout(check, 600);
+			return;
+		}
+		if (refs.searchPanel && refs.searchPanel.style.display === "block") return;
 		const ad = getSiteAdapter();
 		if (!ad || !ad.isTarget()) return;
 		const info = ad.detect();

@@ -13,6 +13,10 @@ import { t } from './i18n.js';
 let timer = 0;
 let busy = false;
 
+// 供 auto-offer 用:同源自动接续尝试期间(clearSubtitle 已清空 cues、下一集尚未下完)不该被
+// 「发现字幕」提示抢先打断——那份提示一判断 cues 为空就可能弹出,和这里的自动加载撞在一起。
+export function isAutoContinuing() { return busy; }
+
 export function initEpisodeWatch() {
   const titleEl = document.querySelector('title');
   if (!titleEl) return;
