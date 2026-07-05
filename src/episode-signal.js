@@ -53,6 +53,7 @@ export function initEpisodeSignal() {
   poll = setInterval(() => {
     arm();
     fire();
-    if (!ad.isTarget() && ++n > 20) { clearInterval(poll); poll = 0; }
+    if (ad.isTarget()) n = 0;                            // 在播放页 → 重置计数(正常浏览一阵后不再永久停摆)
+    else if (++n > 20) { clearInterval(poll); poll = 0; } // 仅「持续 ~30s 未进播放页」才停,守空闲
   }, 1500);
 }

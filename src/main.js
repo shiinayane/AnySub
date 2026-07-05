@@ -57,8 +57,10 @@ function restoreSettings() {
   if (saved.lang === 'en' || saved.lang === 'zh' || saved.lang === 'ja') state.lang = saved.lang;
   // Jimaku key 走跨站存储(全站通用)。先用本站缓存立即恢复(若有),再异步取全站 key 覆盖
   // (GM 存储可能是异步的);若全站为空但旧版 key 存在每站点设置里,一次性迁移。
-  state.jimakuKey = getLocalKey();
+  const cachedKey = getLocalKey();
+  state.jimakuKey = cachedKey;
   loadGlobalKey().then((k) => {
+    if (state.jimakuKey !== cachedKey) return; // 启动期间用户已手动设/清 key → 不用异步旧值覆盖
     if (k) state.jimakuKey = k;
     else if (typeof saved.jimakuKey === 'string' && saved.jimakuKey) {
       state.jimakuKey = saved.jimakuKey;

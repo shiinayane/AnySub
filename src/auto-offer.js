@@ -6,7 +6,7 @@
 //  · 需 Jimaku key(在线取字幕本就依赖它);无 key 不自动提示(可手动搜索时再设)。
 import { state } from './state.js';
 import { refs } from './refs.js';
-import { getSiteAdapter } from './site-adapters.js';
+import { getSiteAdapter, detectShow } from './site-adapters.js';
 import { collectVideos } from './locator.js';
 import { toastOffer } from './notify.js';
 import { resolveSubtitles } from './online.js';
@@ -70,22 +70,24 @@ async function run(isRetry) {
     if (waitTries < 15) { waitTries++; retryTimer = setTimeout(() => run(true), 1000); }
     return;
   }
-  const info = ad.detect();
+  const info = detectShow();                     // 与 episode-signal/切集续播同源,避免键/指纹不一致
   if (!info || !info.series) return;
   const key = info.epKey || (info.series + '#' + (info.episode || ''));
-  if (key === lastOfferedKey) return;            // 本集已尝试过,不重复
+  if (key === lastOfferedKey) return;            // 本集已核实过,不重复
   if (!state.jimakuKey) return;                  // 无 key:在线取字幕不可用 → 不自动提示
-  lastOfferedKey = key;                          // 标记已尝试(无论核实结果,不再重复核实)
 
   // 查证:走统一入口真查 Jimaku,有该集字幕才提示、并如实报数量;没有则静默。
   verifying = true;
   try {
-    const { anime, files } = await resolveSubtitles(info.series, info.episode);
-    if (!anime || !files.length || state.cues.length) return; // 没字幕,或核实期间用户已手动加载 → 不弹
+    const { anime, files, exact } = await resolveSubtitles(info.series, info.episode);
+    lastOfferedKey = key;                         // 核实成功(未抛错)才占位;抛错则不占,下次触发重试
+    if (!anime || !exact) return;                 // 非精确命中 → 不主动提示(避免错番),用户可手动搜索选番
+    if (!info.episode && anime.episodes > 1) return; // 剧集却没识别出集数 → 无法定位,不弹(避免列全集/错标电影)
+    if (!files.length || state.cues.length) return; // 无字幕,或核实期间用户已手动加载 → 不弹
     const msg = info.episode
       ? t('offer.found', { title: info.series, ep: info.episode, n: files.length })
       : t('offer.foundMovie', { title: info.series, n: files.length });
     toastOffer(msg, t('offer.load'), () => showCandidates(info.series, files, anime.anilistId));
-  } catch (_) { /* 网络/限流失败 → 静默,不弹 */ }
+  } catch (_) { /* 网络/限流失败 → 不占位,下次触发重试 */ }
   finally { verifying = false; }
 }

@@ -892,7 +892,7 @@
 		if (!entry) return key;
 		const loc = getLocale();
 		let s = entry[loc] != null ? entry[loc] : entry.en;
-		if (params) for (const k in params) s = s.replace("{" + k + "}", params[k]);
+		if (params) for (const k in params) s = s.replace("{" + k + "}", () => params[k]);
 		return s;
 	}
 	var toastTimer;
@@ -3002,12 +3002,10 @@
 		function cleanup() {
 			overlays.forEach((o) => o.remove());
 			picking = false;
+			document.removeEventListener("keydown", esc);
 		}
 		const esc = (e) => {
-			if (e.key === "Escape") {
-				cleanup();
-				document.removeEventListener("keydown", esc);
-			}
+			if (e.key === "Escape") cleanup();
 		};
 		document.addEventListener("keydown", esc);
 	}
@@ -3133,7 +3131,8 @@
 		poll = setInterval(() => {
 			arm();
 			fire();
-			if (!ad.isTarget() && ++n > 20) {
+			if (ad.isTarget()) n = 0;
+			else if (++n > 20) {
 				clearInterval(poll);
 				poll = 0;
 			}
@@ -3153,8 +3152,11 @@
 		if (series === state.loadedSeries && String(episode) === String(state.loadedEpisode)) return;
 		const sameShow = series === state.loadedSeries && state.lastOnline;
 		clearSubtitle();
-		if (sameShow) autoContinue(state.lastOnline, series, episode);
-		else {
+		if (sameShow) {
+			state.loadedSeries = series;
+			state.loadedEpisode = episode;
+			autoContinue(state.lastOnline, series, episode);
+		} else {
 			state.loadedSeries = "";
 			state.loadedEpisode = "";
 			toast(t("toast.epCleared"));
@@ -3243,16 +3245,18 @@
 			}
 			return;
 		}
-		const info = ad.detect();
+		const info = detectShow();
 		if (!info || !info.series) return;
 		const key = info.epKey || info.series + "#" + (info.episode || "");
 		if (key === lastOfferedKey) return;
 		if (!state.jimakuKey) return;
-		lastOfferedKey = key;
 		verifying = true;
 		try {
-			const { anime, files } = await resolveSubtitles(info.series, info.episode);
-			if (!anime || !files.length || state.cues.length) return;
+			const { anime, files, exact } = await resolveSubtitles(info.series, info.episode);
+			lastOfferedKey = key;
+			if (!anime || !exact) return;
+			if (!info.episode && anime.episodes > 1) return;
+			if (!files.length || state.cues.length) return;
 			toastOffer(info.episode ? t("offer.found", {
 				title: info.series,
 				ep: info.episode,
@@ -3304,8 +3308,10 @@
 		if (typeof saved.enhance === "boolean") state.enhance = saved.enhance;
 		if (saved.subPos === "top" || saved.subPos === "bottom") state.subPos = saved.subPos;
 		if (saved.lang === "en" || saved.lang === "zh" || saved.lang === "ja") state.lang = saved.lang;
-		state.jimakuKey = getLocalKey();
+		const cachedKey = getLocalKey();
+		state.jimakuKey = cachedKey;
 		loadGlobalKey().then((k) => {
+			if (state.jimakuKey !== cachedKey) return;
 			if (k) state.jimakuKey = k;
 			else if (typeof saved.jimakuKey === "string" && saved.jimakuKey) {
 				state.jimakuKey = saved.jimakuKey;

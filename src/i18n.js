@@ -141,7 +141,8 @@ export function t(key, params) {
   const loc = getLocale();
   let s = entry[loc] != null ? entry[loc] : entry.en;
   if (params) {
-    for (const k in params) s = s.replace('{' + k + '}', params[k]);
+    // 函数式替换:避免值(番名/文件名/报错等远程数据)里的 $&/$1/$$ 被 String.replace 当替换模式
+    for (const k in params) s = s.replace('{' + k + '}', () => params[k]);
   }
   return s;
 }

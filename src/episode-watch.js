@@ -29,6 +29,8 @@ function onEpisode(info) {
   const sameShow = series === state.loadedSeries && state.lastOnline;
   clearSubtitle(); // 无论如何先清掉不再匹配的旧字幕
   if (sameShow) {
+    // 先记录已切到本集:即便接续失败(找不到同源/下载失败),state 也反映当前集,避免后续比较错乱/重复触发
+    state.loadedSeries = series; state.loadedEpisode = episode;
     autoContinue(state.lastOnline, series, episode);
   } else {
     state.loadedSeries = ''; state.loadedEpisode = '';

@@ -460,7 +460,8 @@ function startPickVideo() {
     refs.uiRoot.appendChild(o);
     return o;
   });
-  function cleanup() { overlays.forEach((o) => o.remove()); picking = false; }
-  const esc = (e) => { if (e.key === 'Escape') { cleanup(); document.removeEventListener('keydown', esc); } };
+  // cleanup 里统一移除 keydown 监听:点击选中视频也会 cleanup,避免遗留悬空的 document 监听
+  function cleanup() { overlays.forEach((o) => o.remove()); picking = false; document.removeEventListener('keydown', esc); }
+  const esc = (e) => { if (e.key === 'Escape') cleanup(); };
   document.addEventListener('keydown', esc);
 }
