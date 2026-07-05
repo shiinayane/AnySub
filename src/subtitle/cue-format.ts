@@ -4,7 +4,7 @@
 //      独立（X）若 X 在词表 → 话者名,否则 → 非语音。
 //   2) 画外音〈…〉/书面《…》/歌曲 ♪…♪ 可能跨行、跨 cue 断成几句:用状态机跟踪未闭合的跨度——
 //      未闭合的 〈 / 《 会把后续行也标成同类直到闭合;♪ 用奇偶切换。跨 cue 仅在相邻不重叠时延续。
-import type { Cue, SpanState, LineClass } from './types.js';
+import type { Cue, SpanState, LineClass } from '../types.js';
 
 const NAME = 20; // 名字/音效单元数上限;过长不认,避免吞掉正文
 // 名字内容单元:非括号字符,或一层嵌套括号(话者名内嵌注音,如 千束（ちさと))

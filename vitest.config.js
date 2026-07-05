@@ -9,7 +9,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**'],
-      exclude: ['src/kanji-readings.*'],
+      exclude: ['src/subtitle/kanji-readings.*'],
     },
   },
 });

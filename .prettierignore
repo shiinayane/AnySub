@@ -2,7 +2,6 @@ dist
 node_modules
 coverage
 package-lock.json
-src/kanji-readings.js
-src/kanji-readings.ts
+src/subtitle/kanji-readings.ts
 docs
 *.md

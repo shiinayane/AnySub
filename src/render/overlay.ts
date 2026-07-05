@@ -1,5 +1,5 @@
 // 覆盖层:格式无关的定位 / 全屏跟随。文本与(未来的)ASS 渲染器都渲染进这个盒子。
-import { refs } from './refs.js';
+import { refs } from '../refs.js';
 
 let lastRectKey = '',
   lastRect: DOMRect | null = null;

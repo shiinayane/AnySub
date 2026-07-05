@@ -2,11 +2,11 @@
 // 双锚点(底部盒 + 顶部盒):说话(台词/话者/画外音/歌词/书面念白)放主锚点(默认底部),
 //   仅真·音效(独立（…))恒放对侧(默认顶部)——底部永远是"说话的地方",心智统一。
 //   多说话人不上下拆分,一律主锚点叠放靠话者名区分。跨行/跨 cue 的画外音·书面·歌曲由 _spanIn 连续。
-import { state, FONT_BASE } from './state.js';
-import { refs } from './refs.js';
-import { applyRuby } from './ruby.js';
-import { stepCueLine, INIT_SPAN } from './cue-format.js';
-import type { Cue, LineClass, Renderer } from './types.js';
+import { state, FONT_BASE } from '../state.js';
+import { refs } from '../refs.js';
+import { applyRuby } from '../subtitle/ruby.js';
+import { stepCueLine, INIT_SPAN } from '../subtitle/cue-format.js';
+import type { Cue, LineClass, Renderer } from '../types.js';
 
 // 单行 + 其分类 → HTML(语义排版 + 注音)。text/rest 已是转义安全的 HTML。
 // 导出供单测:每种语义类型都应正确套用注音(sfx 曾漏调 applyRuby 导致内嵌注音丢失)。

@@ -1,7 +1,7 @@
 // 懒加载 JavascriptSubtitlesOctopus(libass-wasm)。仅在打开 ASS 文件时触发。
 // @grant none 下:主脚本用 blob <script> 注入;worker 用 blob 包裹并注入 locateFile 指向 CDN;
 // wasm / 字体由 worker 从 CDN 拉取。任一步失败(网络 / CSP)则抛错,由调用方降级到文本渲染。
-import type { OctopusCtor } from './types.js';
+import type { OctopusCtor } from '../types.js';
 
 const VER = '4.1.0';
 const CDN = `https://cdn.jsdelivr.net/npm/libass-wasm@${VER}/dist/js/`;

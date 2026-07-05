@@ -13,8 +13,7 @@ export default tseslint.config(
       'coverage/**',
       'docs/**',
       // 生成文件(单行超长 JSON),不参与 lint
-      'src/kanji-readings.js',
-      'src/kanji-readings.ts',
+      'src/subtitle/kanji-readings.ts',
     ],
   },
   {

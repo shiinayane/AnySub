@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { pickSameSource, sourceTokens, pickExactAnime, normTitle } from '../src/match.js';
+import { pickSameSource, sourceTokens, pickExactAnime, normTitle } from '../src/online/match.js';
 
 // 真实 Jimaku 文件名(EVA / 薬屋),回归 v0.11.2 的「按源特征匹配」修复。
 const EVA_EP2 = [

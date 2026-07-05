@@ -2,7 +2,7 @@
 // 用于修正「近接猟兵（りょうへい）」这类——括号读音只覆盖后缀汉字(猟兵),
 // 而不是前面全部(近接猟兵)。纯逻辑,有单测。读音表懒加载 JSON.parse。
 import { KANJI_READINGS_JSON } from './kanji-readings.js';
-import type { FuriganaAlign } from './types.js';
+import type { FuriganaAlign } from '../types.js';
 
 // 硬上限:防止恶意/异常字幕用超长汉字串+读音触发深递归(远端可控输入,需防 DoS)。
 // 真实注音的汉字串一般 ≤8 字,24/48 已极宽松;超出直接放弃逐字对齐(回退整串注音)。

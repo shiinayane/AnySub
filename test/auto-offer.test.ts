@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { isFeatureVideo } from '../src/auto-offer.js';
+import { isFeatureVideo } from '../src/sites/auto-offer.js';
 
 const rect = (w: number, h: number) => ({ getBoundingClientRect: () => ({ width: w, height: h }) });
 const VW = 1280,

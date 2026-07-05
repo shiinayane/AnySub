@@ -1,6 +1,6 @@
 // ASS / SSA → 统一 cue 结构(文本保底渲染用):解析 [Events] 的 Dialogue 行
 import { sanitize } from './parse.js';
-import type { Cue } from './types.js';
+import type { Cue } from '../types.js';
 
 export function parseAss(text: string): Cue[] {
   const lines = text.split(/\r?\n/);

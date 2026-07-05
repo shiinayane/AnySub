@@ -1,16 +1,16 @@
 // AnySub 入口:初始化 UI + 动态视频监听
 import { state } from './state.js';
-import { injectStyle } from './styles.js';
-import { buildUI, updateFabVisibility } from './ui.js';
-import { pickBestVideo, isVisible } from './locator.js';
-import { setVideo } from './controller.js';
-import { loadSettings, getLocalKey, loadGlobalKey, saveGlobalKey } from './storage.js';
-import { refreshKeyArea } from './search-ui.js';
-import { initShortcuts } from './shortcuts.js';
-import { setReactHandler, updateWatcher } from './watcher.js';
-import { initEpisodeWatch } from './episode-watch.js';
-import { initAutoOffer } from './auto-offer.js';
-import { initEpisodeSignal } from './episode-signal.js';
+import { injectStyle } from './render/styles.js';
+import { buildUI, updateFabVisibility } from './ui/ui.js';
+import { pickBestVideo, isVisible } from './render/locator.js';
+import { setVideo } from './render/controller.js';
+import { loadSettings, getLocalKey, loadGlobalKey, saveGlobalKey } from './online/storage.js';
+import { refreshKeyArea } from './ui/search-ui.js';
+import { initShortcuts } from './ui/shortcuts.js';
+import { setReactHandler, updateWatcher } from './render/watcher.js';
+import { initEpisodeWatch } from './sites/episode-watch.js';
+import { initAutoOffer } from './sites/auto-offer.js';
+import { initEpisodeSignal } from './sites/episode-signal.js';
 import type { SubStyle } from './types.js';
 
 // 避免在同一 window 重复注入

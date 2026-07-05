@@ -1,6 +1,6 @@
 // 从页面标题解析「番剧名 + 集数」(面向 DMM/日文常见格式,也兼容通用写法)。
 // 例:「新世紀エヴァンゲリオン 第壱話 使徒、襲来 (アニメ/1995年)」→ {series:'新世紀エヴァンゲリオン', episode:'1'}
-import type { DetectInfo } from './types.js';
+import type { DetectInfo } from '../types.js';
 
 const KANJI: Record<string, number> = {
   〇: 0,

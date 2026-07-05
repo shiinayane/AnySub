@@ -1,20 +1,20 @@
 // 载入流程:读取 → 解码 → 按格式分派渲染器 → 挂载
-import { state } from './state.js';
-import { readSubtitleFile, decodeBuffer } from './decode.js';
-import { parseSubtitle } from './parse.js';
-import { detectShow } from './site-adapters.js';
-import { sourceTokens } from './match.js';
-import { buildSpeakers, computeSpanStates } from './cue-format.js';
+import { state } from '../state.js';
+import { readSubtitleFile, decodeBuffer } from '../subtitle/decode.js';
+import { parseSubtitle } from '../subtitle/parse.js';
+import { detectShow } from '../sites/site-adapters.js';
+import { sourceTokens } from '../online/match.js';
+import { buildSpeakers, computeSpanStates } from '../subtitle/cue-format.js';
 import { pickBestVideo } from './locator.js';
 import { setVideo, startRender, setRenderer, applyStyle } from './controller.js';
 import { invalidateLayout } from './overlay.js';
 import { createTextRenderer } from './render-text.js';
 import { createAssRenderer } from './render-ass.js';
-import { parseAss } from './parse-ass.js';
-import { toast, updateStatus } from './notify.js';
+import { parseAss } from '../subtitle/parse-ass.js';
+import { toast, updateStatus } from '../ui/notify.js';
 import { updateWatcher } from './watcher.js';
-import { t } from './i18n.js';
-import type { Cue, Renderer } from './types.js';
+import { t } from '../i18n.js';
+import type { Cue, Renderer } from '../types.js';
 
 interface Parsed {
   cues: Cue[];

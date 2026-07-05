@@ -2,16 +2,16 @@
 // 输入 API key + 番剧名 + 集数 → 番剧候选(带海报)→ 文件候选 → 下载载入。
 // 半自动:每一步都把候选摆出来让用户选,不静默加载。
 // 与主面板互斥(打开时收起主面板),并提供「返回主面板」按钮保持心智连贯。
-import { state } from './state.js';
-import { refs } from './refs.js';
+import { state } from '../state.js';
+import { refs } from '../refs.js';
 import { toast } from './notify.js';
-import { saveGlobalKey } from './storage.js';
-import { animeCandidates, subtitleFiles, downloadAndLoad, markLoaded } from './online.js';
-import { detectShow } from './site-adapters.js';
-import { pickExactAnime } from './match.js';
+import { saveGlobalKey } from '../online/storage.js';
+import { animeCandidates, subtitleFiles, downloadAndLoad, markLoaded } from '../online/online.js';
+import { detectShow } from '../sites/site-adapters.js';
+import { pickExactAnime } from '../online/match.js';
 import { openPanel, ensurePanel } from './ui.js';
-import { t } from './i18n.js';
-import type { AnimeCandidate, SubFile } from './types.js';
+import { t } from '../i18n.js';
+import type { AnimeCandidate, SubFile } from '../types.js';
 
 // 文件候选头部展示所需的最小番剧信息(showCandidates 可只带 title/anilistId)
 type AnimeLike = Partial<AnimeCandidate> & { title?: string };

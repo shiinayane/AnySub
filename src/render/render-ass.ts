@@ -2,13 +2,13 @@
 // libass 渲染进「我们自己的 overlay canvas」(复用 overlay 的 fixed 定位/尺寸/全屏跟随,
 // 与文本字幕同源,故在复杂播放器/DMM 上一致可显);采用 canvas-only 手动驱动模式
 // (不给 octopus 传 video)—— 绕开它内部随视频事件触发、会解引用 null canvasParent 的自动 resize。
-import { state } from './state.js';
-import { refs } from './refs.js';
+import { state } from '../state.js';
+import { refs } from '../refs.js';
 import { createTextRenderer } from './render-text.js';
 import { loadOctopus } from './octopus-loader.js';
-import { toast } from './notify.js';
-import { t } from './i18n.js';
-import type { OctopusInstance, Renderer } from './types.js';
+import { toast } from '../ui/notify.js';
+import { t } from '../i18n.js';
+import type { OctopusInstance, Renderer } from '../types.js';
 
 export function createAssRenderer(assText: string): Renderer {
   const textRenderer = createTextRenderer(); // 文本保底,渲染 state.cues(loader 已用 parseAss 填充)

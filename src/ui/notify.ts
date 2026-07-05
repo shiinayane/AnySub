@@ -1,7 +1,7 @@
 // 轻量提示 + 状态栏更新
-import { refs } from './refs.js';
-import { state } from './state.js';
-import { t } from './i18n.js';
+import { refs } from '../refs.js';
+import { state } from '../state.js';
+import { t } from '../i18n.js';
 
 let toastTimer: ReturnType<typeof setTimeout>;
 

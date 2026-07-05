@@ -1,11 +1,11 @@
 // 渲染控制器:驱动渲染循环、管理当前渲染器与视频生命周期(格式无关)
-import { state } from './state.js';
-import { refs } from './refs.js';
+import { state } from '../state.js';
+import { refs } from '../refs.js';
 import { positionOverlay, ensureMounted, hideOverlay, invalidateLayout } from './overlay.js';
-import { toast, updateStatus } from './notify.js';
+import { toast, updateStatus } from '../ui/notify.js';
 import { updateWatcher } from './watcher.js';
-import { t } from './i18n.js';
-import type { Renderer } from './types.js';
+import { t } from '../i18n.js';
+import type { Renderer } from '../types.js';
 
 let intervalId: ReturnType<typeof setInterval> | undefined,
   driversAttached = false;

@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { parseSubtitle, timeToSeconds, sanitize } from '../src/parse.js';
+import { parseSubtitle, timeToSeconds, sanitize } from '../src/subtitle/parse.js';
 
 test('timeToSeconds: SRT/VTT 时间戳', () => {
   assert.equal(timeToSeconds('00:01:02,500'), 62.5);

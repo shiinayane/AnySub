@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { alignFurigana } from '../src/furigana-align.js';
+import { alignFurigana } from '../src/subtitle/furigana-align.js';
 
 // 整串对齐:每个汉字各注各的
 test('整串音读对齐 温厚→おんこう', () => {

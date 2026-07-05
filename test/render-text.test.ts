@@ -1,7 +1,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { state } from '../src/state.js';
-import { typedHtml } from '../src/render-text.js';
+import { typedHtml } from '../src/render/render-text.js';
 
 // typedHtml 读 state.rubyParen 决定括号式注音是否生效
 state.rubyParen = true;

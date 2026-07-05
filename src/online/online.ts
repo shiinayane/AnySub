@@ -1,11 +1,11 @@
 // 在线字幕编排:AniList 定位番剧 → Jimaku 取文件 → 下载 → 走统一载入路径。
-import { state } from './state.js';
-import { detectShow } from './site-adapters.js';
+import { state } from '../state.js';
+import { detectShow } from '../sites/site-adapters.js';
 import { searchAnime } from './anilist.js';
 import { searchByAnilist, searchByQuery, getFiles } from './jimaku.js';
 import { pickExactAnime } from './match.js';
-import { loadFromBuffer } from './loader.js';
-import type { AnimeCandidate, ResolveResult, SubFile } from './types.js';
+import { loadFromBuffer } from '../render/loader.js';
+import type { AnimeCandidate, ResolveResult, SubFile } from '../types.js';
 
 const SUB_RE = /\.(ass|ssa|srt|vtt|sub|sbv)$/i; // 只要字幕文件,跳过 .7z/.zip 等压缩包
 

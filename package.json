@@ -17,7 +17,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "build:readings": "curl -sL https://www.edrdg.org/kanjidic/kanjidic2.xml.gz | gunzip | node scripts/build-readings.mjs /dev/stdin > src/kanji-readings.ts"
+    "build:readings": "curl -sL https://www.edrdg.org/kanjidic/kanjidic2.xml.gz | gunzip | node scripts/build-readings.mjs /dev/stdin > src/subtitle/kanji-readings.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

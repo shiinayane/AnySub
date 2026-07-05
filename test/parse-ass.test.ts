@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { parseAss } from '../src/parse-ass.js';
+import { parseAss } from '../src/subtitle/parse-ass.js';
 
 const ASS = `[Script Info]
 ScriptType: v4.00+

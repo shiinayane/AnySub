@@ -1,6 +1,6 @@
 // Jimaku API 客户端。需 API key(Authorization 头);CORS 反射 Origin,@grant none 可直连。
-import { state } from './state.js';
-import type { JimakuEntry, SubFile } from './types.js';
+import { state } from '../state.js';
+import type { JimakuEntry, SubFile } from '../types.js';
 
 const BASE = 'https://jimaku.cc/api';
 

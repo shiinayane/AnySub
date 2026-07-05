@@ -3,7 +3,7 @@
 // 好处:切集监听「观察什么」交给站点规则(扩展新站只改适配器),订阅者(切集续播 / 自动提示)
 // 共用同一信号且被指纹去重——无关的标题抖动不再触发多余工作。
 import { detectShow, getSiteAdapter } from './site-adapters.js';
-import type { DetectInfo } from './types.js';
+import type { DetectInfo } from '../types.js';
 
 type EpisodeSub = (info: DetectInfo) => void;
 

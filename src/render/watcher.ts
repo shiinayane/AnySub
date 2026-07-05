@@ -1,6 +1,6 @@
 // DOM 变化观察器的「按需」生命周期:仅在真正需要时才连接,空闲页面零开销。
 // 需要的场景:开启了悬浮球(要随视频出现/消失切换),或已加载字幕(SPA 换视频要重挂)。
-import { state } from './state.js';
+import { state } from '../state.js';
 
 let mo: MutationObserver | null = null,
   timer: ReturnType<typeof setTimeout> | undefined,

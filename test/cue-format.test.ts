@@ -6,7 +6,7 @@ import {
   stepCueLine,
   computeSpanStates,
   INIT_SPAN,
-} from '../src/cue-format.js';
+} from '../src/subtitle/cue-format.js';
 import type { Cue } from '../src/types.js';
 
 // 逐行推进一段文本,返回每行 type 数组(从初始状态起)

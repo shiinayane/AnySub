@@ -1,15 +1,15 @@
 // 切集续播:换集时(由 episode-signal 统一探测:站点规则优先、回落 <title>)据集数变化,
 // 清除旧字幕并「同源优先」自动加载下一集(找不到同源则弹候选)。
-import { state } from './state.js';
-import { clearSubtitle } from './controller.js';
-import { subtitleFiles, downloadAndLoad, markLoaded } from './online.js';
-import { pickSameSource } from './match.js';
-import { showCandidates } from './search-ui.js';
-import { setOffset } from './ui.js';
-import { toast } from './notify.js';
+import { state } from '../state.js';
+import { clearSubtitle } from '../render/controller.js';
+import { subtitleFiles, downloadAndLoad, markLoaded } from '../online/online.js';
+import { pickSameSource } from '../online/match.js';
+import { showCandidates } from '../ui/search-ui.js';
+import { setOffset } from '../ui/ui.js';
+import { toast } from '../ui/notify.js';
 import { onEpisodeChange } from './episode-signal.js';
-import { t } from './i18n.js';
-import type { DetectInfo, OnlineCtx } from './types.js';
+import { t } from '../i18n.js';
+import type { DetectInfo, OnlineCtx } from '../types.js';
 
 let busy = false;
 

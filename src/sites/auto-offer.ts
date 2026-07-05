@@ -4,16 +4,16 @@
 //  · 只在「实质视频真正在播放」时触发(排除首页/详情页的 hero 预览,它们也用同款播放器)。
 //  · 「查证后再提示」——没查过 Jimaku 就说「发现字幕」是撒谎;确实没有则静默,不空弹。
 //  · 需 Jimaku key(在线取字幕本就依赖它);无 key 不自动提示(可手动搜索时再设)。
-import { state } from './state.js';
-import { refs } from './refs.js';
+import { state } from '../state.js';
+import { refs } from '../refs.js';
 import { getSiteAdapter, detectShow } from './site-adapters.js';
-import { collectVideos } from './locator.js';
-import { toastOffer } from './notify.js';
-import { resolveSubtitles } from './online.js';
-import { showCandidates } from './search-ui.js';
+import { collectVideos } from '../render/locator.js';
+import { toastOffer } from '../ui/notify.js';
+import { resolveSubtitles } from '../online/online.js';
+import { showCandidates } from '../ui/search-ui.js';
 import { isAutoContinuing } from './episode-watch.js';
 import { onEpisodeChange } from './episode-signal.js';
-import { t } from './i18n.js';
+import { t } from '../i18n.js';
 
 const MIN_DURATION = 120; // 秒:正片阈值,滤掉 hero 预览/短预告(动画正片均 20 分钟+)
 const MIN_COVER = 0.6; // 视口占比:主播放器 vs 横幅预览(给静音观看者兜底)

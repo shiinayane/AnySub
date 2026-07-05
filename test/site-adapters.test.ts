@@ -56,7 +56,7 @@ function stub({ hostname, pathname, href, title, ogTitle, els, boxes }: StubOpts
 }
 
 const { getSiteAdapter, detectShow, parsePrimeEpisode, cleanPrimeTitle, parseUnextEpisode } =
-  await import('../src/site-adapters.js');
+  await import('../src/sites/site-adapters.js');
 
 const DMM_TITLE =
   'メイドインアビス　烈日の黄金郷 第2話 還らずの都 (アニメ/2022年)｜アニメ・ドラマの動画配信ならDMM TV';

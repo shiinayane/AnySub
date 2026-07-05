@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { parseVideoTitle, jpNumToInt } from '../src/title-parse.js';
+import { parseVideoTitle, jpNumToInt } from '../src/sites/title-parse.js';
 
 test('jpNumToInt: 汉数字含旧字体', () => {
   assert.equal(jpNumToInt('壱'), 1);

@@ -1,5 +1,5 @@
 // 字幕解析:SRT / VTT → 统一 cue 结构 {start,end,text},按时间排序
-import type { Cue } from './types.js';
+import type { Cue } from '../types.js';
 
 const TIME_RE =
   /(\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}|\d{1,2}:\d{2}[.,]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}|\d{1,2}:\d{2}[.,]\d{1,3})/;

@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { applyRuby } from '../src/ruby.js';
+import { applyRuby } from '../src/subtitle/ruby.js';
 
 test('括号式 漢字（かな) → ruby(开启时,逐字对齐)', () => {
   assert.equal(

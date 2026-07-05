@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { decodeBuffer } from '../src/decode.js';
+import { decodeBuffer } from '../src/subtitle/decode.js';
 
 const enc = (s: string) => new TextEncoder().encode(s); // UTF-8
 

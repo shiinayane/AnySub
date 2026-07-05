@@ -1,5 +1,5 @@
 // AniList GraphQL:番剧名 → 候选(id / 标题 / 集数 / 年份)。无需鉴权,CORS: *。
-import type { AnimeCandidate } from './types.js';
+import type { AnimeCandidate } from '../types.js';
 
 const ENDPOINT = 'https://graphql.anilist.co';
 const QUERY = `query($s:String){Page(perPage:6){media(search:$s,type:ANIME){id title{romaji native english} episodes format startDate{year} coverImage{medium}}}}`;

@@ -2,7 +2,7 @@
 // 普通偏好:localStorage(按站点隔离,故是「每站点」保存)。
 // Jimaku API key:跨站共享——优先 GM 存储(GM_getValue/GM_setValue,按脚本而非按站点,
 //   一处设置全站可用),回落 localStorage(按站点)。同时也写一份 localStorage 作本站缓存兜底。
-import { state } from './state.js';
+import { state } from '../state.js';
 
 const KEY = 'anysub:settings:v1';
 const KEY_JIMAKU = 'anysub:jimakuKey';

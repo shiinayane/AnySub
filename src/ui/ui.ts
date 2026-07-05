@@ -1,16 +1,22 @@
 // 悬浮 UI:设置面板(快捷键唤出)+ 可选悬浮球 + 拖拽吸附 + 手动选视频
-import { state } from './state.js';
-import { refs } from './refs.js';
-import { refresh, applyStyle, clearSubtitle, setVideo, toggleSubtitles } from './controller.js';
-import { invalidateLayout } from './overlay.js';
-import { loadFile } from './loader.js';
-import { collectVideos, isVisible } from './locator.js';
+import { state } from '../state.js';
+import { refs } from '../refs.js';
+import {
+  refresh,
+  applyStyle,
+  clearSubtitle,
+  setVideo,
+  toggleSubtitles,
+} from '../render/controller.js';
+import { invalidateLayout } from '../render/overlay.js';
+import { loadFile } from '../render/loader.js';
+import { collectVideos, isVisible } from '../render/locator.js';
 import { toast, updateStatus } from './notify.js';
-import { saveState } from './storage.js';
-import { updateWatcher } from './watcher.js';
+import { saveState } from '../online/storage.js';
+import { updateWatcher } from '../render/watcher.js';
 import { buildSearchUI, relocalizeSearch, openSearch } from './search-ui.js';
-import { t, setLang, LANG_OPTIONS } from './i18n.js';
-import type { SubStyle } from './types.js';
+import { t, setLang, LANG_OPTIONS } from '../i18n.js';
+import type { SubStyle } from '../types.js';
 
 const persist = saveState;
 

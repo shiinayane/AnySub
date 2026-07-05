@@ -1,7 +1,7 @@
 // 跨集「同源」匹配(纯逻辑,无 DOM 依赖,便于单测)。
 // 同一番剧的候选番剧名相同,不用于区分;真正标识「源」的是文件名里的拉丁标签
 // (平台/组名/格式/分辨率/语言)。只比这些「源特征」token,忽略每集都变的日文集标题。
-import type { AnimeCandidate } from './types.js';
+import type { AnimeCandidate } from '../types.js';
 
 // 集数样 / 哈希样 token(跨集会变,匹配时剔除)
 const EP_TOK = /^(s\d{1,2}e\d{1,3}|e\d{1,3}|v\d+|\d{1,4}|[0-9a-f]{8})$/;
