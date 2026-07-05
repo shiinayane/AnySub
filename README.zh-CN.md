@@ -147,3 +147,7 @@ src/
 - [ ] 更多格式(SUB/SBV/LRC/SMI/TTML)
 - [ ] ASS 自定义字体(内嵌 / 用户提供)
 - [ ] 快捷键自定义重绑
+
+## 许可
+
+代码:[MIT](./LICENSE)。内置的 KANJIDIC2 汉字读音数据(`src/kanji-readings.js`)© [EDRDG](https://www.edrdg.org/),依 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 使用。

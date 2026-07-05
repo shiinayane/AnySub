@@ -8,7 +8,8 @@ import { applyRuby } from './ruby.js';
 import { stepCueLine, INIT_SPAN } from './cue-format.js';
 
 // 单行 + 其分类 → HTML(语义排版 + 注音)。text/rest 已是转义安全的 HTML。
-function typedHtml(text, c) {
+// 导出供单测:每种语义类型都应正确套用注音(sfx 曾漏调 applyRuby 导致内嵌注音丢失)。
+export function typedHtml(text, c) {
   switch (c.type) {
     case 'sfx': return `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
     case 'voice': return `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;

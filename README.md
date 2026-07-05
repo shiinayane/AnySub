@@ -151,3 +151,7 @@ All local files are read via standard `<input type=file>` / drag-drop — no `GM
 - [ ] More formats (SUB/SBV/LRC/SMI/TTML)
 - [ ] Custom ASS fonts (embedded / user-provided)
 - [ ] Rebindable keyboard shortcuts
+
+## License
+
+Code: [MIT](./LICENSE). The bundled KANJIDIC2 kanji-reading data (`src/kanji-readings.js`) is © [EDRDG](https://www.edrdg.org/) and used under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).

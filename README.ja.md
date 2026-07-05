@@ -147,3 +147,7 @@ src/
 - [ ] 対応形式の追加(SUB/SBV/LRC/SMI/TTML)
 - [ ] ASS カスタムフォント(埋め込み / ユーザー提供)
 - [ ] キーボードショートカットの再割り当て
+
+## ライセンス
+
+コード:[MIT](./LICENSE)。同梱の KANJIDIC2 漢字読みデータ(`src/kanji-readings.js`)は © [EDRDG](https://www.edrdg.org/)、[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) に基づき使用。

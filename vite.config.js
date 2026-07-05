@@ -17,6 +17,9 @@ export default defineConfig({
         },
         namespace: 'https://github.com/shiinayane/anysub',
         version: '0.15.0',
+        license: 'MIT',
+        homepageURL: 'https://github.com/shiinayane/anysub',
+        supportURL: 'https://github.com/shiinayane/anysub/issues',
         description: {
           '': 'Turn any video into a Japanese-immersion tool: accurate per-kanji furigana, one-click Jimaku subtitles with auto next-episode, and semantic CC formatting (speaker / SFX / inner-voice). Also loads any local SRT/VTT/ASS with full style control and fullscreen following. UI in English / 中文 / 日本語.',
           en: 'Turn any video into a Japanese-immersion tool: accurate per-kanji furigana, one-click Jimaku subtitles with auto next-episode, and semantic CC formatting (speaker / SFX / inner-voice). Also loads any local SRT/VTT/ASS with full style control and fullscreen following. UI in English / 中文 / 日本語.',
