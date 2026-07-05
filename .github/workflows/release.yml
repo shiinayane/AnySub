@@ -1,0 +1,44 @@
+name: Release
+
+# 打形如 v0.16.0 的 tag 即触发:校验版本一致 → 全门禁 → 构建 → 建 GitHub Release 并附 .user.js。
+# Greasyfork 可配置从该 Release 的 raw 链接自动同步。
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # 建 Release 需要写权限
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # tag(去掉前缀 v)必须等于 package.json 的 version —— @version 驱动脚本管理器自动更新,不容错位
+      - name: Verify tag matches package version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::tag $GITHUB_REF_NAME (=$TAG) != package.json version $PKG"
+            exit 1
+          fi
+          echo "version ok: $PKG"
+
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/anysub.user.js
+          generate_release_notes: true
+          fail_on_unmatched_files: true

@@ -1,5 +1,9 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import monkey from 'vite-plugin-monkey';
+
+// 版本单一来源:package.json。发布只需 bump package.json + 打对应 tag(release 工作流会校验一致)。
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 // 脚本图标(与悬浮球「字」一致):蓝底圆角 + 白字。构建期转 base64 data-URI 嵌入 @icon。
 const ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4c8dff"/><stop offset="1" stop-color="#2b6cff"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#g)"/><text x="32" y="45" font-family="'Hiragino Sans','Yu Gothic','PingFang SC','Microsoft YaHei',sans-serif" font-size="40" font-weight="700" fill="#fff" text-anchor="middle">字</text></svg>`;
@@ -20,7 +24,7 @@ export default defineConfig({
           ja: 'AnySub · どんな動画にも字幕を(日本語学習向け)',
         },
         namespace: 'https://github.com/shiinayane/anysub',
-        version: '0.15.0',
+        version: pkg.version,
         license: 'MIT',
         icon: ICON_DATA_URI,
         homepageURL: 'https://github.com/shiinayane/anysub',
