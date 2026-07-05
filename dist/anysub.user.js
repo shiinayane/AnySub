@@ -1281,6 +1281,20 @@
 		if (best && (bestScore >= (useSig ? .5 : .6) || bestScore >= .34 && bestScore - second >= .34)) return best;
 		return null;
 	}
+	function normTitle(s) {
+		return String(s == null ? "" : s).normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
+	}
+	function pickExactAnime(candidates, query) {
+		const q = normTitle(query);
+		if (!q || !candidates || !candidates.length) return null;
+		const hits = candidates.filter((a) => [
+			a.native,
+			a.romaji,
+			a.english,
+			a.title
+		].some((t) => t && normTitle(t) === q));
+		return hits.length === 1 ? hits[0] : null;
+	}
 	function jaccard(a, b) {
 		let inter = 0;
 		for (const t of a) if (b.has(t)) inter++;
@@ -2277,6 +2291,11 @@
 			const list = await animeCandidates(title);
 			if (!list.length) {
 				setResults(`<div class="as-sc-empty">${t("sc.notFound")}</div>`);
+				return;
+			}
+			const exact = pickExactAnime(list, title);
+			if (exact) {
+				loadFilesFor(exact);
 				return;
 			}
 			renderAnime(list);

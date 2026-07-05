@@ -41,6 +41,23 @@ export function pickSameSource(files, refName) {
   return null;
 }
 
+// 番名归一:NFKC(全角→半角、全角空格 U+3000→半角空格)+ 小写 + 空白折叠 + trim。
+// 刻意保守——只吸收「全/半角空格差异、大小写」这类无意义差异,不做模糊匹配。
+export function normTitle(s) {
+  return String(s == null ? '' : s).normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+// 自动选番:仅当「唯一」一个候选的某个标题(日文/罗马字/英文)与查询「精确相等」才返回它;
+// 否则(0 个或 ≥2 个精确命中)返回 null → 回落人工选,避免选错季/错作品。
+// 例:查询「メイドインアビス 烈日の黄金郷」→ 只命中第二季条目;查询「メイドインアビス」不会命中它。
+export function pickExactAnime(candidates, query) {
+  const q = normTitle(query);
+  if (!q || !candidates || !candidates.length) return null;
+  const hits = candidates.filter((a) =>
+    [a.native, a.romaji, a.english, a.title].some((t) => t && normTitle(t) === q));
+  return hits.length === 1 ? hits[0] : null;
+}
+
 export function jaccard(a, b) {
   let inter = 0;
   for (const t of a) if (b.has(t)) inter++;

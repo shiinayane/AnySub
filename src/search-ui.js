@@ -8,6 +8,7 @@ import { toast } from './notify.js';
 import { saveState } from './storage.js';
 import { animeCandidates, subtitleFiles, downloadAndLoad, markLoaded } from './online.js';
 import { detectShow } from './site-adapters.js';
+import { pickExactAnime } from './match.js';
 import { openPanel, ensurePanel } from './ui.js';
 import { t } from './i18n.js';
 
@@ -137,6 +138,8 @@ async function doSearch() {
   try {
     const list = await animeCandidates(title);
     if (!list.length) { setResults(`<div class="as-sc-empty">${t('sc.notFound')}</div>`); return; }
+    const exact = pickExactAnime(list, title); // 精确命中唯一 → 自动选番,省去人工选(仍从文件候选选)
+    if (exact) { loadFilesFor(exact); return; }
     renderAnime(list);
   } catch (err) {
     setResults(`<div class="as-sc-empty">${t('sc.error', { msg: esc(err.message) })}</div>`);
