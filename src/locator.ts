@@ -1,16 +1,19 @@
 // 视频定位:穿透 Shadow DOM 收集 <video>
 
-export function collectVideos(root, acc) {
+export function collectVideos(
+  root?: ParentNode | null,
+  acc?: HTMLVideoElement[],
+): HTMLVideoElement[] {
   acc = acc || [];
   root = root || document;
-  let list;
+  let list: NodeListOf<HTMLVideoElement> | never[];
   try {
     list = root.querySelectorAll('video');
   } catch (_) {
     list = [];
   }
-  list.forEach((v) => acc.push(v));
-  let all;
+  list.forEach((v) => acc!.push(v));
+  let all: NodeListOf<Element> | never[];
   try {
     all = root.querySelectorAll('*');
   } catch (_) {
@@ -22,13 +25,13 @@ export function collectVideos(root, acc) {
   return acc;
 }
 
-export function isVisible(v) {
+export function isVisible(v: Element): boolean {
   const r = v.getBoundingClientRect();
   return r.width > 0 && r.height > 0;
 }
 
 // 默认选可见面积最大的 video
-export function pickBestVideo() {
+export function pickBestVideo(): HTMLVideoElement | null {
   const vids = collectVideos().filter(isVisible);
   if (!vids.length) return collectVideos()[0] || null;
   vids.sort((a, b) => {

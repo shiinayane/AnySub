@@ -11,13 +11,20 @@ import { detectShow } from './site-adapters.js';
 import { pickExactAnime } from './match.js';
 import { openPanel, ensurePanel } from './ui.js';
 import { t } from './i18n.js';
+import type { AnimeCandidate, SubFile } from './types.js';
 
-let panel, titleInput, epInput, results;
-let currentAnime = null; // 当前展开文件列表的番剧(供记录来源)
-let lastPrefillSig = null; // 上次预填所依据的「番名#集数」指纹(切集后据此刷新预填)
+// 文件候选头部展示所需的最小番剧信息(showCandidates 可只带 title/anilistId)
+type AnimeLike = Partial<AnimeCandidate> & { title?: string };
+
+let panel!: HTMLElement,
+  titleInput!: HTMLInputElement,
+  epInput!: HTMLInputElement,
+  results!: HTMLElement;
+let currentAnime: AnimeLike | null = null; // 当前展开文件列表的番剧(供记录来源)
+let lastPrefillSig: string | null = null; // 上次预填所依据的「番名#集数」指纹(切集后据此刷新预填)
 let keyEditing = false; // key 已保存时默认折叠为一行;点「更换」展开输入
 
-const S = (p) =>
+const S = (p: string): string =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const IC = {
   back: S('<path d="M19 12H5M11 6l-6 6 6 6"/>'),
@@ -29,7 +36,11 @@ const IC = {
   chev: S('<path d="m9 6 6 6-6 6"/>'),
 };
 
-function html() {
+function errMsg(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+function html(): string {
   return `
   <div class="as-sc-head">
     <button id="anysub-sc-back" class="as-sc-back" title="${t('sc.backTitle')}">${IC.back}<span>${t('sc.back')}</span></button>
@@ -46,25 +57,25 @@ function html() {
 `;
 }
 
-export function buildSearchUI() {
+export function buildSearchUI(): void {
   panel = document.createElement('div');
   panel.id = 'anysub-search';
   panel.style.display = 'none';
-  refs.uiRoot.appendChild(panel);
+  refs.uiRoot!.appendChild(panel);
   refs.searchPanel = panel; // 供主面板互斥用
   wireSearch();
 }
 
 // 建立/重建搜索面板内部 DOM 与事件(语言切换时复用)
-function wireSearch() {
+function wireSearch(): void {
   panel.innerHTML = html();
-  titleInput = panel.querySelector('#anysub-title');
-  epInput = panel.querySelector('#anysub-ep');
-  results = panel.querySelector('#anysub-results');
+  titleInput = panel.querySelector<HTMLInputElement>('#anysub-title')!;
+  epInput = panel.querySelector<HTMLInputElement>('#anysub-ep')!;
+  results = panel.querySelector<HTMLElement>('#anysub-results')!;
 
-  panel.querySelector('#anysub-sc-back').addEventListener('click', backToPanel);
-  panel.querySelector('#anysub-sc-close').addEventListener('click', close);
-  panel.querySelector('#anysub-do-search').addEventListener('click', doSearch);
+  panel.querySelector('#anysub-sc-back')!.addEventListener('click', backToPanel);
+  panel.querySelector('#anysub-sc-close')!.addEventListener('click', close);
+  panel.querySelector('#anysub-do-search')!.addEventListener('click', doSearch);
   titleInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') doSearch();
   });
@@ -75,39 +86,39 @@ function wireSearch() {
 }
 
 // 语言切换:重建搜索面板 DOM(丢弃未提交的搜索结果,回到初始态——切语言本就少见)
-export function relocalizeSearch() {
+export function relocalizeSearch(): void {
   if (!panel) return;
   wireSearch();
   lastPrefillSig = null; // 下次打开按当前页重新预填
 }
 
 // 供外部调用:跨站 key 异步就绪后,若搜索面板已建则刷新 key 区显示(未建则无操作,打开时自会正确渲染)
-export function refreshKeyArea() {
+export function refreshKeyArea(): void {
   if (panel) renderKeyArea();
 }
 
 // key 区两态:未存 → 输入框 + 保存;已存 → 一行「已连接 · 更换」,点更换再展开
-function renderKeyArea() {
-  const area = panel.querySelector('#anysub-key-area');
+function renderKeyArea(): void {
+  const area = panel.querySelector<HTMLElement>('#anysub-key-area')!;
   if (state.jimakuKey && !keyEditing) {
     area.innerHTML = `<div class="as-sc-keyok">${IC.check}<span>${t('sc.keyOk')}</span><span class="as-sc-change" id="anysub-key-change">${t('sc.changeKey')}</span></div>`;
-    area.querySelector('#anysub-key-change').addEventListener('click', () => {
+    area.querySelector('#anysub-key-change')!.addEventListener('click', () => {
       keyEditing = true;
       renderKeyArea();
     });
   } else {
     area.innerHTML = `<div class="as-sc-keyrow"><input id="anysub-key" type="password" placeholder="${t('sc.keyPlaceholder')}" autocomplete="off"><button id="anysub-key-save">${t('sc.keySave')}</button></div>
       <div class="as-sc-hint">${t('sc.keyHint')}</div>`;
-    const ki = area.querySelector('#anysub-key');
+    const ki = area.querySelector<HTMLInputElement>('#anysub-key')!;
     ki.value = state.jimakuKey || '';
-    area.querySelector('#anysub-key-save').addEventListener('click', () => saveKey(ki.value));
+    area.querySelector('#anysub-key-save')!.addEventListener('click', () => saveKey(ki.value));
     ki.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') saveKey(ki.value);
     });
   }
 }
 
-export function openSearch() {
+export function openSearch(): void {
   ensurePanel(); // 懒建面板+搜索 DOM(含本模块的 panel)
   if (refs.panel) refs.panel.style.display = 'none'; // 与主面板互斥
   show();
@@ -124,27 +135,30 @@ export function openSearch() {
     lastPrefillSig = detSig;
     setResults(`<div class="as-sc-empty">${t('sc.prompt')}</div>`);
   }
-  (state.jimakuKey ? titleInput : panel.querySelector('#anysub-key') || titleInput).focus();
+  (state.jimakuKey
+    ? titleInput
+    : panel.querySelector<HTMLElement>('#anysub-key') || titleInput
+  ).focus();
 }
 
-function show() {
+function show(): void {
   panel.style.display = 'block';
   panel.classList.remove('as-in');
   void panel.offsetWidth;
   panel.classList.add('as-in'); // 重放入场动画
 }
 
-function close() {
+function close(): void {
   panel.style.display = 'none';
 }
 
 // 返回主面板:收起搜索,显式打开主面板(与「关闭」区分——关闭是彻底 dismiss)
-function backToPanel() {
+function backToPanel(): void {
   panel.style.display = 'none';
   openPanel();
 }
 
-function saveKey(val) {
+function saveKey(val: string): void {
   state.jimakuKey = (val || '').trim();
   saveGlobalKey(state.jimakuKey); // 跨站存储:一处设置,DMM/Prime/U-NEXT 等全站通用
   keyEditing = false;
@@ -153,7 +167,7 @@ function saveKey(val) {
   if (state.jimakuKey) titleInput.focus();
 }
 
-async function doSearch() {
+async function doSearch(): Promise<void> {
   const title = titleInput.value.trim();
   if (!state.jimakuKey) {
     toast(t('toast.keyNeeded'));
@@ -179,23 +193,23 @@ async function doSearch() {
     }
     renderAnime(list);
   } catch (err) {
-    setResults(`<div class="as-sc-empty">${t('sc.error', { msg: esc(err.message) })}</div>`);
+    setResults(`<div class="as-sc-empty">${t('sc.error', { msg: esc(errMsg(err)) })}</div>`);
   }
 }
 
 // 海报:优先 AniList 封面,加载失败(CSP/网络)则移除 img 回落到占位图标
-function poster(url) {
+function poster(url: string | null | undefined): string {
   return `<span class="as-sc-poster">${IC.photo}${url ? `<img src="${escAttr(url)}" alt="">` : ''}</span>`;
 }
-function metaOf(a) {
-  const bits = [];
+function metaOf(a: AnimeCandidate): string {
+  const bits: string[] = [];
   if (a.format) bits.push(esc(a.format));
   if (a.year) bits.push(String(a.year));
   if (a.episodes) bits.push(t('sc.episodes', { n: a.episodes }));
   return bits.join(' · ');
 }
 
-function renderAnime(list) {
+function renderAnime(list: AnimeCandidate[]): void {
   results.innerHTML = '';
   results.appendChild(sec(t('sc.selectAnime')));
   for (const a of list) {
@@ -214,7 +228,7 @@ function renderAnime(list) {
   }
 }
 
-async function loadFilesFor(anime) {
+async function loadFilesFor(anime: AnimeCandidate): Promise<void> {
   setResults(`<div class="as-sc-empty">${t('sc.fetchingFiles')}</div>`);
   try {
     const files = await subtitleFiles(anime.anilistId, epInput.value.trim(), [
@@ -233,13 +247,17 @@ async function loadFilesFor(anime) {
   } catch (err) {
     results.innerHTML = '';
     results.appendChild(backLink(t('sc.backToAnime'), doSearch));
-    results.appendChild(empty(t('sc.error', { msg: esc(err.message) })));
+    results.appendChild(empty(t('sc.error', { msg: esc(errMsg(err)) })));
   }
 }
 
 // 直接展示某番剧的文件候选(切集找不到同源时回退用;自动提示核实后也复用)。
 // anilistId 可显式传入(自动提示已解析出番剧);缺省则沿用上次在线来源,供文件加载后记来源(切集接续)。
-export function showCandidates(seriesTitle, files, anilistId) {
+export function showCandidates(
+  seriesTitle: string,
+  files: SubFile[],
+  anilistId?: number | null,
+): void {
   ensurePanel();
   if (refs.panel) refs.panel.style.display = 'none';
   show();
@@ -247,11 +265,11 @@ export function showCandidates(seriesTitle, files, anilistId) {
   if (seriesTitle) titleInput.value = seriesTitle;
   const d = detectShow();
   lastPrefillSig = (d.series || '') + '#' + (d.episode || ''); // 视为已按当前集预填,避免重开时被覆盖
-  const id = anilistId != null ? anilistId : state.lastOnline && state.lastOnline.anilistId;
+  const id = anilistId != null ? anilistId : state.lastOnline?.anilistId;
   renderFiles({ title: seriesTitle, anilistId: id }, files);
 }
 
-function renderFiles(anime, files) {
+function renderFiles(anime: AnimeLike, files: SubFile[]): void {
   currentAnime = anime;
   results.innerHTML = '';
   results.appendChild(backLink(t('sc.backToAnime'), doSearch));
@@ -266,7 +284,7 @@ function renderFiles(anime, files) {
   }
 }
 
-async function pickFile(f, row) {
+async function pickFile(f: SubFile, row: HTMLElement): Promise<void> {
   row.classList.add('loading');
   try {
     const ok = await downloadAndLoad(f.url, f.name);
@@ -276,51 +294,51 @@ async function pickFile(f, row) {
       close();
     }
   } catch (err) {
-    toast(t('toast.downloadFailed', { msg: err.message }));
+    toast(t('toast.downloadFailed', { msg: errMsg(err) }));
   } finally {
     row.classList.remove('loading');
   }
 }
 
 // ── DOM 小工具 ──
-function sec(text) {
+function sec(text: string): HTMLDivElement {
   const d = document.createElement('div');
   d.className = 'as-sc-sec';
   d.textContent = text;
   return d;
 }
-function empty(html) {
+function empty(htmlStr: string): HTMLDivElement {
   const d = document.createElement('div');
   d.className = 'as-sc-empty';
-  d.innerHTML = html;
+  d.innerHTML = htmlStr;
   return d;
 }
-function backLink(text, fn) {
+function backLink(text: string, fn: () => void): HTMLDivElement {
   const d = document.createElement('div');
   d.className = 'as-sc-back2';
   d.innerHTML = `${IC.back}<span></span>`;
-  d.querySelector('span').textContent = text.replace(/^←\s*/, '');
+  d.querySelector('span')!.textContent = text.replace(/^←\s*/, '');
   d.addEventListener('click', fn);
   return d;
 }
-function wirePoster(row) {
-  const img = row.querySelector('.as-sc-poster img');
+function wirePoster(row: HTMLElement): void {
+  const img = row.querySelector<HTMLImageElement>('.as-sc-poster img');
   if (img) img.addEventListener('error', () => img.remove()); // 失败回落占位图标(位于 img 之下)
 }
-function setResults(html) {
-  results.innerHTML = html;
+function setResults(htmlStr: string): void {
+  results.innerHTML = htmlStr;
 }
 
-function fmtSize(n) {
+function fmtSize(n?: number): string {
   if (!n) return '';
   return n > 1e6 ? (n / 1e6).toFixed(1) + 'MB' : Math.round(n / 1024) + 'KB';
 }
-function esc(s) {
+function esc(s: unknown): string {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 }
-function escAttr(s) {
+function escAttr(s: unknown): string {
   return esc(s).replace(/"/g, '&quot;');
 }

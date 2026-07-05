@@ -11,6 +11,7 @@ import { setReactHandler, updateWatcher } from './watcher.js';
 import { initEpisodeWatch } from './episode-watch.js';
 import { initAutoOffer } from './auto-offer.js';
 import { initEpisodeSignal } from './episode-signal.js';
+import type { SubStyle } from './types.js';
 
 // 避免在同一 window 重复注入
 if (!window.__ANYSUB_LOADED__) {
@@ -18,7 +19,7 @@ if (!window.__ANYSUB_LOADED__) {
   init();
 }
 
-function init() {
+function init(): void {
   if (!document.body) {
     requestAnimationFrame(init);
     return;
@@ -36,7 +37,7 @@ function init() {
 }
 
 // DOM 变化时:SPA 换视频后重挂(仅字幕已加载时)+ 刷新悬浮球可见性
-function react() {
+function react(): void {
   if (state.cues.length && state.video && (!state.video.isConnected || !isVisible(state.video))) {
     const nv = pickBestVideo();
     if (nv && nv !== state.video) setVideo(nv);
@@ -45,12 +46,12 @@ function react() {
 }
 
 // 恢复持久化偏好(仅接受已知字段,防脏数据)
-function restoreSettings() {
+function restoreSettings(): void {
   const saved = loadSettings();
   const s = state.style;
   if (typeof saved.fontPct === 'number') s.fontPct = saved.fontPct;
   if (typeof saved.bottomPct === 'number') s.bottomPct = saved.bottomPct;
-  if (typeof saved.bg === 'string') s.bg = saved.bg;
+  if (typeof saved.bg === 'string') s.bg = saved.bg as SubStyle['bg'];
   if (typeof saved.color === 'string') s.color = saved.color;
   if (typeof saved.showFab === 'boolean') state.showFab = saved.showFab;
   if (typeof saved.rubyParen === 'boolean') state.rubyParen = saved.rubyParen;
@@ -72,7 +73,7 @@ function restoreSettings() {
   });
   // 只接受「纯对象 + 有限数值」的偏移表:防脏数据(数组/字符串/嵌套/超大)污染并被回写
   if (saved.offsets && typeof saved.offsets === 'object' && !Array.isArray(saved.offsets)) {
-    const clean = {};
+    const clean: Record<string, number> = {};
     for (const k in saved.offsets) {
       const v = saved.offsets[k];
       if (typeof v === 'number' && isFinite(v)) clean[k] = v;

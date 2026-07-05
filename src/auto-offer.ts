@@ -17,13 +17,13 @@ import { t } from './i18n.js';
 
 const MIN_DURATION = 120; // 秒:正片阈值,滤掉 hero 预览/短预告(动画正片均 20 分钟+)
 const MIN_COVER = 0.6; // 视口占比:主播放器 vs 横幅预览(给静音观看者兜底)
-let lastOfferedKey = null;
+let lastOfferedKey: string | null = null;
 let lastUrl = '';
-let retryTimer = 0,
+let retryTimer: ReturnType<typeof setTimeout> | undefined,
   waitTries = 0,
   verifying = false;
 
-export function initAutoOffer() {
+export function initAutoOffer(): void {
   if (!getSiteAdapter()) return; // 非已知站点:完全不介入
   lastUrl = location.href;
   let tries = 0;
@@ -39,10 +39,20 @@ export function initAutoOffer() {
   document.addEventListener('play', check, true);
 }
 
+// isFeatureVideo 只读取以下字段(结构化类型,便于用最小 mock 单测;HTMLVideoElement 满足之)
+interface FeatureVid {
+  duration: number;
+  paused: boolean;
+  currentTime: number;
+  muted: boolean;
+  volume: number;
+  getBoundingClientRect?: () => { width: number; height: number };
+}
+
 // 「用户在看正片」判定(纯函数,便于单测):时长够长 + 已起播未暂停(排除首页预加载但暂停的
 // 视频),且满足以下之一:有声(!muted && volume>0,自动播放的预览按浏览器策略必然静音,
 // 带声音说明用户手势主动播放,URL 不变也能区分);或占据大半视口(给静音观看者兜底)。
-export function isFeatureVideo(v, vw, vh) {
+export function isFeatureVideo(v: FeatureVid | null, vw: number, vh: number): boolean {
   if (!v || !(isFinite(v.duration) && v.duration > MIN_DURATION && !v.paused && v.currentTime > 0))
     return false;
   const audible = !v.muted && v.volume > 0;
@@ -51,19 +61,21 @@ export function isFeatureVideo(v, vw, vh) {
   return audible || cover > MIN_COVER;
 }
 
-function playingFeature() {
-  const vids = [document.querySelector('video')].concat(collectVideos()).filter(Boolean);
+function playingFeature(): HTMLVideoElement | null {
+  const vids = [document.querySelector<HTMLVideoElement>('video')]
+    .concat(collectVideos())
+    .filter(Boolean);
   const vw = window.innerWidth || 1,
     vh = window.innerHeight || 1;
   return vids.find((v) => isFeatureVideo(v, vw, vh)) || null;
 }
 
 // 外部触发(轮询/切集信号)入口:重置「等待起播」重试计数
-function check() {
+function check(): void {
   run(false);
 }
 
-async function run(isRetry) {
+async function run(isRetry: boolean): Promise<void> {
   if (!isRetry) waitTries = 0;
   clearTimeout(retryTimer);
   if (location.href !== lastUrl) {

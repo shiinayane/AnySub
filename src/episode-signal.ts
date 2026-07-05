@@ -3,25 +3,28 @@
 // 好处:切集监听「观察什么」交给站点规则(扩展新站只改适配器),订阅者(切集续播 / 自动提示)
 // 共用同一信号且被指纹去重——无关的标题抖动不再触发多余工作。
 import { detectShow, getSiteAdapter } from './site-adapters.js';
+import type { DetectInfo } from './types.js';
 
-const subs = [];
-let mo = null,
-  debounce = 0,
-  poll = 0,
-  armed = null,
-  lastSig = null;
+type EpisodeSub = (info: DetectInfo) => void;
+
+const subs: EpisodeSub[] = [];
+let mo: MutationObserver | null = null,
+  debounce: ReturnType<typeof setTimeout> | undefined,
+  poll: ReturnType<typeof setInterval> | undefined,
+  armed: Node | null = null,
+  lastSig: string | null = null;
 
 // 订阅切集(回调收到最新 detectShow() 结果)
-export function onEpisodeChange(fn) {
+export function onEpisodeChange(fn: EpisodeSub): void {
   subs.push(fn);
 }
 
-function sig(info) {
+function sig(info: DetectInfo): string {
   return (info.series || '') + '#' + (info.episode || '');
 }
 
 // 观察目标:站点规则(适配器在目标页提供的 watchEl)优先,回落 <title>
-function target() {
+function target(): Node | null {
   const ad = getSiteAdapter();
   if (ad && ad.isTarget() && ad.watchEl) {
     const el = ad.watchEl();
@@ -30,7 +33,7 @@ function target() {
   return document.querySelector('title');
 }
 
-function fire() {
+function fire(): void {
   const info = detectShow();
   const s = sig(info);
   if (s === lastSig) return; // 指纹未变 → 不是切集,忽略
@@ -44,7 +47,7 @@ function fire() {
   }
 }
 
-function arm() {
+function arm(): void {
   const node = target();
   if (!node || node === armed) return; // 目标未变则不重挂
   if (mo) mo.disconnect();
@@ -56,7 +59,7 @@ function arm() {
   mo.observe(node, { childList: true, characterData: true, subtree: true });
 }
 
-export function initEpisodeSignal() {
+export function initEpisodeSignal(): void {
   lastSig = sig(detectShow()); // 记录基线,首次不算切集
   arm();
   const ad = getSiteAdapter();
@@ -74,7 +77,7 @@ export function initEpisodeSignal() {
       n = 0; // 在播放页 → 重置计数(正常浏览一阵后不再永久停摆)
     else if (++n > 20) {
       clearInterval(poll);
-      poll = 0;
+      poll = undefined;
     } // 仅「持续 ~30s 未进播放页」才停,守空闲
   }, 1500);
 }

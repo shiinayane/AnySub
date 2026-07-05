@@ -4,9 +4,22 @@ import assert from 'node:assert/strict';
 // 站点适配器读全局 location/document;node 里默认没有,逐用例注入桩再导入模块。
 // els: 选择器片段 → 元素文本(模拟 Prime 的 atvwebplayersdk-* 元素);ogTitle 走 meta;
 // boxes: 选择器片段 → [{h2, h3}](模拟 U-NEXT styled-components 容器,支持内部 h2/h3)。
-function mkBox(b) {
+interface Box {
+  h2?: string | null;
+  h3?: string | null;
+}
+interface StubOpts {
+  hostname: string;
+  pathname: string;
+  href: string;
+  title: string;
+  ogTitle?: string;
+  els?: Record<string, string>;
+  boxes?: Record<string, Box[]>;
+}
+function mkBox(b: Box) {
   return {
-    querySelector: (s) =>
+    querySelector: (s: string) =>
       s === 'h2' && b.h2 != null
         ? { textContent: b.h2 }
         : s === 'h3' && b.h3 != null
@@ -14,11 +27,11 @@ function mkBox(b) {
           : null,
   };
 }
-function stub({ hostname, pathname, href, title, ogTitle, els, boxes }) {
-  globalThis.location = { hostname, pathname, href };
+function stub({ hostname, pathname, href, title, ogTitle, els, boxes }: StubOpts) {
+  globalThis.location = { hostname, pathname, href } as unknown as Location;
   globalThis.document = {
     title,
-    querySelector: (sel) => {
+    querySelector: (sel: string) => {
       if (ogTitle != null && sel.includes('og:title')) return { getAttribute: () => ogTitle };
       if (sel === '[class*="atvwebplayersdk-"]')
         return els && Object.keys(els).length ? { textContent: '' } : null; // isTarget 探针
@@ -35,11 +48,11 @@ function stub({ hostname, pathname, href, title, ogTitle, els, boxes }) {
       }
       return null;
     },
-    querySelectorAll: (sel) => {
+    querySelectorAll: (sel: string) => {
       if (boxes) for (const frag in boxes) if (sel.includes(frag)) return boxes[frag].map(mkBox);
       return [];
     },
-  };
+  } as unknown as Document;
 }
 
 const { getSiteAdapter, detectShow, parsePrimeEpisode, cleanPrimeTitle, parseUnextEpisode } =
@@ -58,7 +71,7 @@ test('DMM 播放页:识别番名/集数 + season/content ID', () => {
     title: DMM_TITLE,
     ogTitle: DMM_OG,
   });
-  assert.equal(getSiteAdapter().name, 'dmm');
+  assert.equal(getSiteAdapter()!.name, 'dmm');
   assert.deepEqual(detectShow(), {
     series: 'メイドインアビス　烈日の黄金郷',
     episode: '2',
@@ -75,7 +88,7 @@ test('DMM 非播放页(如详情页):不当作目标,回落标题解析', () => 
     title: DMM_TITLE,
     ogTitle: DMM_OG,
   });
-  assert.equal(getSiteAdapter().name, 'dmm'); // 站点匹配
+  assert.equal(getSiteAdapter()!.name, 'dmm'); // 站点匹配
   const r = detectShow(); // 但非播放页 → 回落 parseVideoTitle,无 showKey/epKey
   assert.equal(r.series, 'メイドインアビス　烈日の黄金郷');
   assert.equal(r.episode, '2');
@@ -105,7 +118,7 @@ test('Prime 播放页:剧集信息元素 → 番名 + 集数(用稳定的 atvweb
       'atvwebplayersdk-title-text': '攻殻機動隊　STAND ALONE COMPLEX',
     },
   });
-  assert.equal(getSiteAdapter().name, 'prime');
+  assert.equal(getSiteAdapter()!.name, 'prime');
   assert.deepEqual(detectShow(), { series: '攻殻機動隊　STAND ALONE COMPLEX', episode: '1' });
 });
 
@@ -156,8 +169,8 @@ test('Prime 提供 watchEl(剧集信息元素);DMM 不提供 → 由 episode-sig
     els: { 'atvwebplayersdk-episode-info': 'S1 E1 第1話' },
   });
   const prime = getSiteAdapter();
-  assert.equal(typeof prime.watchEl, 'function');
-  assert.ok(prime.watchEl()); // 返回剧集信息元素(切集信号源)
+  assert.equal(typeof prime!.watchEl, 'function');
+  assert.ok(prime!.watchEl!()); // 返回剧集信息元素(切集信号源)
 
   stub({
     hostname: 'tv.dmm.com',
@@ -165,7 +178,7 @@ test('Prime 提供 watchEl(剧集信息元素);DMM 不提供 → 由 episode-sig
     href: 'https://tv.dmm.com/vod/playback/on-demand/?season=S&content=C',
     title: 'x',
   });
-  assert.equal(getSiteAdapter().watchEl, undefined); // DMM <title> 已带集数 → 无需 watchEl
+  assert.equal(getSiteAdapter()!.watchEl, undefined); // DMM <title> 已带集数 → 无需 watchEl
 });
 
 // ── U-NEXT ──
@@ -177,7 +190,7 @@ test('U-NEXT 播放页:标题块 h2(番名)/ h3(#集数)→ 番名 + 集数', ()
     title: 'U-NEXT',
     boxes: { 'styles__TitleContainer-': [{ h2: 'ヤニねこ', h3: '#1 ニャーがヤニねこにゃ' }] },
   });
-  assert.equal(getSiteAdapter().name, 'unext');
+  assert.equal(getSiteAdapter()!.name, 'unext');
   assert.deepEqual(detectShow(), { series: 'ヤニねこ', episode: '1' });
 });
 
@@ -189,8 +202,8 @@ test('U-NEXT 无标题块 → 非目标,detectShow 回落 <title>', () => {
     title: '鬼滅の刃 第5話｜U-NEXT',
     boxes: {},
   });
-  assert.equal(getSiteAdapter().name, 'unext');
-  assert.equal(getSiteAdapter().isTarget(), false);
+  assert.equal(getSiteAdapter()!.name, 'unext');
+  assert.equal(getSiteAdapter()!.isTarget(), false);
   assert.deepEqual(detectShow(), { series: '鬼滅の刃', episode: '5' });
 });
 

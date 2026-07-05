@@ -10,11 +10,15 @@ import { saveState } from './storage.js';
 import { updateWatcher } from './watcher.js';
 import { buildSearchUI, relocalizeSearch, openSearch } from './search-ui.js';
 import { t, setLang, LANG_OPTIONS } from './i18n.js';
+import type { SubStyle } from './types.js';
 
 const persist = saveState;
 
+// 悬浮球带一个自定义标记位:区分「拖动后松手」与「真正点击」
+type DraggableEl = HTMLElement & { __dragged?: boolean };
+
 // 内联 SVG 图标(stroke 用 currentColor,随文字色走;16px 视觉)
-const SVG = (p) =>
+const SVG = (p: string): string =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const ICON = {
   file: SVG(
@@ -34,7 +38,7 @@ const ICON = {
   upload: SVG('<path d="M12 15V4M8 8l4-4 4 4M5 20h14"/>'),
 };
 
-function langOptions() {
+function langOptions(): string {
   const cur = state.lang || '';
   return LANG_OPTIONS.map(
     (o) => `<option value="${o.value}"${o.value === cur ? ' selected' : ''}>${o.label}</option>`,
@@ -42,7 +46,7 @@ function langOptions() {
 }
 
 // 面板 HTML 随语言生成(可运行时重建以切换语言)
-function panelHtml() {
+function panelHtml(): string {
   return `
   <div class="as-head">
     <div class="as-brand"><span class="as-logo">字</span><span>AnySub</span></div>
@@ -141,7 +145,7 @@ function panelHtml() {
 `;
 }
 
-export function buildUI() {
+export function buildUI(): void {
   const uiRoot = document.createElement('div');
   uiRoot.id = 'anysub-root';
 
@@ -151,7 +155,7 @@ export function buildUI() {
   overlay.style.cssText =
     'display:none;position:fixed;z-index:2147483640;pointer-events:none;overflow:hidden;';
 
-  const fab = document.createElement('div');
+  const fab = document.createElement('div') as DraggableEl;
   fab.id = 'anysub-fab';
   fab.className = 'dock-right';
   fab.textContent = '字';
@@ -182,7 +186,8 @@ export function buildUI() {
     togglePanel();
   });
   fileInput.addEventListener('change', () => {
-    if (fileInput.files[0]) loadFile(fileInput.files[0]);
+    const f = fileInput.files && fileInput.files[0];
+    if (f) loadFile(f);
     fileInput.value = '';
   });
   makeDraggable(fab);
@@ -190,52 +195,52 @@ export function buildUI() {
 
 // 懒建设置面板 + 搜索面板:首次打开(快捷键/悬浮球/在线搜索)时才创建 DOM 并接线。
 let panelBuilt = false;
-export function ensurePanel() {
+export function ensurePanel(): void {
   if (panelBuilt) return;
   panelBuilt = true;
   const panel = document.createElement('div');
   panel.id = 'anysub-panel';
   panel.style.display = 'none';
   panel.innerHTML = panelHtml();
-  refs.uiRoot.appendChild(panel);
+  refs.uiRoot!.appendChild(panel);
   refs.panel = panel;
-  refs.statusEl = panel.querySelector('#anysub-status');
+  refs.statusEl = panel.querySelector<HTMLElement>('#anysub-status');
   buildSearchUI();
   wirePanel();
   updateStatus(); // 首建即反映当前加载状态
 }
 
 // 运行时切换语言:重建面板+搜索 DOM 并重新接线/同步(无需刷新页面)
-export function relocalize() {
+export function relocalize(): void {
   if (!panelBuilt) return;
-  const { panel } = refs;
+  const panel = refs.panel!;
   panel.innerHTML = panelHtml();
-  refs.statusEl = panel.querySelector('#anysub-status');
+  refs.statusEl = panel.querySelector<HTMLElement>('#anysub-status');
   wirePanel();
   relocalizeSearch();
   updateStatus();
-  refs.fab.title = t('panel.fabTip');
+  refs.fab!.title = t('panel.fabTip');
 }
 
 // 供快捷键调用:打开在线搜索
 export { openSearch };
 
 // ── 供快捷键调用的动作 ──
-export function togglePanel() {
+export function togglePanel(): void {
   ensurePanel();
-  const p = refs.panel;
+  const p = refs.panel!;
   const show = p.style.display === 'none' || !p.style.display;
   if (show) openPanel();
   else p.style.display = 'none';
 }
 
 // 显式打开主面板(供快捷键 show 分支 + 搜索面板「返回主面板」复用)
-export function openPanel() {
+export function openPanel(): void {
   ensurePanel();
-  const p = refs.panel;
+  const p = refs.panel!;
   if (refs.searchPanel) refs.searchPanel.style.display = 'none'; // 与搜索面板互斥
   p.style.display = 'block';
-  const inp = p.querySelector('#anysub-offset');
+  const inp = p.querySelector<HTMLInputElement>('#anysub-offset');
   if (inp) inp.value = state.offset.toFixed(1); // 偏移可能在加载时被记忆恢复
   syncVisBtn();
   positionPanel();
@@ -244,13 +249,13 @@ export function openPanel() {
   p.classList.add('as-in'); // 重放入场动画(小面板,reflow 廉价)
 }
 
-export function openFilePicker() {
-  refs.fileInput.click();
+export function openFilePicker(): void {
+  refs.fileInput!.click();
 }
 
-export function adjustOffset(delta) {
+export function adjustOffset(delta: number): void {
   state.offset = Math.round((state.offset + delta) * 10) / 10;
-  const inp = refs.panel && refs.panel.querySelector('#anysub-offset');
+  const inp = refs.panel && refs.panel.querySelector<HTMLInputElement>('#anysub-offset');
   if (inp) inp.value = state.offset.toFixed(1);
   refresh();
   rememberOffset();
@@ -258,16 +263,16 @@ export function adjustOffset(delta) {
 }
 
 // 绝对设置偏移(供切集同源续播沿用上一集偏移):更新值 + 同步输入框 + 重渲染 + 记忆
-export function setOffset(val) {
+export function setOffset(val: number): void {
   state.offset = Math.round(val * 10) / 10;
-  const inp = refs.panel && refs.panel.querySelector('#anysub-offset');
+  const inp = refs.panel && refs.panel.querySelector<HTMLInputElement>('#anysub-offset');
   if (inp) inp.value = state.offset.toFixed(1);
   refresh();
   rememberOffset();
 }
 
 // 按「番剧|源特征」记住当前偏移(持久化);同番剧同源下次自动恢复
-function rememberOffset() {
+function rememberOffset(): void {
   if (!state.offsetKey) return;
   state.offsets[state.offsetKey] = state.offset;
   const keys = Object.keys(state.offsets);
@@ -276,30 +281,32 @@ function rememberOffset() {
 }
 
 // 接线面板控件(懒建时调用一次)
-function wirePanel() {
-  const { panel } = refs;
+function wirePanel(): void {
+  const panel = refs.panel!;
 
-  panel.querySelector('#anysub-close').addEventListener('click', () => {
+  panel.querySelector('#anysub-close')!.addEventListener('click', () => {
     panel.style.display = 'none';
   });
-  panel.querySelector('#anysub-choose').addEventListener('click', openFilePicker);
-  panel.querySelector('#anysub-online').addEventListener('click', openSearch);
-  panel.querySelector('#anysub-pickvid').addEventListener('click', startPickVideo);
-  panel.querySelector('#anysub-clear').addEventListener('click', () => {
+  panel.querySelector('#anysub-choose')!.addEventListener('click', openFilePicker);
+  panel.querySelector('#anysub-online')!.addEventListener('click', openSearch);
+  panel.querySelector('#anysub-pickvid')!.addEventListener('click', startPickVideo);
+  panel.querySelector('#anysub-clear')!.addEventListener('click', () => {
     clearSubtitle();
     syncVisBtn();
   });
 
-  panel.querySelector('#anysub-vis').addEventListener('click', () => {
+  panel.querySelector('#anysub-vis')!.addEventListener('click', () => {
     toggleSubtitles();
     syncVisBtn();
   });
 
   panel
-    .querySelectorAll('[data-off]')
-    .forEach((b) => b.addEventListener('click', () => adjustOffset(parseFloat(b.dataset.off))));
-  panel.querySelector('#anysub-offset').addEventListener('input', (e) => {
-    const val = parseFloat(e.target.value);
+    .querySelectorAll<HTMLElement>('[data-off]')
+    .forEach((b) =>
+      b.addEventListener('click', () => adjustOffset(parseFloat(b.dataset.off || '0'))),
+    );
+  panel.querySelector('#anysub-offset')!.addEventListener('input', (e) => {
+    const val = parseFloat((e.target as HTMLInputElement).value);
     if (!isNaN(val)) {
       state.offset = val;
       refresh();
@@ -307,25 +314,25 @@ function wirePanel() {
     }
   });
 
-  const fontR = panel.querySelector('#anysub-font');
+  const fontR = panel.querySelector<HTMLInputElement>('#anysub-font')!;
   fontR.addEventListener('input', () => {
     state.style.fontPct = parseInt(fontR.value, 10);
-    panel.querySelector('#anysub-fontval').textContent = state.style.fontPct + '%';
+    panel.querySelector('#anysub-fontval')!.textContent = state.style.fontPct + '%';
     invalidateLayout();
     refresh();
     persist();
   });
-  const posR = panel.querySelector('#anysub-pos');
+  const posR = panel.querySelector<HTMLInputElement>('#anysub-pos')!;
   posR.addEventListener('input', () => {
     state.style.bottomPct = parseInt(posR.value, 10);
-    panel.querySelector('#anysub-posval').textContent = state.style.bottomPct + '%';
+    panel.querySelector('#anysub-posval')!.textContent = state.style.bottomPct + '%';
     invalidateLayout();
     refresh();
     persist();
   });
 
   setupSeg('#anysub-bg', 'bg', (val) => {
-    state.style.bg = val;
+    state.style.bg = val as SubStyle['bg'];
     applyStyle();
     persist();
   });
@@ -335,26 +342,26 @@ function wirePanel() {
     persist();
   });
   setupSeg('#anysub-anchor', 'pos', (val) => {
-    state.subPos = val;
+    state.subPos = val as 'top' | 'bottom';
     refresh();
     persist();
   });
 
-  const rubyBtn = panel.querySelector('#anysub-tg-ruby');
+  const rubyBtn = panel.querySelector('#anysub-tg-ruby')!;
   rubyBtn.addEventListener('click', () => {
     state.rubyParen = !state.rubyParen;
     syncToggles();
     refresh();
     persist();
   });
-  const enhBtn = panel.querySelector('#anysub-tg-enh');
+  const enhBtn = panel.querySelector('#anysub-tg-enh')!;
   enhBtn.addEventListener('click', () => {
     state.enhance = !state.enhance;
     syncToggles();
     refresh();
     persist();
   });
-  const fabBtn = panel.querySelector('#anysub-tg-fab');
+  const fabBtn = panel.querySelector('#anysub-tg-fab')!;
   fabBtn.addEventListener('click', () => {
     state.showFab = !state.showFab;
     syncToggles();
@@ -363,38 +370,41 @@ function wirePanel() {
     persist();
   });
 
-  panel.querySelector('#anysub-lang').addEventListener('change', (e) => {
-    setLang(e.target.value);
+  panel.querySelector('#anysub-lang')!.addEventListener('change', (e) => {
+    setLang((e.target as HTMLSelectElement).value);
     persist();
     relocalize();
   });
 
-  setupDrop(panel.querySelector('#anysub-drop')); // 仅面板区域接收拖放,避免劫持页面拖放
+  setupDrop(panel.querySelector<HTMLElement>('#anysub-drop')!); // 仅面板区域接收拖放,避免劫持页面拖放
   syncControls();
 }
 
 // 仅当页面存在 <video> 且用户开启了悬浮球时才显示;先便宜地查 light-DOM,再深扫 Shadow DOM
-export function updateFabVisibility() {
+export function updateFabVisibility(): void {
+  const fab = refs.fab;
+  if (!fab) return;
   // 悬浮球关闭时无需检测视频(球始终隐藏),直接返回,零开销
   if (!state.showFab) {
-    refs.fab.style.display = 'none';
+    fab.style.display = 'none';
     return;
   }
   const hasVideo = !!document.querySelector('video') || collectVideos().length > 0;
-  refs.fab.style.display = hasVideo ? '' : 'none';
+  fab.style.display = hasVideo ? '' : 'none';
 }
 
-function syncVisBtn() {
-  const b = refs.panel.querySelector('#anysub-vis');
+function syncVisBtn(): void {
+  const b = refs.panel!.querySelector('#anysub-vis');
   if (!b) return;
   b.classList.toggle('off', state.hidden); // 图标切 eye/eye-off,不改结构
-  b.title = state.hidden ? t('panel.show') : t('panel.hide');
+  (b as HTMLElement).title = state.hidden ? t('panel.show') : t('panel.hide');
 }
 
-function syncToggles() {
-  const rb = refs.panel.querySelector('#anysub-tg-ruby');
-  const en = refs.panel.querySelector('#anysub-tg-enh');
-  const fb = refs.panel.querySelector('#anysub-tg-fab');
+function syncToggles(): void {
+  const panel = refs.panel!;
+  const rb = panel.querySelector('#anysub-tg-ruby')!;
+  const en = panel.querySelector('#anysub-tg-enh')!;
+  const fb = panel.querySelector('#anysub-tg-fab')!;
   rb.classList.toggle('on', state.rubyParen);
   rb.setAttribute('aria-checked', String(state.rubyParen));
   en.classList.toggle('on', state.enhance);
@@ -404,13 +414,13 @@ function syncToggles() {
 }
 
 // 用(可能已从持久化恢复的)state 同步各控件初始显示
-function syncControls() {
-  const { panel } = refs;
+function syncControls(): void {
+  const panel = refs.panel!;
   const s = state.style;
-  panel.querySelector('#anysub-font').value = s.fontPct;
-  panel.querySelector('#anysub-fontval').textContent = s.fontPct + '%';
-  panel.querySelector('#anysub-pos').value = s.bottomPct;
-  panel.querySelector('#anysub-posval').textContent = s.bottomPct + '%';
+  panel.querySelector<HTMLInputElement>('#anysub-font')!.value = String(s.fontPct);
+  panel.querySelector('#anysub-fontval')!.textContent = s.fontPct + '%';
+  panel.querySelector<HTMLInputElement>('#anysub-pos')!.value = String(s.bottomPct);
+  panel.querySelector('#anysub-posval')!.textContent = s.bottomPct + '%';
   setSegActive('#anysub-bg', 'bg', s.bg);
   setSegActive('#anysub-color', 'color', s.color);
   setSegActive('#anysub-anchor', 'pos', state.subPos);
@@ -418,24 +428,24 @@ function syncControls() {
   syncVisBtn();
 }
 
-function setSegActive(sel, attr, val) {
-  refs.panel
-    .querySelectorAll(`${sel} button`)
+function setSegActive(sel: string, attr: string, val: string): void {
+  refs
+    .panel!.querySelectorAll<HTMLElement>(`${sel} button`)
     .forEach((b) => b.classList.toggle('on', b.dataset[attr] === val));
 }
 
-function setupSeg(sel, attr, cb) {
-  const group = refs.panel.querySelector(sel);
-  group.querySelectorAll('button').forEach((b) =>
+function setupSeg(sel: string, attr: string, cb: (val: string) => void): void {
+  const group = refs.panel!.querySelector(sel)!;
+  group.querySelectorAll<HTMLElement>('button').forEach((b) =>
     b.addEventListener('click', () => {
       group.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
       b.classList.add('on');
-      cb(b.dataset[attr]);
+      cb(b.dataset[attr] || '');
     }),
   );
 }
 
-function setupDrop(el) {
+function setupDrop(el: HTMLElement): void {
   const on = () => el.classList.add('as-dragover');
   const off = () => el.classList.remove('as-dragover');
   el.addEventListener('dragover', (e) => {
@@ -455,8 +465,8 @@ function setupDrop(el) {
 }
 
 // 胶囊拖动 + 松手吸附到最近的左右边缘
-function makeDraggable(el) {
-  let sx, sy, ox, oy, moved;
+function makeDraggable(el: DraggableEl): void {
+  let sx: number, sy: number, ox: number, oy: number, moved: boolean;
   el.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     const r = el.getBoundingClientRect();
@@ -472,7 +482,7 @@ function makeDraggable(el) {
     el.style.right = 'auto';
     el.style.bottom = 'auto';
     el.setPointerCapture(e.pointerId);
-    const move = (ev) => {
+    const move = (ev: PointerEvent) => {
       const dx = ev.clientX - sx,
         dy = ev.clientY - sy;
       if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
@@ -491,7 +501,7 @@ function makeDraggable(el) {
   });
 }
 
-function snapFab(el) {
+function snapFab(el: HTMLElement): void {
   const r = el.getBoundingClientRect();
   const W = window.innerWidth || document.documentElement.clientWidth || 1;
   const onRight = r.left + r.width / 2 >= W / 2;
@@ -503,8 +513,9 @@ function snapFab(el) {
 }
 
 // 面板定位:有悬浮球贴其一侧;否则屏幕居中
-function positionPanel() {
-  const { fab, panel } = refs;
+function positionPanel(): void {
+  const fab = refs.fab!,
+    panel = refs.panel!;
   const W = window.innerWidth || document.documentElement.clientWidth || 1;
   const H = window.innerHeight || document.documentElement.clientHeight || 800;
   // bottom 显式 auto:否则回落到 CSS 的 bottom:54px,与下面设的 top 同时生效会把面板纵向拉伸
@@ -528,7 +539,7 @@ function positionPanel() {
 
 // 手动选视频
 let picking = false;
-function startPickVideo() {
+function startPickVideo(): void {
   if (picking) return;
   const vids = collectVideos().filter(isVisible);
   if (!vids.length) {
@@ -549,16 +560,16 @@ function startPickVideo() {
       cleanup();
       toast(t('toast.videoSelected'));
     });
-    refs.uiRoot.appendChild(o);
+    refs.uiRoot!.appendChild(o);
     return o;
   });
   // cleanup 里统一移除 keydown 监听:点击选中视频也会 cleanup,避免遗留悬空的 document 监听
-  function cleanup() {
+  function cleanup(): void {
     overlays.forEach((o) => o.remove());
     picking = false;
     document.removeEventListener('keydown', esc);
   }
-  const esc = (e) => {
+  const esc = (e: KeyboardEvent) => {
     if (e.key === 'Escape') cleanup();
   };
   document.addEventListener('keydown', esc);

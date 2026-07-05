@@ -9,32 +9,34 @@ import { setOffset } from './ui.js';
 import { toast } from './notify.js';
 import { onEpisodeChange } from './episode-signal.js';
 import { t } from './i18n.js';
+import type { DetectInfo, OnlineCtx } from './types.js';
 
 let busy = false;
 
 // 供 auto-offer 用:同源自动接续尝试期间(clearSubtitle 已清空 cues、下一集尚未下完)不该被
 // 「发现字幕」提示抢先打断——那份提示一判断 cues 为空就可能弹出,和这里的自动加载撞在一起。
-export function isAutoContinuing() {
+export function isAutoContinuing(): boolean {
   return busy;
 }
 
-export function initEpisodeWatch() {
+export function initEpisodeWatch(): void {
   onEpisodeChange(onEpisode); // 观察什么由 episode-signal 按站点决定,这里只管切集后的续播
 }
 
-function onEpisode(info) {
+function onEpisode(info: DetectInfo): void {
   if (busy || !state.cues.length) return;
   const { series, episode } = info;
   if (episode === '') return; // 判断不出集数就不动
   if (series === state.loadedSeries && String(episode) === String(state.loadedEpisode)) return; // 没变
 
-  const sameShow = series === state.loadedSeries && state.lastOnline;
+  // 同源 = 番名相同且有上次在线来源;据此决定「自动接续」还是「仅清除」
+  const ctx: OnlineCtx | null = series === state.loadedSeries ? state.lastOnline : null;
   clearSubtitle(); // 无论如何先清掉不再匹配的旧字幕
-  if (sameShow) {
+  if (ctx) {
     // 先记录已切到本集:即便接续失败(找不到同源/下载失败),state 也反映当前集,避免后续比较错乱/重复触发
     state.loadedSeries = series;
     state.loadedEpisode = episode;
-    autoContinue(state.lastOnline, series, episode);
+    autoContinue(ctx, series, episode);
   } else {
     state.loadedSeries = '';
     state.loadedEpisode = '';
@@ -42,7 +44,7 @@ function onEpisode(info) {
   }
 }
 
-async function autoContinue(ctx, series, episode) {
+async function autoContinue(ctx: OnlineCtx, series: string, episode: string): Promise<void> {
   busy = true;
   // 同源续播沿用上一集偏移(用户约定「同剧集同源稳定」)。
   // 必须显式带过去:pickSameSource 是宽松匹配,而 offsetKey 用精确源 token,
@@ -68,7 +70,7 @@ async function autoContinue(ctx, series, episode) {
       showCandidates(series, files); // 回退:弹出候选让用户选
     }
   } catch (err) {
-    toast(t('toast.epFailed', { msg: err && err.message }));
+    toast(t('toast.epFailed', { msg: err instanceof Error ? err.message : String(err) }));
   } finally {
     busy = false;
   }

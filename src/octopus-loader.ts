@@ -1,6 +1,7 @@
 // 懒加载 JavascriptSubtitlesOctopus(libass-wasm)。仅在打开 ASS 文件时触发。
 // @grant none 下:主脚本用 blob <script> 注入;worker 用 blob 包裹并注入 locateFile 指向 CDN;
 // wasm / 字体由 worker 从 CDN 拉取。任一步失败(网络 / CSP)则抛错,由调用方降级到文本渲染。
+import type { OctopusCtor } from './types.js';
 
 const VER = '4.1.0';
 const CDN = `https://cdn.jsdelivr.net/npm/libass-wasm@${VER}/dist/js/`;
@@ -12,9 +13,16 @@ const FONT_JP =
 const FONT_SC =
   'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.5/files/noto-sans-sc-chinese-simplified-400-normal.woff2';
 
-let loadPromise = null;
+interface OctopusBundle {
+  Octopus: OctopusCtor;
+  workerUrl: string;
+  fallbackFont: string;
+  fonts: string[];
+}
 
-export function loadOctopus() {
+let loadPromise: Promise<OctopusBundle> | null = null;
+
+export function loadOctopus(): Promise<OctopusBundle> {
   if (loadPromise) return loadPromise;
   loadPromise = doLoad().catch((err) => {
     loadPromise = null;
@@ -23,7 +31,7 @@ export function loadOctopus() {
   return loadPromise;
 }
 
-async function doLoad() {
+async function doLoad(): Promise<OctopusBundle> {
   // 1) 主脚本:定义全局 SubtitlesOctopus(blob <script> 注入,避免 eval)
   if (!window.SubtitlesOctopus) {
     const mainText = await fetchText(CDN + 'subtitles-octopus.js');
@@ -45,14 +53,14 @@ async function doLoad() {
   };
 }
 
-function fetchText(url) {
+function fetchText(url: string): Promise<string> {
   return fetch(url, { credentials: 'omit' }).then((r) => {
     if (!r.ok) throw new Error(`加载失败 ${r.status}: ${url}`);
     return r.text();
   });
 }
 
-function injectScript(text) {
+function injectScript(text: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));

@@ -5,14 +5,15 @@ import { positionOverlay, ensureMounted, hideOverlay, invalidateLayout } from '.
 import { toast, updateStatus } from './notify.js';
 import { updateWatcher } from './watcher.js';
 import { t } from './i18n.js';
+import type { Renderer } from './types.js';
 
-let intervalId = 0,
+let intervalId: ReturnType<typeof setInterval> | undefined,
   driversAttached = false;
-let renderer = null;
-let onScroll, onResize, onFs, onVis;
+let renderer: Renderer | null = null;
+let onScroll!: () => void, onResize!: () => void, onFs!: () => void, onVis!: () => void;
 
 // 切换当前渲染器(为多格式预留):销毁旧的、挂载新的
-export function setRenderer(r) {
+export function setRenderer(r: Renderer | null): void {
   if (renderer) renderer.destroy();
   renderer = r;
   if (renderer) {
@@ -22,31 +23,31 @@ export function setRenderer(r) {
   }
 }
 
-export function applyStyle() {
+export function applyStyle(): void {
   if (renderer && renderer.applyStyle) renderer.applyStyle();
 }
-export function refresh() {
+export function refresh(): void {
   renderTick();
 }
 
-export function startRender() {
+export function startRender(): void {
   state.active = true;
   attachDrivers();
   if (!intervalId) intervalId = setInterval(renderTick, 250); // 兜底:文本切换 + 布局位移(timeupdate 负责播放时的实时性)
   renderTick();
 }
 
-export function stopRender() {
+export function stopRender(): void {
   state.active = false;
   if (intervalId) {
     clearInterval(intervalId);
-    intervalId = 0;
+    intervalId = undefined;
   }
   detachDrivers();
   hideOverlay();
 }
 
-function attachDrivers() {
+function attachDrivers(): void {
   if (driversAttached) return;
   driversAttached = true;
   onScroll = () => renderTick();
@@ -68,7 +69,7 @@ function attachDrivers() {
   document.addEventListener('visibilitychange', onVis);
 }
 
-function detachDrivers() {
+function detachDrivers(): void {
   if (!driversAttached) return;
   driversAttached = false;
   window.removeEventListener('scroll', onScroll, { capture: true });
@@ -78,7 +79,7 @@ function detachDrivers() {
   document.removeEventListener('visibilitychange', onVis);
 }
 
-export function renderTick() {
+export function renderTick(): void {
   if (!state.active || !renderer) return;
   const v = state.video;
   if (v && v.isConnected && state.cues.length) {
@@ -91,7 +92,7 @@ export function renderTick() {
   }
 }
 
-export function setVideo(v) {
+export function setVideo(v: HTMLVideoElement): void {
   if (state.video && state.video !== v) {
     state.video.removeEventListener('timeupdate', renderTick);
     state.video.removeEventListener('seeking', renderTick);
@@ -108,7 +109,7 @@ export function setVideo(v) {
 }
 
 // 临时隐藏/显示字幕(不清除,不持久化)
-export function toggleSubtitles() {
+export function toggleSubtitles(): boolean | undefined {
   if (!state.cues.length) {
     toast(t('toast.noSubs'));
     return;
@@ -120,7 +121,7 @@ export function toggleSubtitles() {
   return state.hidden;
 }
 
-export function clearSubtitle() {
+export function clearSubtitle(): void {
   if (!state.cues.length) {
     toast(t('toast.noSubsNow'));
     return;

@@ -26,6 +26,8 @@ export default tseslint.config(
       globals: { ...globals.browser, ...globals.greasemonkey },
     },
     rules: {
+      // 定时器句柄常在闭包里先被引用、赋值在后(如 toastOffer 的 dismiss),这属合法 let
+      'prefer-const': ['error', { ignoreReadBeforeAssign: true }],
       // 允许下划线开头/单下划线的有意丢弃(catch (_)、占位参数)
       'no-unused-vars': [
         'error',

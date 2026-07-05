@@ -53,6 +53,7 @@ export interface SubFile {
   url: string;
   size?: number;
   last_modified?: string;
+  entryName?: string; // 由 online.subtitleFiles 附加:所属条目名(候选列表分组显示用)
 }
 
 // Jimaku 条目(entries/search 返回项)
@@ -120,4 +121,54 @@ export interface Refs {
   statusEl: HTMLElement | null;
   fileInput: HTMLInputElement | null;
   searchPanel?: HTMLElement | null;
+}
+
+// 渲染器接口(文本 / ASS 渲染器共同实现;controller 只依赖此接口)
+export interface Renderer {
+  mount(): void;
+  renderAt(v: HTMLVideoElement, rect: DOMRect | null, layoutChanged: boolean): void;
+  destroy(): void;
+  setVisible?(v: boolean): void;
+  applyStyle?(): void;
+}
+
+// 站点适配器:识别「这是哪部番·第几话」
+export interface SiteAdapter {
+  name: string;
+  match(): boolean;
+  isTarget(): boolean;
+  detect(): DetectInfo;
+  watchEl?(): Element | null;
+}
+
+// resolveSubtitles 返回
+export interface ResolveResult {
+  anime: AnimeCandidate | null;
+  candidates: AnimeCandidate[];
+  files: SubFile[];
+  exact: boolean;
+}
+
+// libass-wasm (JavascriptSubtitlesOctopus) 最小类型(外部库无类型声明)
+export interface OctopusInstance {
+  resize(width: number, height: number, top?: number, left?: number): void;
+  setCurrentTime(time: number): void;
+  dispose(): void;
+}
+export interface OctopusOptions {
+  canvas: HTMLCanvasElement;
+  subContent: string;
+  workerUrl: string;
+  fallbackFont: string;
+  fonts?: string[];
+  onReady?: () => void;
+  onError?: (e: unknown) => void;
+}
+export type OctopusCtor = new (opts: OctopusOptions) => OctopusInstance;
+
+declare global {
+  interface Window {
+    SubtitlesOctopus?: OctopusCtor;
+    __ANYSUB_LOADED__?: boolean;
+  }
 }

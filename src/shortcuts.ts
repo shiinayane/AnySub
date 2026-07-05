@@ -4,8 +4,15 @@
 import { togglePanel, openFilePicker, adjustOffset, openSearch } from './ui.js';
 import { toggleSubtitles } from './controller.js';
 
+interface Shortcut {
+  code: string;
+  label: string;
+  desc: string;
+  run: () => void;
+}
+
 // code → 动作。这是「默认键位」,展示在面板图例里。
-export const SHORTCUTS = [
+export const SHORTCUTS: Shortcut[] = [
   { code: 'KeyS', label: 'Alt+Shift+S', desc: '打开/关闭面板', run: () => togglePanel() },
   { code: 'KeyF', label: 'Alt+Shift+F', desc: '在线找字幕', run: () => openSearch() },
   { code: 'KeyV', label: 'Alt+Shift+V', desc: '显示/隐藏字幕', run: () => toggleSubtitles() },
@@ -14,13 +21,15 @@ export const SHORTCUTS = [
   { code: 'ArrowRight', label: 'Alt+Shift+→', desc: '偏移 +0.1s', run: () => adjustOffset(0.1) },
 ];
 
-const MAP = Object.fromEntries(SHORTCUTS.map((s) => [s.code, s.run]));
+const MAP: Record<string, () => void> = Object.fromEntries(
+  SHORTCUTS.map((s) => [s.code, s.run] as [string, () => void]),
+);
 
-export function initShortcuts() {
+export function initShortcuts(): void {
   window.addEventListener('keydown', onKey, true); // capture:先于站点处理
 }
 
-function onKey(e) {
+function onKey(e: KeyboardEvent): void {
   // 快捷键恒启用(不提供关闭开关,避免与「无悬浮球」叠加造成无法打开面板的死锁)
   // 前缀同时接受 Alt+Shift 与 Ctrl+Shift(用哪个都行);排除再叠加另一修饰键 / Meta
   const alt = e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey;
@@ -48,12 +57,13 @@ const NON_TEXT_INPUT = new Set([
   'hidden',
 ]);
 
-function isTyping() {
-  const el = document.activeElement;
+function isTyping(): boolean {
+  const el = document.activeElement as HTMLElement | null;
   if (!el) return false;
   if (el.isContentEditable) return true;
   const tag = el.tagName;
   if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
-  if (tag === 'INPUT') return !NON_TEXT_INPUT.has((el.type || 'text').toLowerCase());
+  if (tag === 'INPUT')
+    return !NON_TEXT_INPUT.has(((el as HTMLInputElement).type || 'text').toLowerCase());
   return false;
 }

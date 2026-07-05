@@ -14,13 +14,24 @@ import { parseAss } from './parse-ass.js';
 import { toast, updateStatus } from './notify.js';
 import { updateWatcher } from './watcher.js';
 import { t } from './i18n.js';
+import type { Cue, Renderer } from './types.js';
+
+interface Parsed {
+  cues: Cue[];
+  assText?: string;
+}
+interface Format {
+  test: (name?: string, text?: string) => boolean;
+  parse: (text: string, name?: string) => Parsed;
+  create: (parsed: Parsed) => Renderer;
+}
 
 // 格式注册表:test 命中即用其 parse(填充文本保底 cues)+ create(渲染器)。
-const FORMATS = [
+const FORMATS: Format[] = [
   {
     test: (name) => /\.(ass|ssa)$/i.test(name || ''),
     parse: (text) => ({ cues: parseAss(text), assText: text }),
-    create: (parsed) => createAssRenderer(parsed.assText),
+    create: (parsed) => createAssRenderer(parsed.assText || ''),
   },
   {
     test: () => true, // 文本渲染器兜底(SRT / VTT / 其它)
@@ -29,7 +40,7 @@ const FORMATS = [
   },
 ];
 
-export function loadFile(file) {
+export function loadFile(file?: File | null): void {
   if (!file) return;
   readSubtitleFile(file)
     .then((text) => loadFromText(text, file.name))
@@ -40,12 +51,12 @@ export function loadFile(file) {
 }
 
 // 从字节流载入(在线下载复用:先做编码探测再走统一路径)
-export function loadFromBuffer(buffer, name) {
+export function loadFromBuffer(buffer: ArrayBuffer, name: string): boolean {
   return loadFromText(decodeBuffer(new Uint8Array(buffer)), name);
 }
 
 // 从已解码文本载入(本地/在线共用的核心路径)
-export function loadFromText(text, name) {
+export function loadFromText(text: string, name: string): boolean {
   if (!state.video || !state.video.isConnected) {
     const v = pickBestVideo();
     if (v) setVideo(v);

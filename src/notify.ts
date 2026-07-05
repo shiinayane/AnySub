@@ -3,25 +3,26 @@ import { refs } from './refs.js';
 import { state } from './state.js';
 import { t } from './i18n.js';
 
-let toastTimer;
+let toastTimer: ReturnType<typeof setTimeout>;
 
-export function toast(msg) {
-  let t = document.getElementById('anysub-toast');
-  if (!t) {
-    t = document.createElement('div');
-    t.id = 'anysub-toast';
-    (refs.uiRoot || document.body).appendChild(t);
+export function toast(msg: string): void {
+  let el = document.getElementById('anysub-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'anysub-toast';
+    (refs.uiRoot || document.body).appendChild(el);
   }
-  t.textContent = msg;
-  t.style.opacity = '1';
+  const box = el; // 此处已非空,绑定 const 供延时回调闭包引用
+  box.textContent = msg;
+  box.style.opacity = '1';
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
-    t.style.opacity = '0';
+    box.style.opacity = '0';
   }, 2500);
 }
 
 // 可点提示:一句话 + 主操作按钮 + 关闭。点操作/关闭即消,约 12s 自动消。用于「发现字幕」自动提示。
-export function toastOffer(msg, actionLabel, onAction) {
+export function toastOffer(msg: string, actionLabel: string, onAction: () => void): void {
   const old = document.getElementById('anysub-offer');
   if (old) old.remove();
   const el = document.createElement('div');
@@ -37,7 +38,7 @@ export function toastOffer(msg, actionLabel, onAction) {
   x.textContent = '✕';
   el.append(text, act, x);
   (refs.uiRoot || document.body).appendChild(el);
-  let tm;
+  let tm: ReturnType<typeof setTimeout>;
   const dismiss = () => {
     clearTimeout(tm);
     el.remove();
@@ -50,7 +51,7 @@ export function toastOffer(msg, actionLabel, onAction) {
   tm = setTimeout(dismiss, 12000);
 }
 
-export function updateStatus() {
+export function updateStatus(): void {
   if (!refs.statusEl) return;
   const loaded = state.cues.length > 0;
   refs.statusEl.textContent = loaded

@@ -2,15 +2,15 @@
 // 需要的场景:开启了悬浮球(要随视频出现/消失切换),或已加载字幕(SPA 换视频要重挂)。
 import { state } from './state.js';
 
-let mo = null,
-  timer = 0,
-  onReact = () => {};
+let mo: MutationObserver | null = null,
+  timer: ReturnType<typeof setTimeout> | undefined,
+  onReact: () => void = () => {};
 
-export function setReactHandler(fn) {
+export function setReactHandler(fn: () => void): void {
   onReact = fn;
 }
 
-export function updateWatcher() {
+export function updateWatcher(): void {
   const need = state.showFab || state.cues.length > 0;
   if (need && !mo) {
     mo = new MutationObserver(() => {

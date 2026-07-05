@@ -6,10 +6,11 @@ import { state, FONT_BASE } from './state.js';
 import { refs } from './refs.js';
 import { applyRuby } from './ruby.js';
 import { stepCueLine, INIT_SPAN } from './cue-format.js';
+import type { Cue, LineClass, Renderer } from './types.js';
 
 // 单行 + 其分类 → HTML(语义排版 + 注音)。text/rest 已是转义安全的 HTML。
 // 导出供单测:每种语义类型都应正确套用注音(sfx 曾漏调 applyRuby 导致内嵌注音丢失)。
-export function typedHtml(text, c) {
+export function typedHtml(text: string, c: Pick<LineClass, 'type' | 'name' | 'rest'>): string {
   switch (c.type) {
     case 'sfx':
       return `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
@@ -22,7 +23,7 @@ export function typedHtml(text, c) {
     case 'speaker':
       return `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
     case 'dialogue':
-      return `<span class="anysub-spk">（${applyRuby(c.name, state.rubyParen)}）</span>${applyRuby(c.rest, state.rubyParen)}`;
+      return `<span class="anysub-spk">（${applyRuby(c.name ?? '', state.rubyParen)}）</span>${applyRuby(c.rest ?? '', state.rubyParen)}`;
     default:
       return applyRuby(text, state.rubyParen);
   }
@@ -30,11 +31,11 @@ export function typedHtml(text, c) {
 
 // 把当前活动 cue 拆成「段」。新段起于:每条 cue 的首行、行首带话者名的行、或(启用语义时)独立音效行。
 // 每段带 nonspeech 标记(独立（…）音效),供分置时把它移到对侧、避让台词。
-function buildSegments(active) {
-  const segs = [];
+function buildSegments(active: Cue[]): Array<{ html: string; nonspeech: boolean }> {
+  const segs: Array<{ lines: string[]; nonspeech: boolean }> = [];
   for (const cue of active) {
     let st = cue._spanIn || INIT_SPAN;
-    let cur = null; // 每条 cue 起始重置 → cue 首行必开新段
+    let cur: { lines: string[]; nonspeech: boolean } | null = null; // 每条 cue 起始重置 → cue 首行必开新段
     for (const line of String(cue.text == null ? '' : cue.text).split('<br>')) {
       const c = stepCueLine(line, state.speakers, st);
       st = c.state;
@@ -50,23 +51,23 @@ function buildSegments(active) {
   return segs.map((s) => ({ html: s.lines.join('<br>'), nonspeech: s.nonspeech }));
 }
 
-export function createTextRenderer() {
-  let boxTop = null,
-    boxBottom = null;
+export function createTextRenderer(): Renderer {
+  let boxTop: HTMLDivElement | null = null,
+    boxBottom: HTMLDivElement | null = null;
   let visible = true;
   let lastKey = '';
   let cursor = 0; // 活动 cue 扫描起点:前进播放时越过已结束的前缀,免每帧从头扫(O(N)→摊还 O(1))
   let prevT = -1;
 
-  function outline(c) {
+  function outline(c: string): string {
     return `-2px -2px 1px ${c},2px -2px 1px ${c},-2px 2px 1px ${c},2px 2px 1px ${c},0 0 3px ${c}`;
   }
-  function eachBox(fn) {
+  function eachBox(fn: (b: HTMLDivElement) => void): void {
     if (boxTop) fn(boxTop);
     if (boxBottom) fn(boxBottom);
   }
 
-  function makeBox(anchor) {
+  function makeBox(anchor: string): HTMLDivElement {
     const b = document.createElement('div');
     b.className = 'anysub-cuebox';
     b.dataset.anchor = anchor;
@@ -74,7 +75,7 @@ export function createTextRenderer() {
     return b;
   }
 
-  function styleBox(b) {
+  function styleBox(b: HTMLDivElement): void {
     const s = state.style;
     b.style.color = s.color;
     b.style.textShadow = 'none';
@@ -96,13 +97,13 @@ export function createTextRenderer() {
     mount() {
       boxTop = makeBox('top');
       boxBottom = makeBox('bottom');
-      refs.overlay.appendChild(boxTop);
-      refs.overlay.appendChild(boxBottom);
+      refs.overlay!.appendChild(boxTop);
+      refs.overlay!.appendChild(boxBottom);
       lastKey = '';
-      this.applyStyle();
+      eachBox(styleBox); // = applyStyle():套用当前面板样式
     },
 
-    setVisible(v) {
+    setVisible(v: boolean) {
       visible = v;
       if (!v)
         eachBox((b) => {
@@ -111,8 +112,8 @@ export function createTextRenderer() {
       else lastKey = ''; // 强制下次 renderAt 重渲染并恢复 display
     },
 
-    renderAt(v, rect, layoutChanged) {
-      if (!boxTop) return;
+    renderAt(v: HTMLVideoElement, rect: DOMRect | null, layoutChanged: boolean) {
+      if (!boxTop || !boxBottom) return;
       if (!visible) {
         eachBox((b) => {
           b.style.display = 'none';
@@ -137,7 +138,7 @@ export function createTextRenderer() {
       prevT = t;
       // 游标越过「已结束的前缀 cue」(前进播放中不会再命中);遇到仍活动的 cue 即停,不越过它
       while (cursor < cues.length && cues[cursor].end <= t) cursor++;
-      const active = [];
+      const active: Cue[] = [];
       // cues 按 start 升序:从游标扫到 start > t;游标之后仍可能有已结束的(重叠 cue),故仍判 end
       for (let i = cursor; i < cues.length; i++) {
         const c = cues[i];

@@ -8,17 +8,18 @@ import { createTextRenderer } from './render-text.js';
 import { loadOctopus } from './octopus-loader.js';
 import { toast } from './notify.js';
 import { t } from './i18n.js';
+import type { OctopusInstance, Renderer } from './types.js';
 
-export function createAssRenderer(assText) {
+export function createAssRenderer(assText: string): Renderer {
   const textRenderer = createTextRenderer(); // 文本保底,渲染 state.cues(loader 已用 parseAss 填充)
-  let octopus = null;
-  let assCanvas = null;
+  let octopus: OctopusInstance | null = null;
+  let assCanvas: HTMLCanvasElement | null = null;
   let usingLibass = false;
   let disposed = false;
   let lastSizeKey = '';
   let lastDriveT = -1;
 
-  function tryLibass() {
+  function tryLibass(): void {
     loadOctopus()
       .then(({ Octopus, workerUrl, fallbackFont, fonts }) => {
         if (disposed) return;
@@ -26,7 +27,7 @@ export function createAssRenderer(assText) {
         assCanvas.id = 'anysub-ass-canvas';
         assCanvas.style.cssText =
           'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:block;';
-        refs.overlay.appendChild(assCanvas);
+        refs.overlay!.appendChild(assCanvas);
         octopus = new Octopus({
           canvas: assCanvas, // 只给 canvas,不给 video → 我们手动驱动时间轴与尺寸
           subContent: assText,
@@ -43,10 +44,10 @@ export function createAssRenderer(assText) {
             lastSizeKey = '';
             sizeCanvas(); // 首次定尺寸
             drive(); // 立即渲染当前帧
-            if (state.hidden) assCanvas.style.display = 'none';
+            if (state.hidden && assCanvas) assCanvas.style.display = 'none';
             toast(t('toast.assHiFi'));
           },
-          onError: (e) => {
+          onError: (e: unknown) => {
             console.warn('[AnySub] libass 渲染出错,保留文本', e);
           },
         });
@@ -58,8 +59,8 @@ export function createAssRenderer(assText) {
   }
 
   // 让 libass 渲染分辨率跟上 overlay(overlay 已同步到视频位置/尺寸)
-  function sizeCanvas() {
-    if (!octopus || !assCanvas) return;
+  function sizeCanvas(): void {
+    if (!octopus || !assCanvas || !refs.overlay) return;
     const w = refs.overlay.clientWidth,
       h = refs.overlay.clientHeight;
     if (!w || !h) return;
@@ -78,19 +79,19 @@ export function createAssRenderer(assText) {
   }
 
   // 把视频当前时间(含偏移)推给 libass;时间未变则跳过(暂停+滚动/resize 时避免每 tick 重绘)
-  function drive() {
+  function drive(): void {
     if (!octopus || !state.video) return;
-    const t = Math.max(0, state.video.currentTime - state.offset);
-    if (t === lastDriveT) return;
-    lastDriveT = t;
+    const time = Math.max(0, state.video.currentTime - state.offset);
+    if (time === lastDriveT) return;
+    lastDriveT = time;
     try {
-      octopus.setCurrentTime(t);
+      octopus.setCurrentTime(time);
     } catch (_) {
       /* ignore */
     }
   }
 
-  function safeDispose() {
+  function safeDispose(): void {
     if (octopus) {
       try {
         octopus.dispose();
@@ -110,7 +111,7 @@ export function createAssRenderer(assText) {
       textRenderer.mount();
       tryLibass();
     },
-    renderAt(v, rect, layoutChanged) {
+    renderAt(v: HTMLVideoElement, rect: DOMRect | null, layoutChanged: boolean) {
       if (!usingLibass) {
         textRenderer.renderAt(v, rect, layoutChanged);
         return;
@@ -120,13 +121,13 @@ export function createAssRenderer(assText) {
       if (layoutChanged || lastSizeKey === '') sizeCanvas();
       drive();
     },
-    setVisible(vis) {
+    setVisible(vis: boolean) {
       if (usingLibass) {
         if (assCanvas) assCanvas.style.display = vis ? '' : 'none';
-      } else textRenderer.setVisible(vis);
+      } else textRenderer.setVisible!(vis);
     },
     applyStyle() {
-      if (!usingLibass) textRenderer.applyStyle(); // ASS 用文件自带样式,libass 阶段忽略面板样式
+      if (!usingLibass) textRenderer.applyStyle!(); // ASS 用文件自带样式,libass 阶段忽略面板样式
     },
     destroy() {
       disposed = true;

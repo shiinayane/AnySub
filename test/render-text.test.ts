@@ -19,7 +19,7 @@ test('纯假名音效不产生 ruby（无可注汉字）', () => {
 });
 
 // 每种承载文本的语义类型都应套用注音——防止再出现 sfx 那类「某分支漏调 applyRuby」
-for (const type of ['sfx', 'voice', 'book', 'lyric', 'speaker', 'plain']) {
+for (const type of ['sfx', 'voice', 'book', 'lyric', 'speaker', 'plain'] as const) {
   test(`类型 ${type}:汉字（かな）应产生 ruby`, () => {
     const h = typedHtml('薬草（やくそう）', { type });
     assert.match(h, /<ruby>/, `${type} 未套用注音`);

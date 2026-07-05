@@ -2,7 +2,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { isFeatureVideo } from '../src/auto-offer.js';
 
-const rect = (w, h) => ({ getBoundingClientRect: () => ({ width: w, height: h }) });
+const rect = (w: number, h: number) => ({ getBoundingClientRect: () => ({ width: w, height: h }) });
 const VW = 1280,
   VH = 800;
 

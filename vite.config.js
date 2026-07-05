@@ -9,7 +9,7 @@ const ICON_DATA_URI = 'data:image/svg+xml;base64,' + Buffer.from(ICON_SVG).toStr
 export default defineConfig({
   plugins: [
     monkey({
-      entry: 'src/main.js',
+      entry: 'src/main.ts',
       userscript: {
         // 多语言元数据:空串键 '' = 默认(无 locale 的 @name/@description),英文优先触达。
         // Greasyfork / Tampermonkey 按用户语言选 en/zh-CN/ja,无匹配时回落默认。
