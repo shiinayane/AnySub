@@ -45,11 +45,14 @@ export function initEpisodeSignal() {
   const ad = getSiteAdapter();
   // 纯 <title> 站点(含 DMM、普通站):目标稳定,arm 一次即可,零心跳 → 守空闲开销。
   if (!ad || !ad.watchEl) return;
-  // 观察目标是动态元素(如 Prime,晚出现 / 被 SPA 替换)→ 轻量重挂;
+  // 观察目标是动态元素(如 Prime,晚出现 / 被 SPA 替换)→ 轮询兜底:重挂观察器 + 主动重算指纹。
+  // 关键:换集时 Prime 常「整体替换」剧集信息元素,挂在旧节点上的观察器会失灵、错过变更;
+  // fire() 是指纹去重的,定期主动调用即可在 ≤1.5s 内补捉到切集,不依赖那次 mutation。
   // 若始终未进播放页(如 amazon 购物页),探测约 30s 无果即停,不长期占用。
   let n = 0;
   poll = setInterval(() => {
     arm();
+    fire();
     if (!ad.isTarget() && ++n > 20) { clearInterval(poll); poll = 0; }
   }, 1500);
 }

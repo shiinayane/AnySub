@@ -2,7 +2,7 @@
 import { state } from './state.js';
 import { readSubtitleFile, decodeBuffer } from './decode.js';
 import { parseSubtitle } from './parse.js';
-import { parseVideoTitle } from './title-parse.js';
+import { detectShow } from './site-adapters.js';
 import { sourceTokens } from './match.js';
 import { buildSpeakers, computeSpanStates } from './cue-format.js';
 import { pickBestVideo } from './locator.js';
@@ -59,8 +59,9 @@ export function loadFromText(text, name) {
   state.speakers = buildSpeakers(parsed.cues); // 话者名词表(供语义排版消歧独立括号)
   computeSpanStates(parsed.cues);              // 预计算跨行/跨 cue 的画外音/书面/歌曲跨度状态
   state.fileName = name;
-  // 记录当前番剧/集数(用于切集检测);在线来源由在线路径随后设置,这里先清空
-  const p = parseVideoTitle(document.title);
+  // 记录当前番剧/集数(用于切集检测);用站点适配的 detectShow(),与切集信号同源,
+  // 否则 Prime 等「集数不在 <title> 里」的站点会记错 → 切集时番名对不上、不自动接续。
+  const p = detectShow();
   state.loadedSeries = p.series;
   state.loadedEpisode = p.episode;
   state.lastOnline = null;

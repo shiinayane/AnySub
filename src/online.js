@@ -1,6 +1,6 @@
 // 在线字幕编排:AniList 定位番剧 → Jimaku 取文件 → 下载 → 走统一载入路径。
 import { state } from './state.js';
-import { parseVideoTitle } from './title-parse.js';
+import { detectShow } from './site-adapters.js';
 import { searchAnime } from './anilist.js';
 import { searchByAnilist, searchByQuery, getFiles } from './jimaku.js';
 import { loadFromBuffer } from './loader.js';
@@ -52,9 +52,9 @@ export async function downloadAndLoad(url, name) {
   return loadFromBuffer(buf, name);
 }
 
-// 记录本次在线加载的来源(番剧/集数取自页面标题),供切集「同源优先」自动接续
+// 记录本次在线加载的来源(番剧/集数用站点适配的 detectShow(),与切集信号同源),供切集「同源优先」自动接续
 export function markLoaded(anilistId, fileName) {
-  const p = parseVideoTitle(document.title);
+  const p = detectShow();
   state.loadedSeries = p.series;
   state.loadedEpisode = p.episode;
   state.lastOnline = (anilistId != null) ? { anilistId, name: fileName } : null;

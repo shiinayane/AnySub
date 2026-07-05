@@ -14,7 +14,7 @@ import { t } from './i18n.js';
 
 let panel, titleInput, epInput, results;
 let currentAnime = null;    // 当前展开文件列表的番剧(供记录来源)
-let lastPrefillTitle = null; // 上次预填所依据的页面标题(用于检测切集后刷新预填)
+let lastPrefillSig = null; // 上次预填所依据的「番名#集数」指纹(切集后据此刷新预填)
 let keyEditing = false;      // key 已保存时默认折叠为一行;点「更换」展开输入
 
 const S = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
@@ -71,7 +71,7 @@ function wireSearch() {
 export function relocalizeSearch() {
   if (!panel) return;
   wireSearch();
-  lastPrefillTitle = null; // 下次打开按当前页重新预填
+  lastPrefillSig = null; // 下次打开按当前页重新预填
 }
 
 // key 区两态:未存 → 输入框 + 保存;已存 → 一行「已连接 · 更换」,点更换再展开
@@ -95,15 +95,16 @@ export function openSearch() {
   if (refs.panel) refs.panel.style.display = 'none'; // 与主面板互斥
   show();
   renderKeyArea();
-  // 预填「番剧名 + 集数」(站点适配优先,回落标题解析)。首次为空时填;此后仅当页面标题变化才刷新
-  // 预填并清空旧结果,同一集内保留用户的手动修改。
-  const curTitle = document.title;
+  // 预填「番剧名 + 集数」(站点适配)。首次为空时填;此后仅当探测到的番名/集数变化才刷新——
+  // 用 detectShow() 指纹判断而非 document.title:Prime 换集时 <title> 不变、集数在 DOM 里,
+  // 若仍按标题判断会残留上一集信息。同一集内保留用户手动修改。
+  const det = detectShow();
+  const detSig = (det.series || '') + '#' + (det.episode || '');
   const first = !titleInput.value && !epInput.value;
-  if (first || curTitle !== lastPrefillTitle) {
-    const { series, episode } = detectShow();
-    titleInput.value = series;
-    epInput.value = episode || '';
-    lastPrefillTitle = curTitle;
+  if (first || detSig !== lastPrefillSig) {
+    titleInput.value = det.series;
+    epInput.value = det.episode || '';
+    lastPrefillSig = detSig;
     setResults(`<div class="as-sc-empty">${t('sc.prompt')}</div>`);
   }
   (state.jimakuKey ? titleInput : (panel.querySelector('#anysub-key') || titleInput)).focus();
@@ -203,7 +204,8 @@ export function showCandidates(seriesTitle, files, anilistId) {
   show();
   renderKeyArea();
   if (seriesTitle) titleInput.value = seriesTitle;
-  lastPrefillTitle = document.title; // 视为已按当前页预填,避免重开时被覆盖
+  const d = detectShow();
+  lastPrefillSig = (d.series || '') + '#' + (d.episode || ''); // 视为已按当前集预填,避免重开时被覆盖
   const id = (anilistId != null) ? anilistId : (state.lastOnline && state.lastOnline.anilistId);
   renderFiles({ title: seriesTitle, anilistId: id }, files);
 }

@@ -1260,6 +1260,65 @@
 			episode
 		};
 	}
+	function ogTitle() {
+		const m = document.querySelector("meta[property=\"og:title\"]");
+		return m && m.getAttribute("content") || document.title;
+	}
+	function urlParam(name) {
+		try {
+			return new URL(location.href).searchParams.get(name) || "";
+		} catch (_) {
+			return "";
+		}
+	}
+	var DMM = {
+		name: "dmm",
+		match: () => /(^|\.)tv\.dmm\.(com|co\.jp)$/.test(location.hostname),
+		isTarget: () => location.pathname.includes("/vod/playback/"),
+		detect() {
+			const { series, episode } = parseVideoTitle(ogTitle());
+			return {
+				series,
+				episode,
+				showKey: urlParam("season"),
+				epKey: urlParam("content")
+			};
+		}
+	};
+	function parsePrimeEpisode(text) {
+		const s = String(text || "");
+		const m = s.match(/\bE(\d+)/i) || s.match(/第\s*(\d+)\s*話/);
+		return m ? String(parseInt(m[1], 10)) : "";
+	}
+	function cleanPrimeTitle(raw) {
+		return String(raw || "").split(/[|｜]/)[0].replace(/^\s*Amazon\.[a-z.]+:\s*/i, "").replace(/\s*(を観る|を視聴|を見る)\s*$/, "").trim();
+	}
+	var ADAPTERS = [DMM, {
+		name: "prime",
+		match: () => /(^|\.)(primevideo\.com|amazon\.[a-z.]+)$/.test(location.hostname),
+		isTarget: () => !!document.querySelector("[class*=\"atvwebplayersdk-\"]"),
+		watchEl: () => document.querySelector("[class*=\"atvwebplayersdk-episode-info\"]"),
+		detect() {
+			const info = document.querySelector("[class*=\"atvwebplayersdk-episode-info\"]");
+			const episode = info ? parsePrimeEpisode(info.textContent) : "";
+			const titleEl = document.querySelector("[class*=\"atvwebplayersdk-title-text\"]");
+			return {
+				series: titleEl && titleEl.textContent.trim() || cleanPrimeTitle(document.title),
+				episode
+			};
+		}
+	}];
+	function getSiteAdapter() {
+		return ADAPTERS.find((a) => a.match()) || null;
+	}
+	function detectShow() {
+		const ad = getSiteAdapter();
+		if (ad && ad.isTarget()) {
+			const info = ad.detect();
+			if (info && info.series) return info;
+		}
+		return parseVideoTitle(document.title);
+	}
 	var EP_TOK = /^(s\d{1,2}e\d{1,3}|e\d{1,3}|v\d+|\d{1,4}|[0-9a-f]{8})$/;
 	function sourceTokens(name) {
 		const out = new Set();
@@ -1977,7 +2036,7 @@
 		state.speakers = buildSpeakers(parsed.cues);
 		computeSpanStates(parsed.cues);
 		state.fileName = name;
-		const p = parseVideoTitle(document.title);
+		const p = detectShow();
 		state.loadedSeries = p.series;
 		state.loadedEpisode = p.episode;
 		state.lastOnline = null;
@@ -2119,7 +2178,7 @@
 		return loadFromBuffer(await res.arrayBuffer(), name);
 	}
 	function markLoaded(anilistId, fileName) {
-		const p = parseVideoTitle(document.title);
+		const p = detectShow();
 		state.loadedSeries = p.series;
 		state.loadedEpisode = p.episode;
 		state.lastOnline = anilistId != null ? {
@@ -2127,68 +2186,9 @@
 			name: fileName
 		} : null;
 	}
-	function ogTitle() {
-		const m = document.querySelector("meta[property=\"og:title\"]");
-		return m && m.getAttribute("content") || document.title;
-	}
-	function urlParam(name) {
-		try {
-			return new URL(location.href).searchParams.get(name) || "";
-		} catch (_) {
-			return "";
-		}
-	}
-	var DMM = {
-		name: "dmm",
-		match: () => /(^|\.)tv\.dmm\.(com|co\.jp)$/.test(location.hostname),
-		isTarget: () => location.pathname.includes("/vod/playback/"),
-		detect() {
-			const { series, episode } = parseVideoTitle(ogTitle());
-			return {
-				series,
-				episode,
-				showKey: urlParam("season"),
-				epKey: urlParam("content")
-			};
-		}
-	};
-	function parsePrimeEpisode(text) {
-		const s = String(text || "");
-		const m = s.match(/\bE(\d+)/i) || s.match(/第\s*(\d+)\s*話/);
-		return m ? String(parseInt(m[1], 10)) : "";
-	}
-	function cleanPrimeTitle(raw) {
-		return String(raw || "").split(/[|｜]/)[0].replace(/^\s*Amazon\.[a-z.]+:\s*/i, "").replace(/\s*(を観る|を視聴|を見る)\s*$/, "").trim();
-	}
-	var ADAPTERS = [DMM, {
-		name: "prime",
-		match: () => /(^|\.)(primevideo\.com|amazon\.[a-z.]+)$/.test(location.hostname),
-		isTarget: () => !!document.querySelector("[class*=\"atvwebplayersdk-\"]"),
-		watchEl: () => document.querySelector("[class*=\"atvwebplayersdk-episode-info\"]"),
-		detect() {
-			const info = document.querySelector("[class*=\"atvwebplayersdk-episode-info\"]");
-			const episode = info ? parsePrimeEpisode(info.textContent) : "";
-			const titleEl = document.querySelector("[class*=\"atvwebplayersdk-title-text\"]");
-			return {
-				series: titleEl && titleEl.textContent.trim() || cleanPrimeTitle(document.title),
-				episode
-			};
-		}
-	}];
-	function getSiteAdapter() {
-		return ADAPTERS.find((a) => a.match()) || null;
-	}
-	function detectShow() {
-		const ad = getSiteAdapter();
-		if (ad && ad.isTarget()) {
-			const info = ad.detect();
-			if (info && info.series) return info;
-		}
-		return parseVideoTitle(document.title);
-	}
 	var panel, titleInput, epInput, results;
 	var currentAnime = null;
-	var lastPrefillTitle = null;
+	var lastPrefillSig = null;
 	var keyEditing = false;
 	var S = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 	var IC = {
@@ -2241,7 +2241,7 @@
 	function relocalizeSearch() {
 		if (!panel) return;
 		wireSearch();
-		lastPrefillTitle = null;
+		lastPrefillSig = null;
 	}
 	function renderKeyArea() {
 		const area = panel.querySelector("#anysub-key-area");
@@ -2267,12 +2267,12 @@
 		if (refs.panel) refs.panel.style.display = "none";
 		show();
 		renderKeyArea();
-		const curTitle = document.title;
-		if (!titleInput.value && !epInput.value || curTitle !== lastPrefillTitle) {
-			const { series, episode } = detectShow();
-			titleInput.value = series;
-			epInput.value = episode || "";
-			lastPrefillTitle = curTitle;
+		const det = detectShow();
+		const detSig = (det.series || "") + "#" + (det.episode || "");
+		if (!titleInput.value && !epInput.value || detSig !== lastPrefillSig) {
+			titleInput.value = det.series;
+			epInput.value = det.episode || "";
+			lastPrefillSig = detSig;
 			setResults(`<div class="as-sc-empty">${t("sc.prompt")}</div>`);
 		}
 		(state.jimakuKey ? titleInput : panel.querySelector("#anysub-key") || titleInput).focus();
@@ -2386,7 +2386,8 @@
 		show();
 		renderKeyArea();
 		if (seriesTitle) titleInput.value = seriesTitle;
-		lastPrefillTitle = document.title;
+		const d = detectShow();
+		lastPrefillSig = (d.series || "") + "#" + (d.episode || "");
 		renderFiles({
 			title: seriesTitle,
 			anilistId: anilistId != null ? anilistId : state.lastOnline && state.lastOnline.anilistId
@@ -3050,6 +3051,7 @@
 		let n = 0;
 		poll = setInterval(() => {
 			arm();
+			fire();
 			if (!ad.isTarget() && ++n > 20) {
 				clearInterval(poll);
 				poll = 0;
