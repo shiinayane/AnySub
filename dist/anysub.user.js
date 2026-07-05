@@ -749,19 +749,19 @@
 			ja: "ASS をテキスト表示(高精度レンダリング不可)"
 		},
 		"offer.found": {
-			en: "Subtitles for {title} ep {ep}?",
-			zh: "发现《{title}》第 {ep} 集字幕",
-			ja: "{title} 第{ep}話の字幕が見つかりました"
+			en: "{n} subtitles for {title} ep {ep}",
+			zh: "《{title}》第 {ep} 集找到 {n} 份字幕",
+			ja: "{title} 第{ep}話の字幕 {n} 件"
 		},
 		"offer.foundMovie": {
-			en: "Subtitles for {title}?",
-			zh: "发现《{title}》字幕",
-			ja: "{title} の字幕が見つかりました"
+			en: "{n} subtitles for {title}",
+			zh: "《{title}》找到 {n} 份字幕",
+			ja: "{title} の字幕 {n} 件"
 		},
 		"offer.load": {
-			en: "Find",
-			zh: "查找",
-			ja: "探す"
+			en: "Choose",
+			zh: "选择",
+			ja: "選ぶ"
 		},
 		"sc.back": {
 			en: "Panel",
@@ -2262,7 +2262,7 @@
 			});
 		}
 	}
-	function openSearch(opts) {
+	function openSearch() {
 		ensurePanel();
 		if (refs.panel) refs.panel.style.display = "none";
 		show();
@@ -2274,10 +2274,6 @@
 			epInput.value = episode || "";
 			lastPrefillTitle = curTitle;
 			setResults(`<div class="as-sc-empty">${t("sc.prompt")}</div>`);
-		}
-		if (opts && opts.run && state.jimakuKey && titleInput.value.trim()) {
-			doSearch();
-			return;
 		}
 		(state.jimakuKey ? titleInput : panel.querySelector("#anysub-key") || titleInput).focus();
 	}
@@ -2384,7 +2380,7 @@
 			results.appendChild(empty(t("sc.error", { msg: esc(err.message) })));
 		}
 	}
-	function showCandidates(seriesTitle, files) {
+	function showCandidates(seriesTitle, files, anilistId) {
 		ensurePanel();
 		if (refs.panel) refs.panel.style.display = "none";
 		show();
@@ -2393,7 +2389,7 @@
 		lastPrefillTitle = document.title;
 		renderFiles({
 			title: seriesTitle,
-			anilistId: state.lastOnline && state.lastOnline.anilistId
+			anilistId: anilistId != null ? anilistId : state.lastOnline && state.lastOnline.anilistId
 		}, files);
 	}
 	function renderFiles(anime, files) {
@@ -3111,7 +3107,7 @@
 	var MIN_DURATION = 120;
 	var MIN_COVER = .6;
 	var lastOfferedKey = null;
-	var lastUrl = "", retryTimer = 0, waitTries = 0;
+	var lastUrl = "", retryTimer = 0, waitTries = 0, verifying = false;
 	function initAutoOffer() {
 		if (!getSiteAdapter()) return;
 		lastUrl = location.href;
@@ -3141,14 +3137,14 @@
 	function check() {
 		run(false);
 	}
-	function run(isRetry) {
+	async function run(isRetry) {
 		if (!isRetry) waitTries = 0;
 		clearTimeout(retryTimer);
 		if (location.href !== lastUrl) {
 			lastUrl = location.href;
 			lastOfferedKey = null;
 		}
-		if (state.cues.length) return;
+		if (state.cues.length || verifying) return;
 		if (isAutoContinuing()) {
 			retryTimer = setTimeout(() => run(true), 600);
 			return;
@@ -3167,11 +3163,30 @@
 		if (!info || !info.series) return;
 		const key = info.epKey || info.series + "#" + (info.episode || "");
 		if (key === lastOfferedKey) return;
+		if (!state.jimakuKey) return;
 		lastOfferedKey = key;
-		toastOffer(info.episode ? t("offer.found", {
-			title: info.series,
-			ep: info.episode
-		}) : t("offer.foundMovie", { title: info.series }), t("offer.load"), () => openSearch({ run: true }));
+		verifying = true;
+		try {
+			const cands = await animeCandidates(info.series);
+			const anime = pickExactAnime(cands, info.series) || cands[0];
+			if (!anime) return;
+			const files = await subtitleFiles(anime.anilistId, info.episode, [
+				anime.native,
+				anime.romaji,
+				anime.english
+			]);
+			if (!files.length || state.cues.length) return;
+			toastOffer(info.episode ? t("offer.found", {
+				title: info.series,
+				ep: info.episode,
+				n: files.length
+			}) : t("offer.foundMovie", {
+				title: info.series,
+				n: files.length
+			}), t("offer.load"), () => showCandidates(info.series, files, anime.anilistId));
+		} catch (_) {} finally {
+			verifying = false;
+		}
 	}
 	if (!window.__ANYSUB_LOADED__) {
 		window.__ANYSUB_LOADED__ = true;

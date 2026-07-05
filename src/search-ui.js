@@ -90,8 +90,7 @@ function renderKeyArea() {
   }
 }
 
-// opts.run:预填后自动发起检索(有 key + 番名时)——供「发现字幕」自动提示一键直达候选。
-export function openSearch(opts) {
+export function openSearch() {
   ensurePanel(); // 懒建面板+搜索 DOM(含本模块的 panel)
   if (refs.panel) refs.panel.style.display = 'none'; // 与主面板互斥
   show();
@@ -107,7 +106,6 @@ export function openSearch(opts) {
     lastPrefillTitle = curTitle;
     setResults(`<div class="as-sc-empty">${t('sc.prompt')}</div>`);
   }
-  if (opts && opts.run && state.jimakuKey && titleInput.value.trim()) { doSearch(); return; }
   (state.jimakuKey ? titleInput : (panel.querySelector('#anysub-key') || titleInput)).focus();
 }
 
@@ -197,16 +195,17 @@ async function loadFilesFor(anime) {
   }
 }
 
-// 直接展示某番剧的文件候选(切集找不到同源时回退用)
-export function showCandidates(seriesTitle, files) {
+// 直接展示某番剧的文件候选(切集找不到同源时回退用;自动提示核实后也复用)。
+// anilistId 可显式传入(自动提示已解析出番剧);缺省则沿用上次在线来源,供文件加载后记来源(切集接续)。
+export function showCandidates(seriesTitle, files, anilistId) {
   ensurePanel();
   if (refs.panel) refs.panel.style.display = 'none';
   show();
   renderKeyArea();
   if (seriesTitle) titleInput.value = seriesTitle;
   lastPrefillTitle = document.title; // 视为已按当前页预填,避免重开时被覆盖
-  const anilistId = state.lastOnline && state.lastOnline.anilistId;
-  renderFiles({ title: seriesTitle, anilistId }, files);
+  const id = (anilistId != null) ? anilistId : (state.lastOnline && state.lastOnline.anilistId);
+  renderFiles({ title: seriesTitle, anilistId: id }, files);
 }
 
 function renderFiles(anime, files) {

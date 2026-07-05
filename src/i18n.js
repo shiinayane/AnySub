@@ -103,9 +103,9 @@ const DICT = {
   'toast.assText': { en: 'ASS shown as plain text (high-fidelity rendering unavailable)', zh: 'ASS 按文本显示(高保真渲染不可用)', ja: 'ASS をテキスト表示(高精度レンダリング不可)' },
 
   // ── 自动提示(站点适配) ──
-  'offer.found': { en: 'Subtitles for {title} ep {ep}?', zh: '发现《{title}》第 {ep} 集字幕', ja: '{title} 第{ep}話の字幕が見つかりました' },
-  'offer.foundMovie': { en: 'Subtitles for {title}?', zh: '发现《{title}》字幕', ja: '{title} の字幕が見つかりました' },
-  'offer.load': { en: 'Find', zh: '查找', ja: '探す' },
+  'offer.found': { en: '{n} subtitles for {title} ep {ep}', zh: '《{title}》第 {ep} 集找到 {n} 份字幕', ja: '{title} 第{ep}話の字幕 {n} 件' },
+  'offer.foundMovie': { en: '{n} subtitles for {title}', zh: '《{title}》找到 {n} 份字幕', ja: '{title} の字幕 {n} 件' },
+  'offer.load': { en: 'Choose', zh: '选择', ja: '選ぶ' },
 
   // ── 搜索面板 ──
   'sc.back': { en: 'Panel', zh: '主面板', ja: 'パネル' },
