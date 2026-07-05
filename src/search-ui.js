@@ -7,7 +7,7 @@ import { refs } from './refs.js';
 import { toast } from './notify.js';
 import { saveState } from './storage.js';
 import { animeCandidates, subtitleFiles, downloadAndLoad, markLoaded } from './online.js';
-import { parseVideoTitle } from './title-parse.js';
+import { detectShow } from './site-adapters.js';
 import { openPanel, ensurePanel } from './ui.js';
 import { t } from './i18n.js';
 
@@ -89,22 +89,24 @@ function renderKeyArea() {
   }
 }
 
-export function openSearch() {
+// opts.run:预填后自动发起检索(有 key + 番名时)——供「发现字幕」自动提示一键直达候选。
+export function openSearch(opts) {
   ensurePanel(); // 懒建面板+搜索 DOM(含本模块的 panel)
   if (refs.panel) refs.panel.style.display = 'none'; // 与主面板互斥
   show();
   renderKeyArea();
-  // 从页面标题预填「番剧名 + 集数」。首次为空时填;此后仅当页面标题变化(=切集/换番)才刷新
+  // 预填「番剧名 + 集数」(站点适配优先,回落标题解析)。首次为空时填;此后仅当页面标题变化才刷新
   // 预填并清空旧结果,同一集内保留用户的手动修改。
   const curTitle = document.title;
   const first = !titleInput.value && !epInput.value;
   if (first || curTitle !== lastPrefillTitle) {
-    const { series, episode } = parseVideoTitle(curTitle);
+    const { series, episode } = detectShow();
     titleInput.value = series;
     epInput.value = episode || '';
     lastPrefillTitle = curTitle;
     setResults(`<div class="as-sc-empty">${t('sc.prompt')}</div>`);
   }
+  if (opts && opts.run && state.jimakuKey && titleInput.value.trim()) { doSearch(); return; }
   (state.jimakuKey ? titleInput : (panel.querySelector('#anysub-key') || titleInput)).focus();
 }
 

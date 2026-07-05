@@ -257,6 +257,21 @@ const CSS = `
   #anysub-toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:2147483647;
     background:rgba(0,0,0,.85);color:#fff;padding:8px 16px;border-radius:6px;
     font:13px -apple-system,system-ui,sans-serif;opacity:0;transition:opacity .3s;pointer-events:none;max-width:80vw;text-align:center;}
+
+  /* 可点「发现字幕」提示:带主操作按钮 + 关闭 */
+  #anysub-offer{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:2147483647;
+    display:flex;align-items:center;gap:10px;max-width:88vw;box-sizing:border-box;pointer-events:auto;
+    color:var(--as-fg);font:13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+    background:linear-gradient(180deg,var(--as-grad-top),var(--as-grad-bot));border:1px solid var(--as-border);
+    border-radius:12px;padding:9px 10px 9px 14px;box-shadow:var(--as-shadow);animation:as-pop .14s cubic-bezier(.2,.7,.3,1);}
+  #anysub-offer .as-offer-msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw;}
+  #anysub-offer button{font-family:inherit;cursor:pointer;border-radius:8px;transition:background .15s,border-color .15s;}
+  #anysub-offer .as-offer-act{flex:none;padding:6px 14px;font-size:12.5px;font-weight:550;
+    background:var(--as-primary-bg);border:1px solid var(--as-primary-bd);color:var(--as-primary-fg);}
+  #anysub-offer .as-offer-act:hover{background:var(--as-primary-bg-hover);border-color:var(--as-primary-bd-hover);}
+  #anysub-offer .as-offer-x{flex:none;width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+    padding:0;border:0;background:transparent;color:var(--as-fg2);font-size:13px;}
+  #anysub-offer .as-offer-x:hover{background:var(--as-hover-soft);color:var(--as-fg-strong);}
 `;
 
 export function injectStyle() {

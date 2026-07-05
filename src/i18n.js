@@ -102,6 +102,10 @@ const DICT = {
   'toast.assHiFi': { en: 'ASS high-fidelity rendering enabled', zh: '已启用 ASS 高保真渲染', ja: 'ASS 高精度レンダリングを有効化' },
   'toast.assText': { en: 'ASS shown as plain text (high-fidelity rendering unavailable)', zh: 'ASS 按文本显示(高保真渲染不可用)', ja: 'ASS をテキスト表示(高精度レンダリング不可)' },
 
+  // ── 自动提示(站点适配) ──
+  'offer.found': { en: 'Subtitles for {title} ep {ep}?', zh: '发现《{title}》第 {ep} 集字幕', ja: '{title} 第{ep}話の字幕が見つかりました' },
+  'offer.load': { en: 'Find', zh: '查找', ja: '探す' },
+
   // ── 搜索面板 ──
   'sc.back': { en: 'Panel', zh: '主面板', ja: 'パネル' },
   'sc.backTitle': { en: 'Back to main panel', zh: '返回主面板', ja: 'メインパネルへ戻る' },

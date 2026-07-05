@@ -303,6 +303,21 @@
   #anysub-toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:2147483647;
     background:rgba(0,0,0,.85);color:#fff;padding:8px 16px;border-radius:6px;
     font:13px -apple-system,system-ui,sans-serif;opacity:0;transition:opacity .3s;pointer-events:none;max-width:80vw;text-align:center;}
+
+  /* 可点「发现字幕」提示:带主操作按钮 + 关闭 */
+  #anysub-offer{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:2147483647;
+    display:flex;align-items:center;gap:10px;max-width:88vw;box-sizing:border-box;pointer-events:auto;
+    color:var(--as-fg);font:13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+    background:linear-gradient(180deg,var(--as-grad-top),var(--as-grad-bot));border:1px solid var(--as-border);
+    border-radius:12px;padding:9px 10px 9px 14px;box-shadow:var(--as-shadow);animation:as-pop .14s cubic-bezier(.2,.7,.3,1);}
+  #anysub-offer .as-offer-msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw;}
+  #anysub-offer button{font-family:inherit;cursor:pointer;border-radius:8px;transition:background .15s,border-color .15s;}
+  #anysub-offer .as-offer-act{flex:none;padding:6px 14px;font-size:12.5px;font-weight:550;
+    background:var(--as-primary-bg);border:1px solid var(--as-primary-bd);color:var(--as-primary-fg);}
+  #anysub-offer .as-offer-act:hover{background:var(--as-primary-bg-hover);border-color:var(--as-primary-bd-hover);}
+  #anysub-offer .as-offer-x{flex:none;width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+    padding:0;border:0;background:transparent;color:var(--as-fg2);font-size:13px;}
+  #anysub-offer .as-offer-x:hover{background:var(--as-hover-soft);color:var(--as-fg-strong);}
 `;
 	function injectStyle() {
 		const s = document.createElement("style");
@@ -730,6 +745,16 @@
 			zh: "ASS 按文本显示(高保真渲染不可用)",
 			ja: "ASS をテキスト表示(高精度レンダリング不可)"
 		},
+		"offer.found": {
+			en: "Subtitles for {title} ep {ep}?",
+			zh: "发现《{title}》第 {ep} 集字幕",
+			ja: "{title} 第{ep}話の字幕が見つかりました"
+		},
+		"offer.load": {
+			en: "Find",
+			zh: "查找",
+			ja: "探す"
+		},
 		"sc.back": {
 			en: "Panel",
 			zh: "主面板",
@@ -874,6 +899,34 @@
 			t.style.opacity = "0";
 		}, 2500);
 	}
+	function toastOffer(msg, actionLabel, onAction) {
+		const old = document.getElementById("anysub-offer");
+		if (old) old.remove();
+		const el = document.createElement("div");
+		el.id = "anysub-offer";
+		const text = document.createElement("span");
+		text.className = "as-offer-msg";
+		text.textContent = msg;
+		const act = document.createElement("button");
+		act.className = "as-offer-act";
+		act.textContent = actionLabel;
+		const x = document.createElement("button");
+		x.className = "as-offer-x";
+		x.textContent = "✕";
+		el.append(text, act, x);
+		(refs.uiRoot || document.body).appendChild(el);
+		let tm;
+		const dismiss = () => {
+			clearTimeout(tm);
+			el.remove();
+		};
+		act.addEventListener("click", () => {
+			dismiss();
+			onAction();
+		});
+		x.addEventListener("click", dismiss);
+		tm = setTimeout(dismiss, 12e3);
+	}
 	function updateStatus() {
 		if (!refs.statusEl) return;
 		const loaded = state.cues.length > 0;
@@ -884,7 +937,7 @@
 		refs.statusEl.classList.toggle("as-loaded", loaded);
 		refs.statusEl.title = loaded ? state.fileName : "";
 	}
-	var mo = null, timer$1 = 0, onReact = () => {};
+	var mo = null, timer$2 = 0, onReact = () => {};
 	function setReactHandler(fn) {
 		onReact = fn;
 	}
@@ -892,8 +945,8 @@
 		const need = state.showFab || state.cues.length > 0;
 		if (need && !mo) {
 			mo = new MutationObserver(() => {
-				clearTimeout(timer$1);
-				timer$1 = setTimeout(() => onReact(), 300);
+				clearTimeout(timer$2);
+				timer$2 = setTimeout(() => onReact(), 300);
 			});
 			mo.observe(document.documentElement, {
 				childList: true,
@@ -902,7 +955,7 @@
 		} else if (!need && mo) {
 			mo.disconnect();
 			mo = null;
-			clearTimeout(timer$1);
+			clearTimeout(timer$2);
 		}
 	}
 	var intervalId = 0, driversAttached = false;
@@ -2052,6 +2105,42 @@
 			name: fileName
 		} : null;
 	}
+	function ogTitle() {
+		const m = document.querySelector("meta[property=\"og:title\"]");
+		return m && m.getAttribute("content") || document.title;
+	}
+	function urlParam(name) {
+		try {
+			return new URL(location.href).searchParams.get(name) || "";
+		} catch (_) {
+			return "";
+		}
+	}
+	var ADAPTERS = [{
+		name: "dmm",
+		match: () => /(^|\.)tv\.dmm\.(com|co\.jp)$/.test(location.hostname),
+		isTarget: () => location.pathname.includes("/vod/playback/"),
+		detect() {
+			const { series, episode } = parseVideoTitle(ogTitle());
+			return {
+				series,
+				episode,
+				showKey: urlParam("season"),
+				epKey: urlParam("content")
+			};
+		}
+	}];
+	function getSiteAdapter() {
+		return ADAPTERS.find((a) => a.match()) || null;
+	}
+	function detectShow() {
+		const ad = getSiteAdapter();
+		if (ad && ad.isTarget()) {
+			const info = ad.detect();
+			if (info && info.series) return info;
+		}
+		return parseVideoTitle(document.title);
+	}
 	var panel, titleInput, epInput, results;
 	var currentAnime = null;
 	var lastPrefillTitle = null;
@@ -2128,18 +2217,22 @@
 			});
 		}
 	}
-	function openSearch() {
+	function openSearch(opts) {
 		ensurePanel();
 		if (refs.panel) refs.panel.style.display = "none";
 		show();
 		renderKeyArea();
 		const curTitle = document.title;
 		if (!titleInput.value && !epInput.value || curTitle !== lastPrefillTitle) {
-			const { series, episode } = parseVideoTitle(curTitle);
+			const { series, episode } = detectShow();
 			titleInput.value = series;
 			epInput.value = episode || "";
 			lastPrefillTitle = curTitle;
 			setResults(`<div class="as-sc-empty">${t("sc.prompt")}</div>`);
+		}
+		if (opts && opts.run && state.jimakuKey && titleInput.value.trim()) {
+			doSearch();
+			return;
 		}
 		(state.jimakuKey ? titleInput : panel.querySelector("#anysub-key") || titleInput).focus();
 	}
@@ -2863,14 +2956,14 @@
 		if (tag === "INPUT") return !NON_TEXT_INPUT.has((el.type || "text").toLowerCase());
 		return false;
 	}
-	var timer = 0;
+	var timer$1 = 0;
 	var busy = false;
 	function initEpisodeWatch() {
 		const titleEl = document.querySelector("title");
 		if (!titleEl) return;
 		new MutationObserver(() => {
-			clearTimeout(timer);
-			timer = setTimeout(onTitleChange, 500);
+			clearTimeout(timer$1);
+			timer$1 = setTimeout(onTitleChange, 500);
 		}).observe(titleEl, {
 			childList: true,
 			characterData: true,
@@ -2918,6 +3011,41 @@
 			busy = false;
 		}
 	}
+	var lastOfferedKey = null;
+	var timer = 0;
+	function initAutoOffer() {
+		if (!getSiteAdapter()) return;
+		let tries = 0;
+		const poll = () => {
+			check();
+			if (++tries < 8 && lastOfferedKey === null) timer = setTimeout(poll, 1500);
+		};
+		timer = setTimeout(poll, 1200);
+		const titleEl = document.querySelector("title");
+		if (titleEl) new MutationObserver(() => {
+			clearTimeout(timer);
+			timer = setTimeout(check, 800);
+		}).observe(titleEl, {
+			childList: true,
+			characterData: true,
+			subtree: true
+		});
+	}
+	function check() {
+		if (state.cues.length) return;
+		const ad = getSiteAdapter();
+		if (!ad || !ad.isTarget()) return;
+		const info = ad.detect();
+		if (!info || !info.series || !info.episode) return;
+		const key = info.epKey || info.series + "#" + info.episode;
+		if (key === lastOfferedKey) return;
+		if (!document.querySelector("video") && !collectVideos().length) return;
+		lastOfferedKey = key;
+		toastOffer(t("offer.found", {
+			title: info.series,
+			ep: info.episode
+		}), t("offer.load"), () => openSearch({ run: true }));
+	}
 	if (!window.__ANYSUB_LOADED__) {
 		window.__ANYSUB_LOADED__ = true;
 		init();
@@ -2932,6 +3060,7 @@
 		buildUI();
 		initShortcuts();
 		initEpisodeWatch();
+		initAutoOffer();
 		setReactHandler(react);
 		updateFabVisibility();
 		updateWatcher();
