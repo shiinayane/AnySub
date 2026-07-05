@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite';
 import monkey from 'vite-plugin-monkey';
 
+// 脚本图标(与悬浮球「字」一致):蓝底圆角 + 白字。构建期转 base64 data-URI 嵌入 @icon。
+const ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4c8dff"/><stop offset="1" stop-color="#2b6cff"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#g)"/><text x="32" y="45" font-family="'Hiragino Sans','Yu Gothic','PingFang SC','Microsoft YaHei',sans-serif" font-size="40" font-weight="700" fill="#fff" text-anchor="middle">字</text></svg>`;
+const ICON_DATA_URI = 'data:image/svg+xml;base64,' + Buffer.from(ICON_SVG).toString('base64');
+
 // 源码在 src/*,构建产物为单文件 dist/anysub.user.js(带 ==UserScript== 头)
 export default defineConfig({
   plugins: [
@@ -18,6 +22,7 @@ export default defineConfig({
         namespace: 'https://github.com/shiinayane/anysub',
         version: '0.15.0',
         license: 'MIT',
+        icon: ICON_DATA_URI,
         homepageURL: 'https://github.com/shiinayane/anysub',
         supportURL: 'https://github.com/shiinayane/anysub/issues',
         description: {

@@ -6,7 +6,7 @@ Turn **any** website's HTML5 video into a Japanese-immersion tool. AnySub mounts
 
 Pure userscript — no backend, no upload, nothing leaves your machine. Works on Chrome / Edge / Safari / Firefox. UI in **English / 中文 / 日本語** (auto-detected, switchable).
 
-![AnySub rendering furigana and semantic caption layout over a video](./docs/hero.png)
+![AnySub rendering furigana and semantic caption layout over a video](./docs/hero.gif)
 
 > Also a perfectly good *general* subtitle loader: drop any SRT / VTT / ASS / SSA onto any video, style it, done. The Japanese features are opt-in and stay out of your way.
 

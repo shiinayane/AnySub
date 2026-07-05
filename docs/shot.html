@@ -7,9 +7,15 @@
 <script>
   // 截图前置:固定英文 UI + 一个假 key(仅本地,让搜索面板显示「已连接」态)。
   // 必须在主脚本之前写入,主脚本 init 时才会读到。
+  // GIF 分镜:#g1 原始(注音+语义都关)→ #g2 加注音 → #g3 加语义,展示逐步增强。
   try {
+    const h = location.hash.slice(1) || '';
+    let rubyParen = true, enhance = true;
+    if (h === 'g1') { rubyParen = false; enhance = false; }
+    else if (h === 'g2') { rubyParen = true; enhance = false; }
+    else if (h === 'g3') { rubyParen = true; enhance = true; }
     localStorage.setItem('anysub:settings:v1', JSON.stringify({
-      lang: 'en', enhance: true, rubyParen: true, bg: 'translucent',
+      lang: 'en', enhance, rubyParen, bg: 'translucent',
       jimakuKey: 'demo-key-for-screenshot-only',
     }));
   } catch (e) {}
@@ -62,7 +68,7 @@
     function tickAwhile() { let i = 0; const id = setInterval(() => { forceTick(); if (++i > 30) clearInterval(id); }, 50); }
 
     whenReady(() => {
-      if (scene === 'hero') {
+      if (scene === 'hero' || scene[0] === 'g') {
         key('s');                              // 先开面板 → 建出 #anysub-drop
         setTimeout(dropSub, 150);              // 面板已建 → 投放字幕
         setTimeout(() => key('s'), 450);       // 关面板,只留字幕

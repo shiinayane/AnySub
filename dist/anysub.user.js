@@ -11,6 +11,7 @@
 // @description:zh-CN  把任意网站的 HTML5 视频变成日语沉浸学习工具:逐字精准注音(furigana)、一键 Jimaku 在线字幕并自动接续下一集、话者/音效/心声语义排版。也支持任意 SRT/VTT/ASS 本地字幕、样式可控、全屏跟随。EN/中/日界面。
 // @description:ja     どんな動画も日本語イマージョン学習ツールに:漢字ごとに正確なふりがな、ワンクリックで Jimaku 字幕を取得し次話へ自動継続、話者・効果音・心の声のセマンティック整形。ローカルの SRT/VTT/ASS も読み込み可、スタイル調整・全画面追従対応。UI は英語/中国語/日本語。
 // @license            MIT
+// @icon               data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDY0IDY0Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiM0YzhkZmYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMyYjZjZmYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNCIgZmlsbD0idXJsKCNnKSIvPjx0ZXh0IHg9IjMyIiB5PSI0NSIgZm9udC1mYW1pbHk9IidIaXJhZ2lubyBTYW5zJywnWXUgR290aGljJywnUGluZ0ZhbmcgU0MnLCdNaWNyb3NvZnQgWWFIZWknLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNDAiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuWtlzwvdGV4dD48L3N2Zz4=
 // @homepageURL        https://github.com/shiinayane/anysub
 // @supportURL         https://github.com/shiinayane/anysub/issues
 // @match              *://*/*
