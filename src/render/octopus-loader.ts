@@ -63,9 +63,17 @@ function fetchText(url: string): Promise<string> {
 function injectScript(text: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
-    s.src = URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('主脚本注入失败(可能被 CSP 拦截)'));
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));
+    s.src = url;
+    // 脚本 fetch/执行完即可回收 blob URL(否则多次加载/热重载会累积占用)
+    s.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve();
+    };
+    s.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('主脚本注入失败(可能被 CSP 拦截)'));
+    };
     (document.head || document.documentElement).appendChild(s);
   });
 }

@@ -46,7 +46,7 @@ export function loadFile(file?: File | null): void {
     .then((text) => loadFromText(text, file.name))
     .catch((err) => {
       console.error('[AnySub]', err);
-      toast(t('toast.readFailed', { msg: err.message }));
+      toast(t('toast.readFailed', { msg: err instanceof Error ? err.message : String(err) }));
     });
 }
 

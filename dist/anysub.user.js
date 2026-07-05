@@ -1870,9 +1870,16 @@
 	function injectScript(text) {
 		return new Promise((resolve, reject) => {
 			const s = document.createElement("script");
-			s.src = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
-			s.onload = () => resolve();
-			s.onerror = () => reject(new Error("主脚本注入失败(可能被 CSP 拦截)"));
+			const url = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+			s.src = url;
+			s.onload = () => {
+				URL.revokeObjectURL(url);
+				resolve();
+			};
+			s.onerror = () => {
+				URL.revokeObjectURL(url);
+				reject(new Error("主脚本注入失败(可能被 CSP 拦截)"));
+			};
 			(document.head || document.documentElement).appendChild(s);
 		});
 	}
@@ -2056,7 +2063,7 @@
 		if (!file) return;
 		readSubtitleFile(file).then((text) => loadFromText(text, file.name)).catch((err) => {
 			console.error("[AnySub]", err);
-			toast(t("toast.readFailed", { msg: err.message }));
+			toast(t("toast.readFailed", { msg: err instanceof Error ? err.message : String(err) }));
 		});
 	}
 	function loadFromBuffer(buffer, name) {
