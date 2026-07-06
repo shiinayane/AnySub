@@ -10,7 +10,7 @@ test('timeToSeconds: SRT/VTT 时间戳', () => {
 
 test('timeToSeconds: 非法 / 超 3 段 → NaN', () => {
   assert.ok(Number.isNaN(timeToSeconds('aa:bb')));
-  assert.ok(Number.isNaN(timeToSeconds('00:00:01:12'))); // 帧式 4 段
+  assert.ok(Number.isNaN(timeToSeconds('00:00:01:12'))); // frame-style 4 segments
 });
 
 test('sanitize: XSS —— 带属性标签被转义,不产生事件处理器', () => {
@@ -22,8 +22,8 @@ test('sanitize: XSS —— 带属性标签被转义,不产生事件处理器', (
     '<script>alert(1)</script>',
   ]) {
     const out = sanitize(evil);
-    // 关键:输出里不能有「携带事件处理器的真实标签」或真实 <script>
-    // (转义后的 &lt;i onmouseover…&gt; 只是纯文本,无害)
+    // Key point: the output must not contain "real tags carrying event handlers" or a real <script>
+    // (an escaped &lt;i onmouseover…&gt; is just plain text and harmless)
     assert.doesNotMatch(out, /<[^>]*\son\w+\s*=/i, `事件处理器标签泄漏: ${out}`);
     assert.doesNotMatch(out, /<script/i, `script 标签泄漏: ${out}`);
     assert.doesNotMatch(out, /<img/i, `img 标签泄漏: ${out}`);

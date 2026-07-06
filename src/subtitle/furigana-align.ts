@@ -1,15 +1,15 @@
-// furigana 逐字对齐:给定「汉字串 + 一段假名读音」,把读音切分并对齐到每个汉字。
-// 用于修正「近接猟兵（りょうへい）」这类——括号读音只覆盖后缀汉字(猟兵),
-// 而不是前面全部(近接猟兵)。纯逻辑,有单测。读音表懒加载 JSON.parse。
+// Per-character furigana alignment: given "a kanji string + a run of kana reading", split the reading and align it onto each kanji.
+// Used to fix cases like 「近接猟兵（りょうへい）」 — where the parenthesized reading only covers the suffix kanji (猟兵),
+// not all of the preceding kanji (近接猟兵). Pure logic, with unit tests. The reading table is lazily loaded via JSON.parse.
 import { KANJI_READINGS_JSON } from './kanji-readings.js';
 import type { FuriganaAlign } from '../types.js';
 
-// 硬上限:防止恶意/异常字幕用超长汉字串+读音触发深递归(远端可控输入,需防 DoS)。
-// 真实注音的汉字串一般 ≤8 字,24/48 已极宽松;超出直接放弃逐字对齐(回退整串注音)。
+// Hard limits: prevent malicious/abnormal subtitles from triggering deep recursion via an overlong kanji string + reading (remotely controllable input, so we must guard against DoS).
+// Real furigana kanji strings are generally ≤8 characters, so 24/48 are already extremely generous; beyond that we simply give up on per-character alignment (falling back to whole-string furigana).
 const MAX_KANJI = 24;
 const MAX_READING = 48;
 
-let READINGS: Record<string, string[]> | null = null; // { 汉字: [平假名读音候选,...] }
+let READINGS: Record<string, string[]> | null = null; // { kanji: [hiragana reading candidates, ...] }
 function readingsOf(kanji: string): string[] | undefined {
   if (!READINGS) {
     READINGS = Object.create(null) as Record<string, string[]>;
@@ -17,13 +17,13 @@ function readingsOf(kanji: string): string[] | undefined {
       const raw = JSON.parse(KANJI_READINGS_JSON) as Record<string, string>;
       for (const k in raw) READINGS[k] = raw[k].split(',');
     } catch (_) {
-      /* 数据损坏:留空表,对齐一律失败并回退整串注音,不影响其余渲染 */
+      /* Corrupt data: leave the table empty, so alignment always fails and falls back to whole-string furigana, without affecting the rest of the rendering */
     }
   }
   return READINGS[kanji];
 }
 
-// 片假名 → 平假名(读音可能以片假名书写);丢长音符/非假名
+// Katakana → hiragana (readings may be written in katakana); drop the long-vowel mark / non-kana characters
 function toHira(s: string): string {
   let out = '';
   for (const ch of s) {
@@ -35,7 +35,7 @@ function toHira(s: string): string {
   return out;
 }
 
-// 连浊(rendaku):非首汉字的首音可浊化(か→が、は→ば/ぱ…),返回可能的替换形
+// Rendaku (sequential voicing): the initial sound of a non-first kanji can be voiced (か→が, は→ば/ぱ…); returns the possible substituted forms
 const VOICE: Record<string, string[]> = {
   か: ['が'],
   き: ['ぎ'],
@@ -64,33 +64,33 @@ function rendakuForms(s: string): string[] {
   return v.map((x) => x + s.slice(1));
 }
 
-// 促音便(gemination):非末汉字末音 く/き/つ/ち 可变 っ(学 がく+校→がっこう)
+// Gemination (sokuon): the final sound く/き/つ/ち of a non-final kanji can become っ (学 がく + 校 → がっこう)
 const GEMINATE_LAST = new Set(['く', 'き', 'つ', 'ち']);
 function geminate(s: string): string | null {
   return GEMINATE_LAST.has(s[s.length - 1]) ? s.slice(0, -1) + 'っ' : null;
 }
 
-// 某汉字在位置 index(是否末字 isLast)下,一条基础读音派生出的全部可匹配候选
+// For a given kanji at position index (whether it is the last character, isLast), all matchable candidates derived from one base reading
 function* variants(base: string, index: number, isLast: boolean): Generator<string> {
   const firsts = [base];
-  if (index > 0) for (const r of rendakuForms(base)) firsts.push(r); // 连浊仅非首字
+  if (index > 0) for (const r of rendakuForms(base)) firsts.push(r); // Rendaku only for non-first characters
   for (const f of firsts) {
     yield f;
     if (!isLast) {
       const g = geminate(f);
       if (g) yield g;
-    } // 促音仅非末字
+    } // Gemination only for non-final characters
   }
 }
 
-// 尝试把整个 kanjis(数组)对齐到 reading(平假名),要求「读音被完全消费」。
-// 成功返回每个汉字对应的读音片段数组,失败返回 null。
-// 记忆化失败节点(i,pos):没有它,高分歧汉字(如「生」37 个读音)+ 长读音会指数回溯。
+// Attempt to align the entire kanjis (array) onto reading (hiragana), requiring that "the reading is fully consumed".
+// On success returns an array of reading segments for each kanji; on failure returns null.
+// Memoize failed nodes (i,pos): without it, highly ambiguous kanji (e.g. 「生」 with 37 readings) + a long reading would backtrack exponentially.
 function alignRun(kanjis: string[], reading: string): string[] | null {
   const n = kanjis.length;
   const out: string[] = new Array(n);
   const stride = reading.length + 1;
-  const failed = new Set<number>(); // 已知无法走到结尾的 (i,pos),避免重复展开
+  const failed = new Set<number>(); // (i,pos) nodes known to be unable to reach the end, to avoid re-expanding them
   function dfs(i: number, pos: number): boolean {
     if (i === n) return pos === reading.length;
     const memo = i * stride + pos;
@@ -112,17 +112,17 @@ function alignRun(kanjis: string[], reading: string): string[] | null {
   return dfs(0, 0) ? out : null;
 }
 
-// 对外:把 base(汉字串)与 reading(读音)对齐。
-// 返回 { plain, pairs }:plain 为对不齐、留作纯文本的前缀汉字;
-//   pairs 为 [[汉字,读音片段],...] 逐字注音(覆盖 base 的后缀)。
-// 完全无法对齐时返回 null(调用方回退为整串注音)。
+// Public API: align base (kanji string) with reading (the reading).
+// Returns { plain, pairs }: plain is the prefix kanji that could not be aligned, left as plain text;
+//   pairs is [[kanji, reading segment], ...], the per-character furigana (covering the suffix of base).
+// Returns null when alignment is entirely impossible (the caller falls back to whole-string furigana).
 export function alignFurigana(base: string, rawReading: string): FuriganaAlign | null {
   const reading = toHira(rawReading);
   if (!reading) return null;
   const kanjis = [...base];
-  if (kanjis.length > MAX_KANJI || reading.length > MAX_READING) return null; // 防 DoS:超长直接回退
+  if (kanjis.length > MAX_KANJI || reading.length > MAX_READING) return null; // DoS guard: fall back immediately when overlong
 
-  // 从整串开始,逐个从左剥离,取「覆盖汉字最多」(前缀最短)的成功解
+  // Start from the full string and peel characters off the left one by one, taking the successful solution that "covers the most kanji" (shortest prefix)
   for (let start = 0; start < kanjis.length; start++) {
     const suffix = kanjis.slice(start);
     const res = alignRun(suffix, reading);

@@ -1,32 +1,32 @@
-// 全局共享状态(单例)
+// Global shared state (singleton)
 import type { State } from './types.js';
 
 export const state: State = {
   video: null,
   cues: [],
-  offset: 0, // 秒,正 = 字幕延后
-  offsets: {}, // 按「番剧|源特征」记住的偏移(持久化);同番剧同源跨集自动恢复
-  offsetKey: '', // 当前字幕的偏移 key(不持久化)
+  offset: 0, // Seconds, positive = subtitles delayed
+  offsets: {}, // Offsets remembered by "anime|source characteristics" (persisted); auto-restored across episodes for the same anime and source
+  offsetKey: '', // Offset key for the current subtitles (not persisted)
   fileName: '',
-  active: false, // 渲染循环是否运行
-  hidden: false, // 字幕临时隐藏(快捷键切换,不持久化)
-  showFab: false, // 是否显示常驻悬浮球(持久化,默认关,靠快捷键唤出面板)
-  rubyParen: true, // 括号注音启发式(温厚（おんこう）→ ruby;持久化,可关。《》式始终开)
-  enhance: true, // 语义排版:话者名淡化 / 非语音·画外音·书面·歌词斜体等(持久化,可关)
-  speakers: null, // 当前字幕的话者名词表(载入时构建,不持久化)
-  subPos: 'bottom', // 说话(台词)锚点 'bottom' | 'top';非语音(音效/书面)恒放对侧(持久化)
-  jimakuKey: '', // Jimaku API key(跨站共享:GM 存储为主、localStorage 兜底缓存,见 online/storage.ts)
-  lang: null, // UI 语言 'en'|'zh'|'ja';null = 跟随浏览器(持久化)
-  loadedSeries: '', // 当前字幕对应的番剧名(取自页面标题,用于切集检测)
-  loadedEpisode: '', // 当前字幕对应的集数
-  lastOnline: null, // 最近一次在线来源 { anilistId, name }(用于切集自动接下一集·同源优先)
+  active: false, // Whether the render loop is running
+  hidden: false, // Subtitles temporarily hidden (toggled by shortcut, not persisted)
+  showFab: false, // Whether to show the persistent floating button (persisted, off by default; the panel is summoned via shortcut)
+  rubyParen: true, // Parenthesized-reading heuristic (温厚（おんこう）→ ruby; persisted, can be turned off. The 《》 form is always on)
+  enhance: true, // Semantic formatting: dimming speaker names / italicizing non-speech, voice-over, written, lyrics, etc. (persisted, can be turned off)
+  speakers: null, // Speaker-name vocabulary for the current subtitles (built on load, not persisted)
+  subPos: 'bottom', // Speech (dialogue) anchor 'bottom' | 'top'; non-speech (SFX/written) always goes on the opposite side (persisted)
+  jimakuKey: '', // Jimaku API key (shared across sites: GM storage as primary, localStorage as fallback cache, see online/storage.ts)
+  lang: null, // UI language 'en'|'zh'|'ja'; null = follow the browser (persisted)
+  loadedSeries: '', // Anime name for the current subtitles (taken from the page title, used for episode-change detection)
+  loadedEpisode: '', // Episode number for the current subtitles
+  lastOnline: null, // Most recent online source { anilistId, name } (used to auto-continue to the next episode on episode change, preferring the same source)
   style: {
-    fontPct: 100, // 字号百分比,100% = 视频高度的 4.5%
+    fontPct: 100, // Font size percentage, 100% = 4.5% of video height
     bg: 'translucent', // 'outline' | 'translucent' | 'solid' | 'none'
     color: '#ffffff',
-    bottomPct: 8, // 距底部 = 视频高度的百分比
+    bottomPct: 8, // Distance from the bottom = percentage of video height
   },
 };
 
-// 100% 时字号占视频高度比例
+// Font size as a fraction of video height at 100%
 export const FONT_BASE = 0.045;

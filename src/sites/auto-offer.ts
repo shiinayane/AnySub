@@ -1,9 +1,9 @@
-// 自动提示:在已知站点的「正片播放中」识别出番名(+集数),先真查 Jimaku 确认该集确有字幕,
-// 才弹可点 toast「找到 N 份字幕 — 查找?」,点了打开候选让用户选(守住不静默加载)。
-// 关键取舍:
-//  · 只在「实质视频真正在播放」时触发(排除首页/详情页的 hero 预览,它们也用同款播放器)。
-//  · 「查证后再提示」——没查过 Jimaku 就说「发现字幕」是撒谎;确实没有则静默,不空弹。
-//  · 需 Jimaku key(在线取字幕本就依赖它);无 key 不自动提示(可手动搜索时再设)。
+// Auto-offer: when a series name (+ episode) is recognized during "feature playback" on a known site, first actually query Jimaku to confirm that episode really has subtitles,
+// only then pop a clickable toast "Found N subtitles — search?", and clicking opens the candidate list for the user to pick (holding the line on never loading silently).
+// Key trade-offs:
+//  · Trigger only when "a substantial video is actually playing" (excludes the hero previews on home/detail pages, which use the same player).
+//  · "Verify before offering" — saying "subtitles found" without having queried Jimaku is a lie; if there really are none, stay silent, no empty popups.
+//  · Requires a Jimaku key (fetching subtitles online depends on it anyway); no key means no auto-offer (set it later when doing a manual search).
 import { state } from '../state.js';
 import { refs } from '../refs.js';
 import { getSiteAdapter, detectShow } from './site-adapters.js';
@@ -15,8 +15,8 @@ import { isAutoContinuing } from './episode-watch.js';
 import { onEpisodeChange } from './episode-signal.js';
 import { t } from '../i18n.js';
 
-const MIN_DURATION = 120; // 秒:正片阈值,滤掉 hero 预览/短预告(动画正片均 20 分钟+)
-const MIN_COVER = 0.6; // 视口占比:主播放器 vs 横幅预览(给静音观看者兜底)
+const MIN_DURATION = 120; // seconds: feature threshold, filters out hero previews/short trailers (anime feature episodes are all 20 minutes+)
+const MIN_COVER = 0.6; // viewport coverage ratio: main player vs banner preview (a fallback for muted viewers)
 let lastOfferedKey: string | null = null;
 let lastUrl = '';
 let retryTimer: ReturnType<typeof setTimeout> | undefined,
@@ -24,22 +24,22 @@ let retryTimer: ReturnType<typeof setTimeout> | undefined,
   verifying = false;
 
 export function initAutoOffer(): void {
-  if (!getSiteAdapter()) return; // 非已知站点:完全不介入
+  if (!getSiteAdapter()) return; // not a known site: don't intervene at all
   lastUrl = location.href;
   let tries = 0;
   const poll = () => {
     check();
-    if (++tries < 8 && lastOfferedKey === null) setTimeout(poll, 1500); // 等 SPA 出视频/水合(有界自停,无需持句柄)
+    if (++tries < 8 && lastOfferedKey === null) setTimeout(poll, 1500); // wait for the SPA to produce the video/hydrate (bounded, self-stopping, no need to hold a handle)
   };
   setTimeout(poll, 1200);
-  onEpisodeChange(check); // 切集后(由 episode-signal 统一探测)再探:新一集仍没字幕则再核实提示
-  // 关键时机:视频「开始播放」即检查——不受进页面后停留多久影响(切集信号在同集内不会触发,
-  // 轮询重试窗口也会过期)。play 事件不冒泡,capture 阶段全局监听。预览的静音自动播放也会触发,
-  // 但被 playingFeature 的「有声/大视口」过滤掉。
+  onEpisodeChange(check); // after an episode change (detected uniformly by episode-signal) check again: if the new episode still has no subtitles, verify and offer again
+  // Key timing: check as soon as the video "starts playing" — unaffected by how long you've stayed after entering the page (the episode-change signal won't fire within the same episode,
+  // and the polling retry window expires too). The play event doesn't bubble, so listen globally in the capture phase. A preview's muted autoplay also triggers it,
+  // but is filtered out by playingFeature's "audible/large viewport" check.
   document.addEventListener('play', check, true);
 }
 
-// isFeatureVideo 只读取以下字段(结构化类型,便于用最小 mock 单测;HTMLVideoElement 满足之)
+// isFeatureVideo reads only the following fields (a structural type, easy to unit-test with a minimal mock; HTMLVideoElement satisfies it)
 interface FeatureVid {
   duration: number;
   paused: boolean;
@@ -49,9 +49,9 @@ interface FeatureVid {
   getBoundingClientRect?: () => { width: number; height: number };
 }
 
-// 「用户在看正片」判定(纯函数,便于单测):时长够长 + 已起播未暂停(排除首页预加载但暂停的
-// 视频),且满足以下之一:有声(!muted && volume>0,自动播放的预览按浏览器策略必然静音,
-// 带声音说明用户手势主动播放,URL 不变也能区分);或占据大半视口(给静音观看者兜底)。
+// "User is watching the feature" decision (pure function, easy to unit-test): duration long enough + already started and not paused (excludes home-page preloaded but paused
+// videos), and satisfying one of: audible (!muted && volume>0; an autoplayed preview is necessarily muted per browser policy,
+// so having sound means the user actively played it via a gesture, distinguishable even when the URL doesn't change); or covering more than half the viewport (a fallback for muted viewers).
 export function isFeatureVideo(v: FeatureVid | null, vw: number, vh: number): boolean {
   if (!v || !(isFinite(v.duration) && v.duration > MIN_DURATION && !v.paused && v.currentTime > 0))
     return false;
@@ -70,7 +70,7 @@ function playingFeature(): HTMLVideoElement | null {
   return vids.find((v) => isFeatureVideo(v, vw, vh)) || null;
 }
 
-// 外部触发(轮询/切集信号)入口:重置「等待起播」重试计数
+// External-trigger (polling/episode-change signal) entry point: reset the "waiting for playback to start" retry counter
 function check(): void {
   run(false);
 }
@@ -81,43 +81,43 @@ async function run(isRetry: boolean): Promise<void> {
   if (location.href !== lastUrl) {
     lastUrl = location.href;
     lastOfferedKey = null;
-  } // SPA 导航 → 新页可重新提示
-  if (state.cues.length || verifying) return; // 已有字幕 / 正在核实,不重入
+  } // SPA navigation → the new page can offer again
+  if (state.cues.length || verifying) return; // already have subtitles / verification in progress, don't re-enter
   if (isAutoContinuing()) {
     retryTimer = setTimeout(() => run(true), 600);
     return;
-  } // 同源接续在跑,等结果
-  if (refs.searchPanel && refs.searchPanel.style.display === 'block') return; // 候选面板已开
+  } // same-source continuation is running, wait for its result
+  if (refs.searchPanel && refs.searchPanel.style.display === 'block') return; // candidate panel already open
   const ad = getSiteAdapter();
-  if (!ad || !ad.isTarget()) return; // 非播放页
+  if (!ad || !ad.isTarget()) return; // not a playback page
   if (!playingFeature()) {
-    // 关键时机:等到「正片真正在播放」
+    // Key timing: wait until "the feature is actually playing"
     if (waitTries < 15) {
       waitTries++;
       retryTimer = setTimeout(() => run(true), 1000);
     }
     return;
   }
-  const info = detectShow(); // 与 episode-signal/切集续播同源,避免键/指纹不一致
+  const info = detectShow(); // same source as episode-signal/cross-episode continuation, to avoid key/fingerprint mismatch
   if (!info || !info.series) return;
   const key = info.epKey || info.series + '#' + (info.episode || '');
-  if (key === lastOfferedKey) return; // 本集已核实过,不重复
-  if (!state.jimakuKey) return; // 无 key:在线取字幕不可用 → 不自动提示
+  if (key === lastOfferedKey) return; // this episode has already been verified, don't repeat
+  if (!state.jimakuKey) return; // no key: online subtitle fetching is unavailable → no auto-offer
 
-  // 查证:走统一入口真查 Jimaku,有该集字幕才提示、并如实报数量;没有则静默。
+  // Verification: go through the unified entry point to actually query Jimaku, offer only if that episode has subtitles, and report the count truthfully; if none, stay silent.
   verifying = true;
   try {
     const { anime, files, exact } = await resolveSubtitles(info.series, info.episode);
-    lastOfferedKey = key; // 核实成功(未抛错)才占位;抛错则不占,下次触发重试
-    if (!anime || !exact) return; // 非精确命中 → 不主动提示(避免错番),用户可手动搜索选番
-    if (!info.episode && anime.episodes > 1) return; // 剧集却没识别出集数 → 无法定位,不弹(避免列全集/错标电影)
-    if (!files.length || state.cues.length) return; // 无字幕,或核实期间用户已手动加载 → 不弹
+    lastOfferedKey = key; // claim the slot only on successful verification (no throw); if it threw, don't claim it, retry on the next trigger
+    if (!anime || !exact) return; // not an exact hit → don't offer proactively (to avoid the wrong anime), the user can search and pick manually
+    if (!info.episode && anime.episodes > 1) return; // a series but no episode number recognized → can't locate it, don't pop (avoids listing the whole series / mislabeling a movie)
+    if (!files.length || state.cues.length) return; // no subtitles, or the user manually loaded during verification → don't pop
     const msg = info.episode
       ? t('offer.found', { title: info.series, ep: info.episode, n: files.length })
       : t('offer.foundMovie', { title: info.series, n: files.length });
     toastOffer(msg, t('offer.load'), () => showCandidates(info.series, files, anime.anilistId));
   } catch (_) {
-    /* 网络/限流失败 → 不占位,下次触发重试 */
+    /* network/rate-limit failure → don't claim the slot, retry on the next trigger */
   } finally {
     verifying = false;
   }

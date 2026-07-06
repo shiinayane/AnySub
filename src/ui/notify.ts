@@ -1,4 +1,4 @@
-// 轻量提示 + 状态栏更新
+// Lightweight notifications + status bar updates
 import { refs } from '../refs.js';
 import { state } from '../state.js';
 import { t } from '../i18n.js';
@@ -12,7 +12,7 @@ export function toast(msg: string): void {
     el.id = 'anysub-toast';
     (refs.uiRoot || document.body).appendChild(el);
   }
-  const box = el; // 此处已非空,绑定 const 供延时回调闭包引用
+  const box = el; // el is non-null here; bind to a const so the delayed-callback closure can reference it
   box.textContent = msg;
   box.style.opacity = '1';
   clearTimeout(toastTimer);
@@ -21,7 +21,7 @@ export function toast(msg: string): void {
   }, 2500);
 }
 
-// 可点提示:一句话 + 主操作按钮 + 关闭。点操作/关闭即消,约 12s 自动消。用于「发现字幕」自动提示。
+// Clickable notification: one line + primary action button + close. Dismissed on action/close, or auto-dismisses after ~12s. Used for the "subtitles found" auto-prompt.
 export function toastOffer(msg: string, actionLabel: string, onAction: () => void): void {
   const old = document.getElementById('anysub-offer');
   if (old) old.remove();
@@ -58,5 +58,5 @@ export function updateStatus(): void {
     ? t('panel.statusLoaded', { name: state.fileName, n: state.cues.length })
     : t('panel.statusEmpty');
   refs.statusEl.classList.toggle('as-loaded', loaded);
-  refs.statusEl.title = loaded ? state.fileName : ''; // 悬停看全名(状态行会省略)
+  refs.statusEl.title = loaded ? state.fileName : ''; // hover to see the full name (the status line truncates it)
 }

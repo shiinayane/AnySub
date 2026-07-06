@@ -7,7 +7,7 @@ test('jpNumToInt: 汉数字含旧字体', () => {
   assert.equal(jpNumToInt('弐'), 2);
   assert.equal(jpNumToInt('二十六'), 26);
   assert.equal(jpNumToInt('12'), 12);
-  assert.equal(jpNumToInt('１２'), 12); // 全角
+  assert.equal(jpNumToInt('１２'), 12); // full-width digits
 });
 
 test('parseVideoTitle: EVA 旧字体集号 + 元数据剥离', () => {

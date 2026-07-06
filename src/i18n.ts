@@ -1,7 +1,7 @@
-// 轻量 i18n(零依赖):en / zh / ja 三语,en 为兜底。
-// 语言优先级:用户手动选择(state.lang,持久化)> 浏览器语言 > en。
-// t(key, params) 取当前语言字符串;{name}/{n}/{ep}/{msg}/{v} 等占位符用 params 插值。
-// 语言可运行时切换(面板语言选择器)→ setLang() 后各处重建 DOM 即刷新。
+// Lightweight i18n (zero dependencies): three languages en / zh / ja, with en as the fallback.
+// Language priority: user manual choice (state.lang, persisted) > browser language > en.
+// t(key, params) returns the string for the current language; placeholders like {name}/{n}/{ep}/{msg}/{v} are interpolated from params.
+// Language can be switched at runtime (panel language selector) → after setLang(), rebuilding the DOM everywhere refreshes it.
 import { state } from './state.js';
 import type { Locale } from './types.js';
 
@@ -11,7 +11,7 @@ function isLocale(x: string | null | undefined): x is Locale {
   return x != null && (SUPPORTED as readonly string[]).includes(x);
 }
 
-// 检测当前语言:手选优先,否则按 navigator.language 归一到三语之一,再兜底 en
+// Detect the current language: manual choice first, otherwise normalize navigator.language to one of the three languages, then fall back to en
 export function getLocale(): Locale {
   if (isLocale(state.lang)) return state.lang;
   const nav = navigator as Navigator & { userLanguage?: string };
@@ -22,10 +22,10 @@ export function getLocale(): Locale {
 }
 
 export function setLang(lang: string | null): void {
-  state.lang = isLocale(lang) ? lang : null; // null = 跟随浏览器
+  state.lang = isLocale(lang) ? lang : null; // null = follow the browser
 }
 
-// 语言选择器用:选项列表(value 为 lang code 或 '' 表示自动)
+// For the language selector: the option list (value is a lang code, or '' meaning auto)
 export const LANG_OPTIONS = [
   { value: '', label: 'Auto' },
   { value: 'en', label: 'English' },
@@ -33,9 +33,9 @@ export const LANG_OPTIONS = [
   { value: 'ja', label: '日本語' },
 ];
 
-// key → { en, zh, ja }。缺某语言时回落 en。
+// key → { en, zh, ja }. Falls back to en when a language is missing.
 const DICT: Record<string, Record<Locale, string>> = {
-  // ── 主面板 ──
+  // ── Main panel ──
   'panel.close': {
     en: 'Close (Ctrl/Alt+Shift+S)',
     zh: '关闭 (Ctrl/Alt+Shift+S)',
@@ -103,7 +103,7 @@ const DICT: Record<string, Record<Locale, string>> = {
     zh: 'AnySub · 点击打开字幕面板(可拖动)',
     ja: 'AnySub · クリックで字幕パネルを開く(ドラッグ可)',
   },
-  // 快捷键提示(词条,由 JS 拼装 <kbd>)
+  // Shortcut hints (terms, assembled into <kbd> by JS)
   'hint.then': { en: 'then', zh: '加', ja: '＋' },
   'hint.panel': { en: 'panel', zh: '面板', ja: 'パネル' },
   'hint.online': { en: 'online', zh: '在线', ja: 'オンライン' },
@@ -212,7 +212,7 @@ const DICT: Record<string, Record<Locale, string>> = {
     ja: 'ASS をテキスト表示(高精度レンダリング不可)',
   },
 
-  // ── 自动提示(站点适配) ──
+  // ── Auto offer (site adaptation) ──
   'offer.found': {
     en: '{n} subtitles for {title} ep {ep}',
     zh: '《{title}》第 {ep} 集找到 {n} 份字幕',
@@ -225,7 +225,7 @@ const DICT: Record<string, Record<Locale, string>> = {
   },
   'offer.load': { en: 'Choose', zh: '选择', ja: '選ぶ' },
 
-  // ── 搜索面板 ──
+  // ── Search panel ──
   'sc.back': { en: 'Panel', zh: '主面板', ja: 'パネル' },
   'sc.backTitle': { en: 'Back to main panel', zh: '返回主面板', ja: 'メインパネルへ戻る' },
   'sc.close': { en: 'Close', zh: '关闭', ja: '閉じる' },
@@ -278,16 +278,53 @@ const DICT: Record<string, Record<Locale, string>> = {
     zh: '{title} · 选择字幕({n})',
     ja: '{title} · 字幕を選択({n})',
   },
+
+  // ── Errors (thrown by API clients, surfaced via toast) ──
+  'err.anilistRateLimit': {
+    en: 'AniList: too many requests, please try again later',
+    zh: 'AniList 请求过于频繁,请稍后再试',
+    ja: 'AniList: リクエストが多すぎます。しばらくして再試行してください',
+  },
+  'err.anilistFailed': {
+    en: 'AniList query failed ({status})',
+    zh: 'AniList 查询失败 {status}',
+    ja: 'AniList クエリ失敗 ({status})',
+  },
+  'err.jimakuNoKey': {
+    en: 'Jimaku API key not set',
+    zh: '未设置 Jimaku API key',
+    ja: 'Jimaku API キーが未設定です',
+  },
+  'err.jimakuBadKey': {
+    en: 'Invalid Jimaku API key',
+    zh: 'Jimaku API key 无效',
+    ja: 'Jimaku API キーが無効です',
+  },
+  'err.jimakuRateLimit': {
+    en: 'Jimaku: too many requests, please try again later',
+    zh: 'Jimaku 请求过于频繁,请稍后再试',
+    ja: 'Jimaku: リクエストが多すぎます。しばらくして再試行してください',
+  },
+  'err.jimakuFailed': {
+    en: 'Jimaku request failed ({status})',
+    zh: 'Jimaku 请求失败 {status}',
+    ja: 'Jimaku リクエスト失敗 ({status})',
+  },
+  'err.downloadFailed': {
+    en: 'Download failed ({status})',
+    zh: '下载失败 {status}',
+    ja: 'ダウンロード失敗 ({status})',
+  },
 };
 
-// 取译文并插值。缺 key → 返回 key 本身(便于开发期发现漏译);缺当前语言 → 回落 en。
+// Fetch the translation and interpolate. Missing key → return the key itself (helps spot missing translations during development); missing current language → fall back to en.
 export function t(key: string, params?: Record<string, string | number>): string {
   const entry = DICT[key];
   if (!entry) return key;
   const loc = getLocale();
   let s = entry[loc] != null ? entry[loc] : entry.en;
   if (params) {
-    // 函数式替换:避免值(番名/文件名/报错等远程数据)里的 $&/$1/$$ 被 String.replace 当替换模式
+    // Function-form replacement: prevents $&/$1/$$ inside values (remote data such as anime names/file names/errors) from being treated as replacement patterns by String.replace
     for (const k in params) {
       const v = params[k];
       s = s.replace('{' + k + '}', () => String(v));

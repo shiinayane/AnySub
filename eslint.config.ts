@@ -3,8 +3,8 @@ import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
-// Flat config. JS 与 TS 共存期间:js.recommended 作用于全部,TS 专属规则仅作用于 *.ts。
-// GM_*/unsafeWindow 等油猴全局由 globals.greasemonkey 提供,浏览器 DOM 由 globals.browser 提供。
+// Flat config. During the JS/TS coexistence period: js.recommended applies to everything, TS-specific rules apply to *.ts only.
+// Tampermonkey globals like GM_*/unsafeWindow are provided by globals.greasemonkey, browser DOM by globals.browser.
 export default tseslint.config(
   {
     ignores: [
@@ -12,7 +12,7 @@ export default tseslint.config(
       'node_modules/**',
       'coverage/**',
       'docs/**',
-      // 生成文件(单行超长 JSON),不参与 lint
+      // Generated file (single very long line of JSON), excluded from lint
       'src/subtitle/kanji-readings.ts',
     ],
   },
@@ -25,9 +25,9 @@ export default tseslint.config(
       globals: { ...globals.browser, ...globals.greasemonkey },
     },
     rules: {
-      // 定时器句柄常在闭包里先被引用、赋值在后(如 toastOffer 的 dismiss),这属合法 let
+      // Timer handles are often referenced in a closure before being assigned (e.g. toastOffer's dismiss); this is a legitimate let
       'prefer-const': ['error', { ignoreReadBeforeAssign: true }],
-      // 允许下划线开头/单下划线的有意丢弃(catch (_)、占位参数)
+      // Allow intentional discards prefixed with an underscore / a lone underscore (catch (_), placeholder parameters)
       'no-unused-vars': [
         'error',
         {
@@ -36,7 +36,7 @@ export default tseslint.config(
           caughtErrorsIgnorePattern: '^_',
         },
       ],
-      // 全角空格(U+3000)、BOM(U+FEFF)等在日文文本处理的注释/正则/模板里是合法的
+      // Full-width space (U+3000), BOM (U+FEFF), etc. are legitimate in comments/regexes/templates that handle Japanese text
       'no-irregular-whitespace': [
         'error',
         { skipComments: true, skipRegExps: true, skipTemplates: true, skipStrings: true },
@@ -47,7 +47,7 @@ export default tseslint.config(
     files: ['**/*.ts'],
     extends: [...tseslint.configs.recommended],
     rules: {
-      // TS 版 no-unused-vars 同样放行下划线丢弃
+      // The TS version of no-unused-vars also permits underscore discards
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
@@ -60,10 +60,10 @@ export default tseslint.config(
     },
   },
   {
-    // Node 环境:测试、构建脚本、配置
+    // Node environment: tests, build scripts, config
     files: ['test/**', 'scripts/**', '*.config.*'],
     languageOptions: { globals: { ...globals.node } },
   },
-  // 关闭与 Prettier 冲突的格式化类规则(必须放最后)
+  // Disable formatting rules that conflict with Prettier (must go last)
   prettier,
 );

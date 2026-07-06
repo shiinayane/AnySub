@@ -9,7 +9,7 @@ import {
 } from '../src/subtitle/cue-format.js';
 import type { Cue } from '../src/types.js';
 
-// 逐行推进一段文本,返回每行 type 数组(从初始状态起)
+// Step through a block of text line by line, returning the array of per-line types (starting from the initial state)
 function run(lines: string[]) {
   let st = INIT_SPAN;
   return lines.map((l) => {
@@ -31,7 +31,7 @@ const spk = buildSpeakers(cues);
 
 test('buildSpeakers 只收「行首(名)+台词」的名字', () => {
   assert.ok(spk.has('マオマオ'));
-  assert.equal(spk.has('ドアが開く音'), false); // 独立音效不进词表
+  assert.equal(spk.has('ドアが開く音'), false); // standalone sound effects are not added to the speaker vocabulary
 });
 
 test('行首话者名+台词 → dialogue', () => {
@@ -109,7 +109,7 @@ test('空行 → plain', () => {
   assert.equal(classifyCueLine(null, spk).type, 'plain');
 });
 
-// ── 跨行/跨 cue 跨度 ──
+// ── Cross-line / cross-cue spans ──
 test('画外音跨行:〈 开在首行,〉 闭在末行,中间也算 voice', () => {
   assert.deepEqual(run(['〈これは長い', '独白で', '何行も続く〉', '普通の台詞']), [
     'voice',
@@ -147,16 +147,16 @@ test('注音 漢字《かな》整行内平衡,不触发 book 跨度', () => {
 
 test('computeSpanStates:跨 cue 相邻延续,重叠/大间隔则重置', () => {
   const cues: Cue[] = [
-    { start: 0, end: 3, text: '〈声が' }, // 开 voice 未闭
-    { start: 3, end: 6, text: '続いている〉' }, // 相邻 → 继承 voice
-    { start: 6, end: 9, text: 'ただの台詞' }, // voice 已闭 → none
-    { start: 20, end: 23, text: '〈遠くの声' }, // 大间隔后另起 voice
-    { start: 21, end: 24, text: '別の人の声' }, // 与上一条重叠 → 重置,不继承
+    { start: 0, end: 3, text: '〈声が' }, // opens voice, not yet closed
+    { start: 3, end: 6, text: '続いている〉' }, // adjacent → inherits voice
+    { start: 6, end: 9, text: 'ただの台詞' }, // voice already closed → none
+    { start: 20, end: 23, text: '〈遠くの声' }, // starts a new voice after a large gap
+    { start: 21, end: 24, text: '別の人の声' }, // overlaps the previous cue → reset, does not inherit
   ];
   computeSpanStates(cues);
   assert.equal(cues[0]._spanIn!.span, 'none');
-  assert.equal(cues[1]._spanIn!.span, 'voice'); // 继承
+  assert.equal(cues[1]._spanIn!.span, 'voice'); // inherited
   assert.equal(cues[2]._spanIn!.span, 'none');
   assert.equal(cues[3]._spanIn!.span, 'none');
-  assert.equal(cues[4]._spanIn!.span, 'none'); // 重叠 → 不继承
+  assert.equal(cues[4]._spanIn!.span, 'none'); // overlap → does not inherit
 });

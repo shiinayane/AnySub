@@ -1,5 +1,5 @@
-// 共享的 DOM 元素引用(由 ui.js 创建并填充,其余模块只读)
-// 注:cueBox 由文本渲染器(render-text.js)自行创建/销毁,不在此持有
+// Shared DOM element references (created and populated by ui.js, read-only for other modules)
+// Note: cueBox is created/destroyed by the text renderer (render-text.js) itself and is not held here
 import type { Refs } from './types.js';
 
 export const refs: Refs = {

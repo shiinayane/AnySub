@@ -1,4 +1,4 @@
-// 视频定位:穿透 Shadow DOM 收集 <video>
+// Video location: pierce Shadow DOM to collect <video> elements
 
 export function collectVideos(
   root?: ParentNode | null,
@@ -30,7 +30,7 @@ export function isVisible(v: Element): boolean {
   return r.width > 0 && r.height > 0;
 }
 
-// 默认选可见面积最大的 video
+// By default, pick the video with the largest visible area
 export function pickBestVideo(): HTMLVideoElement | null {
   const vids = collectVideos().filter(isVisible);
   if (!vids.length) return collectVideos()[0] || null;

@@ -1,4 +1,4 @@
-// 覆盖层:格式无关的定位 / 全屏跟随。文本与(未来的)ASS 渲染器都渲染进这个盒子。
+// Overlay: format-agnostic positioning / fullscreen tracking. Both the text and ASS renderers render into this box.
 import { refs } from '../refs.js';
 
 let lastRectKey = '',
@@ -13,7 +13,7 @@ function fullscreenEl(): Element | null {
   return d.fullscreenElement || d.webkitFullscreenElement || null;
 }
 
-// 挂载宿主:全屏时挂到全屏元素(否则会被顶层遮挡);裸 <video> 全屏时无处可挂,返回 body(已知限制)
+// Mount host: when fullscreen, attach to the fullscreen element (otherwise it gets covered by the top layer); a bare <video> in fullscreen has nowhere to attach, so return body (known limitation)
 export function getHost(): HTMLElement {
   const fs = fullscreenEl();
   if (fs && fs.tagName !== 'VIDEO') return fs as HTMLElement;
@@ -30,7 +30,7 @@ export function hideOverlay(): void {
   if (refs.overlay) refs.overlay.style.display = 'none';
 }
 
-// 同步覆盖层到视频位置;返回 {rect, changed},changed 表示尺寸/位置是否变化(供渲染器决定是否重算字号)
+// Sync the overlay to the video's position; returns {rect, changed}, where changed indicates whether the size/position changed (so the renderer can decide whether to recompute the font size)
 export function positionOverlay(v: HTMLVideoElement): { rect: DOMRect | null; changed: boolean } {
   const r = v.getBoundingClientRect();
   const key = `${r.left}|${r.top}|${r.width}|${r.height}`;

@@ -1,7 +1,7 @@
-// 在线字幕搜索面板(独立居中模态,与主面板同一视觉语言):
-// 输入 API key + 番剧名 + 集数 → 番剧候选(带海报)→ 文件候选 → 下载载入。
-// 半自动:每一步都把候选摆出来让用户选,不静默加载。
-// 与主面板互斥(打开时收起主面板),并提供「返回主面板」按钮保持心智连贯。
+// Online subtitle search panel (a standalone centered modal, sharing the main panel's visual language):
+// enter API key + anime title + episode → anime candidates (with posters) → file candidates → download and load.
+// Semi-automatic: at each step the candidates are laid out for the user to choose, never loaded silently.
+// Mutually exclusive with the main panel (opening it collapses the main panel), and provides a "back to main panel" button to keep the mental flow coherent.
 import { state } from '../state.js';
 import { refs } from '../refs.js';
 import { toast } from './notify.js';
@@ -14,16 +14,16 @@ import { t } from '../i18n.js';
 import { errMessage } from '../errors.js';
 import type { AnimeCandidate, SubFile } from '../types.js';
 
-// 文件候选头部展示所需的最小番剧信息(showCandidates 可只带 title/anilistId)
+// Minimal anime info needed for the file-candidates header (showCandidates may supply only title/anilistId)
 type AnimeLike = Partial<AnimeCandidate> & { title?: string };
 
 let panel!: HTMLElement,
   titleInput!: HTMLInputElement,
   epInput!: HTMLInputElement,
   results!: HTMLElement;
-let currentAnime: AnimeLike | null = null; // 当前展开文件列表的番剧(供记录来源)
-let lastPrefillSig: string | null = null; // 上次预填所依据的「番名#集数」指纹(切集后据此刷新预填)
-let keyEditing = false; // key 已保存时默认折叠为一行;点「更换」展开输入
+let currentAnime: AnimeLike | null = null; // the anime whose file list is currently expanded (for recording the source)
+let lastPrefillSig: string | null = null; // the "title#episode" fingerprint the last prefill was based on (used to refresh the prefill after switching episodes)
+let keyEditing = false; // when a key is already saved, collapse to a single line by default; clicking "change" expands the input
 
 const S = (p: string): string =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
@@ -59,11 +59,11 @@ export function buildSearchUI(): void {
   panel.id = 'anysub-search';
   panel.style.display = 'none';
   refs.uiRoot!.appendChild(panel);
-  refs.searchPanel = panel; // 供主面板互斥用
+  refs.searchPanel = panel; // used by the main panel for mutual exclusion
   wireSearch();
 }
 
-// 建立/重建搜索面板内部 DOM 与事件(语言切换时复用)
+// Build/rebuild the search panel's internal DOM and events (reused when switching language)
 function wireSearch(): void {
   panel.innerHTML = html();
   titleInput = panel.querySelector<HTMLInputElement>('#anysub-title')!;
@@ -82,19 +82,19 @@ function wireSearch(): void {
   renderKeyArea();
 }
 
-// 语言切换:重建搜索面板 DOM(丢弃未提交的搜索结果,回到初始态——切语言本就少见)
+// Language switch: rebuild the search panel DOM (discards uncommitted search results, returning to the initial state — switching language is rare anyway)
 export function relocalizeSearch(): void {
   if (!panel) return;
   wireSearch();
-  lastPrefillSig = null; // 下次打开按当前页重新预填
+  lastPrefillSig = null; // next open re-prefills based on the current page
 }
 
-// 供外部调用:跨站 key 异步就绪后,若搜索面板已建则刷新 key 区显示(未建则无操作,打开时自会正确渲染)
+// For external callers: after the cross-site key becomes ready asynchronously, refresh the key area display if the search panel is already built (no-op if not built; it will render correctly on open)
 export function refreshKeyArea(): void {
   if (panel) renderKeyArea();
 }
 
-// key 区两态:未存 → 输入框 + 保存;已存 → 一行「已连接 · 更换」,点更换再展开
+// The key area has two states: not stored → input + save; stored → a single line "connected · change", clicking change expands it again
 function renderKeyArea(): void {
   const area = panel.querySelector<HTMLElement>('#anysub-key-area')!;
   if (state.jimakuKey && !keyEditing) {
@@ -116,13 +116,13 @@ function renderKeyArea(): void {
 }
 
 export function openSearch(): void {
-  ensurePanel(); // 懒建面板+搜索 DOM(含本模块的 panel)
-  if (refs.panel) refs.panel.style.display = 'none'; // 与主面板互斥
+  ensurePanel(); // lazily build the panel + search DOM (including this module's panel)
+  if (refs.panel) refs.panel.style.display = 'none'; // mutually exclusive with the main panel
   show();
   renderKeyArea();
-  // 预填「番剧名 + 集数」(站点适配)。首次为空时填;此后仅当探测到的番名/集数变化才刷新——
-  // 用 detectShow() 指纹判断而非 document.title:Prime 换集时 <title> 不变、集数在 DOM 里,
-  // 若仍按标题判断会残留上一集信息。同一集内保留用户手动修改。
+  // Prefill "anime title + episode" (via site adaptation). Fill it when empty on first open; afterward refresh only when the detected title/episode changes —
+  // use the detectShow() fingerprint rather than document.title: on Prime, the <title> stays the same across episode changes while the episode lives in the DOM,
+  // so judging by the title alone would leave stale info from the previous episode. Within the same episode, preserve the user's manual edits.
   const det = detectShow();
   const detSig = (det.series || '') + '#' + (det.episode || '');
   const first = !titleInput.value && !epInput.value;
@@ -142,14 +142,14 @@ function show(): void {
   panel.style.display = 'block';
   panel.classList.remove('as-in');
   void panel.offsetWidth;
-  panel.classList.add('as-in'); // 重放入场动画
+  panel.classList.add('as-in'); // replay the entrance animation
 }
 
 function close(): void {
   panel.style.display = 'none';
 }
 
-// 返回主面板:收起搜索,显式打开主面板(与「关闭」区分——关闭是彻底 dismiss)
+// Back to main panel: collapse the search and explicitly open the main panel (distinct from "close" — close is a full dismiss)
 function backToPanel(): void {
   panel.style.display = 'none';
   openPanel();
@@ -157,7 +157,7 @@ function backToPanel(): void {
 
 function saveKey(val: string): void {
   state.jimakuKey = (val || '').trim();
-  saveGlobalKey(state.jimakuKey); // 跨站存储:一处设置,DMM/Prime/U-NEXT 等全站通用
+  saveGlobalKey(state.jimakuKey); // cross-site storage: set once, applies across all sites (DMM/Prime/U-NEXT, etc.)
   keyEditing = false;
   renderKeyArea();
   toast(state.jimakuKey ? t('toast.keySaved') : t('toast.keyCleared'));
@@ -183,7 +183,7 @@ async function doSearch(): Promise<void> {
       setResults(`<div class="as-sc-empty">${t('sc.notFound')}</div>`);
       return;
     }
-    const exact = pickExactAnime(list, title); // 精确命中唯一 → 自动选番,省去人工选(仍从文件候选选)
+    const exact = pickExactAnime(list, title); // a unique exact match → auto-select the anime, skipping manual selection (the user still chooses from the file candidates)
     if (exact) {
       loadFilesFor(exact);
       return;
@@ -194,7 +194,7 @@ async function doSearch(): Promise<void> {
   }
 }
 
-// 海报:优先 AniList 封面,加载失败(CSP/网络)则移除 img 回落到占位图标
+// Poster: prefer the AniList cover; if loading fails (CSP/network), remove the img and fall back to the placeholder icon
 function poster(url: string | null | undefined): string {
   return `<span class="as-sc-poster">${IC.photo}${url ? `<img src="${escAttr(url)}" alt="">` : ''}</span>`;
 }
@@ -232,7 +232,7 @@ async function loadFilesFor(anime: AnimeCandidate): Promise<void> {
       anime.native,
       anime.romaji,
       anime.english,
-    ]); // anilist_id 无条目时的自由搜兜底
+    ]); // free-text search fallback when there is no entry for the anilist_id
     if (!files.length) {
       results.innerHTML = '';
       results.appendChild(backLink(t('sc.backToAnime'), doSearch));
@@ -248,8 +248,8 @@ async function loadFilesFor(anime: AnimeCandidate): Promise<void> {
   }
 }
 
-// 直接展示某番剧的文件候选(切集找不到同源时回退用;自动提示核实后也复用)。
-// anilistId 可显式传入(自动提示已解析出番剧);缺省则沿用上次在线来源,供文件加载后记来源(切集接续)。
+// Directly show the file candidates for a given anime (used as a fallback when the same source can't be found after switching episodes; also reused after the auto-prompt is confirmed).
+// anilistId can be passed explicitly (the auto-prompt has already resolved the anime); if omitted, it reuses the last online source, so the source is recorded after the file loads (for episode-switch continuation).
 export function showCandidates(
   seriesTitle: string,
   files: SubFile[],
@@ -261,7 +261,7 @@ export function showCandidates(
   renderKeyArea();
   if (seriesTitle) titleInput.value = seriesTitle;
   const d = detectShow();
-  lastPrefillSig = (d.series || '') + '#' + (d.episode || ''); // 视为已按当前集预填,避免重开时被覆盖
+  lastPrefillSig = (d.series || '') + '#' + (d.episode || ''); // treat as already prefilled for the current episode, to avoid being overwritten on reopen
   const id = anilistId != null ? anilistId : state.lastOnline?.anilistId;
   renderFiles({ title: seriesTitle, anilistId: id }, files);
 }
@@ -286,7 +286,7 @@ async function pickFile(f: SubFile, row: HTMLElement): Promise<void> {
   try {
     const ok = await downloadAndLoad(f.url, f.name);
     if (ok) {
-      markLoaded(currentAnime && currentAnime.anilistId, f.name); // 记录来源,供切集自动接续
+      markLoaded(currentAnime && currentAnime.anilistId, f.name); // record the source, for automatic continuation across episode switches
       toast(t('toast.mountedFile', { name: f.name }));
       close();
     }
@@ -297,7 +297,7 @@ async function pickFile(f: SubFile, row: HTMLElement): Promise<void> {
   }
 }
 
-// ── DOM 小工具 ──
+// ── DOM helpers ──
 function sec(text: string): HTMLDivElement {
   const d = document.createElement('div');
   d.className = 'as-sc-sec';
@@ -320,7 +320,7 @@ function backLink(text: string, fn: () => void): HTMLDivElement {
 }
 function wirePoster(row: HTMLElement): void {
   const img = row.querySelector<HTMLImageElement>('.as-sc-poster img');
-  if (img) img.addEventListener('error', () => img.remove()); // 失败回落占位图标(位于 img 之下)
+  if (img) img.addEventListener('error', () => img.remove()); // on failure, fall back to the placeholder icon (which sits beneath the img)
 }
 function setResults(htmlStr: string): void {
   results.innerHTML = htmlStr;

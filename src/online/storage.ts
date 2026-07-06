@@ -1,13 +1,13 @@
-// 设置持久化。
-// 普通偏好:localStorage(按站点隔离,故是「每站点」保存)。
-// Jimaku API key:跨站共享——优先 GM 存储(GM_getValue/GM_setValue,按脚本而非按站点,
-//   一处设置全站可用),回落 localStorage(按站点)。同时也写一份 localStorage 作本站缓存兜底。
+// Settings persistence.
+// Ordinary preferences: localStorage (isolated per site, hence saved "per site").
+// Jimaku API key: shared across sites — GM storage preferred (GM_getValue/GM_setValue, per script rather than per site,
+//   set once and usable everywhere), falling back to localStorage (per site). A copy is also written to localStorage as a per-site cache fallback.
 import { state } from '../state.js';
 
 const KEY = 'anysub:settings:v1';
 const KEY_JIMAKU = 'anysub:jimakuKey';
 
-// 通过 globalThis 访问油猴存储 API,兼容各管理器(有的只提供异步 GM.*,有的只提供同步 GM_*)。
+// Access the userscript storage API via globalThis, compatible with the various managers (some only provide async GM.*, some only provide sync GM_*).
 interface GmApi {
   getValue?: (key: string, def?: unknown) => unknown | Promise<unknown>;
   setValue?: (key: string, val: unknown) => unknown | Promise<unknown>;
@@ -18,8 +18,8 @@ const g = globalThis as unknown as {
   GM_setValue?: (key: string, val: unknown) => unknown;
 };
 
-// GM 存储适配:优先异步 GM.getValue/GM.setValue(GM4/Userscripts/VM),再回落同步 GM_getValue/
-// GM_setValue(TM),都没有则为 null(走 localStorage)。await 对同步返回值同样适用,故统一按异步用。
+// GM storage adapter: async GM.getValue/GM.setValue preferred (GM4/Userscripts/VM), then falling back to sync GM_getValue/
+// GM_setValue (TM), null if neither exists (falls back to localStorage). await works on sync return values too, so treat everything uniformly as async.
 const gmGet: ((k: string, d: string) => unknown) | null =
   g.GM && typeof g.GM.getValue === 'function'
     ? (k, d) => g.GM!.getValue!(k, d)
@@ -33,7 +33,7 @@ const gmSet: ((k: string, v: string) => unknown) | null =
       ? (k, v) => g.GM_setValue!(k, v)
       : null;
 
-// 把当前 state 里所有需持久化的「每站点」字段写入(jimakuKey 不在此,它走跨站存储)
+// Write all the "per-site" fields in the current state that need persisting (jimakuKey is not here, it uses cross-site storage)
 export function saveState(): void {
   const s = state.style;
   saveSettings({
@@ -50,7 +50,7 @@ export function saveState(): void {
   });
 }
 
-// 已持久化设置的形状(读回时字段可能缺失/为旧值,故全部可选)
+// Shape of the persisted settings (fields may be missing / hold old values when read back, so all optional)
 export interface SavedSettings {
   fontPct?: number;
   bottomPct?: number;
@@ -62,14 +62,14 @@ export interface SavedSettings {
   subPos?: string;
   offsets?: Record<string, number>;
   lang?: string | null;
-  jimakuKey?: string; // 旧版遗留(每站点存过);用于一次性迁移到跨站存储
+  jimakuKey?: string; // legacy leftover (was stored per site); used for a one-time migration to cross-site storage
 }
 
 export function loadSettings(): SavedSettings {
   try {
     return (JSON.parse(localStorage.getItem(KEY) || 'null') as SavedSettings) || {};
   } catch (_) {
-    return {}; // 隐私模式 / 禁用 storage 时静默降级
+    return {}; // silent degradation in private mode / when storage is disabled
   }
 }
 
@@ -77,11 +77,11 @@ export function saveSettings(obj: SavedSettings): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(obj));
   } catch (_) {
-    /* 忽略写入失败 */
+    /* ignore write failures */
   }
 }
 
-// 本站 localStorage 里的 key(同步,供启动时立即恢复本站缓存)
+// The key in this site's localStorage (sync, for immediately restoring the per-site cache at startup)
 export function getLocalKey(): string {
   try {
     return localStorage.getItem(KEY_JIMAKU) || '';
@@ -90,32 +90,32 @@ export function getLocalKey(): string {
   }
 }
 
-// 读跨站 Jimaku key(异步):GM 优先(全站共享),回落本站 localStorage。
+// Read the cross-site Jimaku key (async): GM preferred (shared across all sites), falling back to this site's localStorage.
 export async function loadGlobalKey(): Promise<string> {
   if (gmGet) {
     try {
       const v = await gmGet(KEY_JIMAKU, '');
-      if (typeof v === 'string' && v) return v; // 防非字符串返回
+      if (typeof v === 'string' && v) return v; // guard against non-string returns
     } catch (_) {
-      /* 降级到 localStorage */
+      /* fall back to localStorage */
     }
   }
   return getLocalKey();
 }
 
-// 写跨站 Jimaku key:GM(全站)+ localStorage(本站缓存兜底)都写。fire-and-forget。
+// Write the cross-site Jimaku key: write to both GM (all sites) + localStorage (per-site cache fallback). Fire-and-forget.
 export function saveGlobalKey(v: string): void {
   const val = v || '';
   if (gmSet) {
     try {
       Promise.resolve(gmSet(KEY_JIMAKU, val)).catch(() => {});
     } catch (_) {
-      /* 忽略 */
+      /* ignore */
     }
   }
   try {
     localStorage.setItem(KEY_JIMAKU, val);
   } catch (_) {
-    /* 忽略 */
+    /* ignore */
   }
 }

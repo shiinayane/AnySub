@@ -1,4 +1,5 @@
-// AniList GraphQL:番剧名 → 候选(id / 标题 / 集数 / 年份)。无需鉴权,CORS: *。
+// AniList GraphQL: anime title → candidates (id / title / episode count / year). No auth needed, CORS: *.
+import { t } from '../i18n.js';
 import type { AnimeCandidate } from '../types.js';
 
 const ENDPOINT = 'https://graphql.anilist.co';
@@ -22,8 +23,8 @@ export async function searchAnime(title: string): Promise<AnimeCandidate[]> {
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ query: QUERY, variables: { s: title } }),
   });
-  if (res.status === 429) throw new Error('AniList 请求过于频繁,请稍后再试');
-  if (!res.ok) throw new Error('AniList 查询失败 ' + res.status);
+  if (res.status === 429) throw new Error(t('err.anilistRateLimit'));
+  if (!res.ok) throw new Error(t('err.anilistFailed', { status: res.status }));
   const data = (await res.json()) as AniResponse;
   const media = data?.data?.Page?.media || [];
   return media.map((m) => ({

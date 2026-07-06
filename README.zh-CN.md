@@ -37,6 +37,7 @@
 - 🖥️ **全屏跟随**:覆盖层自动重挂到全屏元素上。
 - 🈶 自动**编码探测**:UTF-8 → GBK → Big5 →(日文)Shift-JIS / EUC-JP 回退。
 - ⏱️ **时间轴偏移**:±0.1 / ±1 步进,或手动输入任意秒数。**偏移记忆**:按「番剧+字幕源」记住并持久化,同番剧同源跨集/重开自动恢复。
+- 🌐 **站点适配:DMM TV / Prime Video / U-NEXT**:直接从播放器读取当前番剧 + 集数(不只靠 `<title>`),即使是切集不更新标题的 SPA,搜索预填与自动接续下一集也稳。其它站点回落到解析页面标题。[新增站点适配](#adding-a-site-adapter)是很小、自包含的改动。
 - 🔎 **穿透 Shadow DOM** 定位视频;页面多个视频时可手动「选视频」。
 - ⌨️ **键盘快捷键**(`Ctrl+Shift` 或 `Alt+Shift` 皆可):`S` 面板 · `F` 在线 · `V` 显隐 · `O` 本地 · `←/→` 偏移 ∓0.1s。输入框内不响应。
 - 🫧 **极简 UI**:默认无常驻悬浮球、无弹窗,快捷键唤出面板(悬浮球可在面板开启)。
@@ -127,8 +128,13 @@ src/
 │   ├── online.ts           编排:resolveSubtitles(定位 → 取文件 → 下载)
 │   ├── match.ts            同源匹配 + 精确选番(纯逻辑,有单测)
 │   └── storage.ts          设置(localStorage)+ 跨站 Jimaku key(GM 存储)
-├── sites/               站点适配 + 切集自动化
-│   ├── site-adapters.ts    识别番剧/集数(DMM / Prime Video / U-NEXT)
+├── sites/               站点识别 + 切集自动化
+│   ├── adapters/           一站一文件(单一职责)
+│   │   ├── dmm.ts             DMM TV
+│   │   ├── prime.ts          Prime Video
+│   │   ├── unext.ts          U-NEXT
+│   │   └── index.ts          注册表 —— ADAPTERS 数组(新增站点在此登记)
+│   ├── site-adapters.ts    getSiteAdapter() + detectShow()(与站点无关;回落标题解析)
 │   ├── title-parse.ts      页面标题 → 番剧名 + 集数(含日文/旧字体)
 │   ├── episode-signal.ts   共享切集信号(单一观察器,指纹去重)
 │   ├── episode-watch.ts    切集时同源自动接续
@@ -141,6 +147,34 @@ src/
 ```
 
 **渲染层为可插拔架构**:`controller` 驱动循环并持有一个「渲染器」,渲染器实现统一接口 `{ mount, renderAt(video, rect, layoutChanged), applyStyle, destroy }`。`overlay` 负责与视频对齐的盒子(格式无关),渲染器渲染进这个盒子。`loader` 里的**格式注册表**按文件类型选渲染器。
+
+<a id="adding-a-site-adapter"></a>
+
+### 新增站点适配(Adding a site adapter)
+
+**站点适配器**教 AnySub 直接从流媒体播放器读取**当前番剧 + 集数**——为搜索预填、自动接续下一集、「找到字幕」提示提供依据,即便页面 `<title>` 里没有这些信息。没有适配器也能用,只是回落到解析 `<title>`(`sites/title-parse.ts`)。
+
+每个站点是 `src/sites/adapters/` 下的**一个文件**(单一职责);注册表是 `adapters/index.ts`,与站点无关的识别逻辑(`getSiteAdapter` / `detectShow`,含 `<title>` 回落)在 `site-adapters.ts`。适配器实现 `SiteAdapter`(见 `src/types.ts`):
+
+```ts
+interface SiteAdapter {
+  name: string;
+  match(): boolean;           // 是这个站点吗?(按 location.hostname)
+  isTarget(): boolean;        // 在播放页吗?(URL 路径或某个播放器元素)
+  detect(): DetectInfo;       // → { series, episode, showKey?, epKey? }
+  watchEl?(): Element | null; // 可选:供观察「切集」的元素
+}
+```
+
+新增一个站点:
+
+1. 复制一个现成文件(如 `adapters/dmm.ts`)到 `adapters/<name>.ts`,导出一个 `SiteAdapter`,再在 `adapters/index.ts` 里登记(加进 `ADAPTERS` 数组)。一个站点的全部逻辑都留在这一个文件里。
+2. `match()` 判 `location.hostname`;`isTarget()` 判 URL 路径或某个稳定的播放器元素。
+3. `detect()` 返回 `series`(番名)和 `episode`(集数)。**锚定稳定的类名前缀 / styled-components 的 `displayName`,绝不要用构建哈希**——例如 Prime 的 `atvwebplayersdk-*` 稳定,而 `f6gi9c2` 是每次构建变的哈希;U-NEXT 的 `styles__TitleContainer-` 稳定,`dWSOjb` 是生成类。
+4. 若切集时 `<title>` 不变(SPA 常是替换某个 DOM 节点),从 `watchEl()` 返回那个会变的元素,让共享的 `episode-signal` 观察到;省略它则回落到观察 `<title>`。
+5. 在 `test/site-adapters.test.ts` 加一个用例——它注入 `location`/`document` 桩,无需浏览器。
+
+判定要**保守**:拿不准就返回空的 `series`/`episode`,交给标题解析兜底,别猜错(错误自动加载比不加载更糟)。
 
 ### 设计说明
 

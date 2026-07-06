@@ -134,7 +134,7 @@
   #anysub-fab.dock-right:hover,#anysub-fab.dock-left:hover{transform:translateX(0);}
   #anysub-fab.dragging{transition:none;cursor:grabbing;}
 
-  /* ── 设置面板(无 backdrop-filter 以免每帧重绘视频区) ── */
+  /* ── Settings panel (no backdrop-filter to avoid repainting the video area every frame) ── */
   #anysub-panel{position:fixed;right:16px;bottom:54px;z-index:2147483647;width:300px;box-sizing:border-box;
     color:var(--as-fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
     background:linear-gradient(180deg,var(--as-grad-top),var(--as-grad-bot));border:1px solid var(--as-border);border-radius:14px;padding:12px;
@@ -184,7 +184,7 @@
   #anysub-panel .as-label{display:flex;align-items:center;justify-content:space-between;color:var(--as-fg2);font-size:11.5px;font-weight:550;margin-bottom:7px;}
   #anysub-panel .as-val{color:var(--as-val);font-variant-numeric:tabular-nums;font-weight:600;}
 
-  /* 语言选择:label 左、select 右,同一行紧凑排布 */
+  /* Language selection: label on the left, select on the right, laid out compactly on the same line */
   #anysub-panel .as-field-lang{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 8px;}
   #anysub-panel .as-field-lang .as-label{margin:0;}
   #anysub-panel .as-select{appearance:none;-webkit-appearance:none;background:var(--as-inset);color:var(--as-fg-strong);
@@ -232,7 +232,7 @@
   #anysub-panel .as-hints kbd{display:inline-block;background:var(--as-kbd-bg);border:1px solid var(--as-kbd-bd);
     border-bottom-width:2px;border-radius:4px;padding:0 4px;margin:0 1px;font:600 10px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--as-kbd-fg);}
 
-  /* ── 在线搜索面板(独立居中模态,与主面板同一视觉语言) ── */
+  /* ── Online search panel (a standalone centered modal, sharing the same visual language as the main panel) ── */
   #anysub-search{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;
     width:400px;max-width:92vw;max-height:82vh;display:flex;flex-direction:column;box-sizing:border-box;color:var(--as-fg);
     font:13px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
@@ -307,14 +307,14 @@
     background:rgba(0,0,0,.85);color:#fff;padding:8px 16px;border-radius:6px;
     font:13px -apple-system,system-ui,sans-serif;opacity:0;transition:opacity .3s;pointer-events:none;max-width:80vw;text-align:center;}
 
-  /* 可点「发现字幕」提示:带主操作按钮 + 关闭 */
+  /* Clickable "subtitles found" prompt: with a primary action button + close */
   #anysub-offer{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:2147483647;
     display:flex;align-items:center;gap:10px;max-width:88vw;box-sizing:border-box;pointer-events:auto;
     color:var(--as-fg);font:13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
     background:linear-gradient(180deg,var(--as-grad-top),var(--as-grad-bot));border:1px solid var(--as-border);
     border-radius:12px;padding:9px 10px 9px 14px;box-shadow:var(--as-shadow);animation:as-pop-x .14s cubic-bezier(.2,.7,.3,1);}
-  /* 复用 as-pop 的 to{transform:none} 会冲掉本元素居中用的 translateX(-50%),
-     导致入场时先贴右侧、动画结束才瞬移回中间——故用专用 keyframe 保留该偏移 */
+  /* reusing as-pop's to{transform:none} would wipe out this element's centering translateX(-50%),
+     causing it to first stick to the right on entry and only snap back to center when the animation ends — so use a dedicated keyframe that preserves that offset */
   @keyframes as-pop-x{from{opacity:0;transform:translateX(-50%) translateY(5px) scale(.985);}to{opacity:1;transform:translateX(-50%);}}
   #anysub-offer .as-offer-msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw;}
   #anysub-offer button{font-family:inherit;cursor:pointer;border-radius:8px;transition:background .15s,border-color .15s;}
@@ -895,6 +895,41 @@
 			en: "{title} · select subtitle ({n})",
 			zh: "{title} · 选择字幕({n})",
 			ja: "{title} · 字幕を選択({n})"
+		},
+		"err.anilistRateLimit": {
+			en: "AniList: too many requests, please try again later",
+			zh: "AniList 请求过于频繁,请稍后再试",
+			ja: "AniList: リクエストが多すぎます。しばらくして再試行してください"
+		},
+		"err.anilistFailed": {
+			en: "AniList query failed ({status})",
+			zh: "AniList 查询失败 {status}",
+			ja: "AniList クエリ失敗 ({status})"
+		},
+		"err.jimakuNoKey": {
+			en: "Jimaku API key not set",
+			zh: "未设置 Jimaku API key",
+			ja: "Jimaku API キーが未設定です"
+		},
+		"err.jimakuBadKey": {
+			en: "Invalid Jimaku API key",
+			zh: "Jimaku API key 无效",
+			ja: "Jimaku API キーが無効です"
+		},
+		"err.jimakuRateLimit": {
+			en: "Jimaku: too many requests, please try again later",
+			zh: "Jimaku 请求过于频繁,请稍后再试",
+			ja: "Jimaku: リクエストが多すぎます。しばらくして再試行してください"
+		},
+		"err.jimakuFailed": {
+			en: "Jimaku request failed ({status})",
+			zh: "Jimaku 请求失败 {status}",
+			ja: "Jimaku リクエスト失敗 ({status})"
+		},
+		"err.downloadFailed": {
+			en: "Download failed ({status})",
+			zh: "下载失败 {status}",
+			ja: "ダウンロード失敗 ({status})"
 		}
 	};
 	function t(key, params) {
@@ -1125,7 +1160,7 @@
 				}
 			} catch (_) {}
 			if (best !== null) return best;
-			console.warn("[AnySub] 无法自动识别字幕编码,按 UTF-8 兜底,可能乱码;建议转成 UTF-8");
+			console.warn("[AnySub] Could not auto-detect subtitle encoding; falling back to UTF-8, output may be garbled — converting the file to UTF-8 is recommended");
 			return new TextDecoder("utf-8").decode(bytes);
 		}
 	}
@@ -1288,7 +1323,7 @@
 			return "";
 		}
 	}
-	var DMM = {
+	var dmm = {
 		name: "dmm",
 		match: () => /(^|\.)tv\.dmm\.(com|co\.jp)$/.test(location.hostname),
 		isTarget: () => location.pathname.includes("/vod/playback/"),
@@ -1310,7 +1345,7 @@
 	function cleanPrimeTitle(raw) {
 		return String(raw || "").split(/[|｜]/)[0].replace(/^\s*Amazon\.[a-z.]+:\s*/i, "").replace(/\s*(を観る|を視聴|を見る)\s*$/, "").trim();
 	}
-	var PRIME = {
+	var prime = {
 		name: "prime",
 		match: () => /(^|\.)(primevideo\.com|amazon\.[a-z.]+)$/.test(location.hostname),
 		isTarget: () => !!document.querySelector("[class*=\"atvwebplayersdk-\"]"),
@@ -1335,8 +1370,8 @@
 		return null;
 	}
 	var ADAPTERS = [
-		DMM,
-		PRIME,
+		dmm,
+		prime,
 		{
 			name: "unext",
 			match: () => /(^|\.)unext\.jp$/.test(location.hostname),
@@ -1849,7 +1884,7 @@
 	async function doLoad() {
 		if (!window.SubtitlesOctopus) {
 			await injectScript(await fetchText(CDN + "subtitles-octopus.js"));
-			if (!window.SubtitlesOctopus) throw new Error("SubtitlesOctopus 未定义(可能被 CSP 拦截)");
+			if (!window.SubtitlesOctopus) throw new Error("SubtitlesOctopus is undefined (possibly blocked by CSP)");
 		}
 		const workerText = await fetchText(CDN + "subtitles-octopus-worker.js");
 		const prefix = "var Module={locateFile:function(p){return " + JSON.stringify(CDN) + "+p;}};\n";
@@ -1863,7 +1898,7 @@
 	}
 	function fetchText(url) {
 		return fetch(url, { credentials: "omit" }).then((r) => {
-			if (!r.ok) throw new Error(`加载失败 ${r.status}: ${url}`);
+			if (!r.ok) throw new Error(`Failed to load ${r.status}: ${url}`);
 			return r.text();
 		});
 	}
@@ -1882,7 +1917,7 @@
 			};
 			s.onerror = () => {
 				cleanup();
-				reject(new Error("主脚本注入失败(可能被 CSP 拦截)"));
+				reject(new Error("Main script injection failed (possibly blocked by CSP)"));
 			};
 			(document.head || document.documentElement).appendChild(s);
 		});
@@ -1922,11 +1957,11 @@
 						toast(t("toast.assHiFi"));
 					},
 					onError: (e) => {
-						console.warn("[AnySub] libass 渲染出错,保留文本", e);
+						console.warn("[AnySub] libass render error, keeping text", e);
 					}
 				});
 			}).catch((err) => {
-				console.warn("[AnySub] 无法加载 libass,使用文本渲染:", err && err.message);
+				console.warn("[AnySub] Failed to load libass, using text rendering:", err && err.message);
 				toast(t("toast.assText"));
 			});
 		}
@@ -2185,8 +2220,8 @@
 				variables: { s: title }
 			})
 		});
-		if (res.status === 429) throw new Error("AniList 请求过于频繁,请稍后再试");
-		if (!res.ok) throw new Error("AniList 查询失败 " + res.status);
+		if (res.status === 429) throw new Error(t("err.anilistRateLimit"));
+		if (!res.ok) throw new Error(t("err.anilistFailed", { status: res.status }));
 		return ((await res.json())?.data?.Page?.media || []).map((m) => ({
 			anilistId: m.id,
 			title: m.title.native || m.title.romaji || m.title.english || String(m.id),
@@ -2202,14 +2237,14 @@
 	var BASE = "https://jimaku.cc/api";
 	function auth() {
 		const key = state.jimakuKey;
-		if (!key) throw new Error("未设置 Jimaku API key");
+		if (!key) throw new Error(t("err.jimakuNoKey"));
 		return { Authorization: key };
 	}
 	async function get(path) {
 		const res = await fetch(BASE + path, { headers: auth() });
-		if (res.status === 401) throw new Error("Jimaku API key 无效");
-		if (res.status === 429) throw new Error("Jimaku 请求过于频繁,请稍后再试");
-		if (!res.ok) throw new Error("Jimaku 请求失败 " + res.status);
+		if (res.status === 401) throw new Error(t("err.jimakuBadKey"));
+		if (res.status === 429) throw new Error(t("err.jimakuRateLimit"));
+		if (!res.ok) throw new Error(t("err.jimakuFailed", { status: res.status }));
 		return res.json();
 	}
 	function searchByAnilist(anilistId) {
@@ -2284,7 +2319,7 @@
 	}
 	async function downloadAndLoad(url, name) {
 		const res = await fetch(url);
-		if (!res.ok) throw new Error("下载失败 " + res.status);
+		if (!res.ok) throw new Error(t("err.downloadFailed", { status: res.status }));
 		return loadFromBuffer(await res.arrayBuffer(), name);
 	}
 	function markLoaded(anilistId, fileName) {
@@ -3049,37 +3084,37 @@
 		{
 			code: "KeyS",
 			label: "Alt+Shift+S",
-			desc: "打开/关闭面板",
+			desc: "toggle panel",
 			run: () => togglePanel()
 		},
 		{
 			code: "KeyF",
 			label: "Alt+Shift+F",
-			desc: "在线找字幕",
+			desc: "online subtitle search",
 			run: () => openSearch()
 		},
 		{
 			code: "KeyV",
 			label: "Alt+Shift+V",
-			desc: "显示/隐藏字幕",
+			desc: "show/hide subtitles",
 			run: () => toggleSubtitles()
 		},
 		{
 			code: "KeyO",
 			label: "Alt+Shift+O",
-			desc: "打开本地文件",
+			desc: "open local file",
 			run: () => openFilePicker()
 		},
 		{
 			code: "ArrowLeft",
 			label: "Alt+Shift+←",
-			desc: "偏移 −0.1s",
+			desc: "offset −0.1s",
 			run: () => adjustOffset(-.1)
 		},
 		{
 			code: "ArrowRight",
 			label: "Alt+Shift+→",
-			desc: "偏移 +0.1s",
+			desc: "offset +0.1s",
 			run: () => adjustOffset(.1)
 		}
 	].map((s) => [s.code, s.run]));

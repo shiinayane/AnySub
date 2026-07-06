@@ -37,6 +37,7 @@
 - 🖥️ **全画面追従**:オーバーレイが全画面要素へ自動的に再アタッチ。
 - 🈶 自動**エンコーディング判定**:UTF-8 → GBK → Big5 →(日本語)Shift-JIS / EUC-JP フォールバック。
 - ⏱️ **タイムオフセット**:±0.1 / ±1 のステップボタン、または任意の秒数を手入力。**オフセット記憶**:「作品＋字幕出典」ごとに記憶・永続化し、話またぎ/再オープンで自動復元。
+- 🌐 **サイト対応:DMM TV / Prime Video / U-NEXT**:現在の作品 + 話数をプレイヤーから直接読み取り(`<title>` 頼みではない)、話切替でタイトルが変わらない SPA でも検索の事前入力と次話の自動継続が安定。その他のサイトはページタイトルの解析にフォールバック。[サイトの追加](#adding-a-site-adapter)は小さく自己完結した変更です。
 - 🔎 **Shadow DOM を貫通**して動画を検出;ページに複数動画があるときは「動画を選ぶ」ボタン。
 - ⌨️ **キーボードショートカット**(`Ctrl+Shift` でも `Alt+Shift` でも可):`S` パネル · `F` オンライン · `V` 表示切替 · `O` ローカル · `←/→` オフセット ∓0.1s。入力中は反応しません。
 - 🫧 **ミニマルな UI**:既定でフローティングボタンなし・ポップアップなし。ショートカットでパネルを呼び出し(ボタンは任意で有効化)。
@@ -127,8 +128,13 @@ src/
 │   ├── online.ts           編成:resolveSubtitles(作品特定 → ファイル → ダウンロード)
 │   ├── match.ts            同源マッチング + 完全一致選択(純ロジック・テスト有)
 │   └── storage.ts          設定(localStorage)+ サイト横断 Jimaku key(GM ストレージ)
-├── sites/               サイトアダプター + 話数の自動化
-│   ├── site-adapters.ts    作品/話数の判定(DMM / Prime Video / U-NEXT)
+├── sites/               サイト判定 + 話数の自動化
+│   ├── adapters/           サイトごとに 1 ファイル(単一責任)
+│   │   ├── dmm.ts             DMM TV
+│   │   ├── prime.ts          Prime Video
+│   │   ├── unext.ts          U-NEXT
+│   │   └── index.ts          レジストリ —— ADAPTERS 配列(新サイトはここに登録)
+│   ├── site-adapters.ts    getSiteAdapter() + detectShow()(サイト非依存;タイトルにフォールバック)
 │   ├── title-parse.ts      ページタイトル → 作品名 + 話数(日本語/旧字体対応)
 │   ├── episode-signal.ts   共有の話変更シグナル(単一オブザーバー・重複排除)
 │   ├── episode-watch.ts    話変更時に同源で自動継続
@@ -141,6 +147,34 @@ src/
 ```
 
 **描画層はプラガブル**:`controller` がループを駆動し、`{ mount, renderAt(video, rect, layoutChanged), applyStyle, destroy }` を実装する「レンダラー」を 1 つ保持します。`overlay` が動画に整列したボックス(形式非依存)を担い、レンダラーはそこに描画します。`loader` の**形式レジストリ**がファイル種別でレンダラーを選びます。
+
+<a id="adding-a-site-adapter"></a>
+
+### サイトアダプターの追加(Adding a site adapter)
+
+**サイトアダプター**は、ストリーミングのプレイヤーから**現在の作品 + 話数**を直接読み取る術を AnySub に教えます——検索の事前入力・次話の自動継続・「字幕あり」提案の根拠になり、ページ `<title>` にその情報がなくても機能します。無くても動きますが、その場合は `<title>` の解析(`sites/title-parse.ts`)にフォールバックします。
+
+各サイトは `src/sites/adapters/` 下の**1 ファイル**(単一責任)。レジストリは `adapters/index.ts`、サイト非依存の判定(`getSiteAdapter` / `detectShow`、`<title>` フォールバック込み)は `site-adapters.ts`。アダプターは `SiteAdapter`(`src/types.ts`)を実装します:
+
+```ts
+interface SiteAdapter {
+  name: string;
+  match(): boolean;           // このサイトか?(location.hostname で判定)
+  isTarget(): boolean;        // 再生ページか?(URL パス or プレイヤー要素)
+  detect(): DetectInfo;       // → { series, episode, showKey?, epKey? }
+  watchEl?(): Element | null; // 任意:話変更を監視する要素
+}
+```
+
+サイトを追加するには:
+
+1. 既存ファイル(例:`adapters/dmm.ts`)を `adapters/<name>.ts` にコピーして `SiteAdapter` をエクスポートし、`adapters/index.ts` に登録(`ADAPTERS` 配列に追加)。1 サイトのロジックはその 1 ファイルに収まる。
+2. `match()` は `location.hostname`、`isTarget()` は URL パス or 安定したプレイヤー要素で判定。
+3. `detect()` で `series`(作品名)と `episode`(話数)を返す。**安定したクラス名プレフィックス / styled-components の `displayName` を基準にし、ビルドハッシュは使わない**——例:Prime の `atvwebplayersdk-*` は安定、`f6gi9c2` はビルド毎に変わるハッシュ;U-NEXT の `styles__TitleContainer-` は安定、`dWSOjb` は生成クラス。
+4. 話切替で `<title>` が変わらない場合(SPA は DOM ノードを差し替えることが多い)、変化する要素を `watchEl()` から返して共有の `episode-signal` に監視させる;省略すると `<title>` 監視にフォールバック。
+5. `test/site-adapters.test.ts` にケースを追加——`location`/`document` をスタブするのでブラウザ不要。
+
+判定は**保守的**に:自信がなければ空の `series`/`episode` を返し、タイトル解析のフォールバックに任せる(誤った自動読み込みは、読み込まないより悪い)。
 
 ### 設計メモ
 

@@ -1,10 +1,10 @@
-// 构建期离线脚本:从 KANJIDIC2 抽取「汉字 → 读音候选」压缩表,产物提交进仓库。
-// 只取常用(grade 1-8)+ 人名用(grade 9-10)汉字,足够覆盖动画字幕。
-// 读音全部归一到平假名,去 okurigana / 词缀标记,用于 furigana 逐字对齐。
+// Build-time offline script: extract a compressed "kanji → reading candidates" table from KANJIDIC2, with the output committed to the repo.
+// Only takes common (grade 1-8) + name-use (grade 9-10) kanji, which is enough to cover anime subtitles.
+// All readings are normalized to hiragana, with okurigana / affix markers stripped, for use in per-character furigana alignment.
 //
-// 用法: node scripts/build-readings.mjs <kanjidic2.xml> > src/kanji-readings.js
+// Usage: node scripts/build-readings.mjs <kanjidic2.xml> > src/subtitle/kanji-readings.ts
 //
-// 数据源: KANJIDIC2 (c) EDRDG, CC BY-SA 4.0 — https://www.edrdg.org/kanjidic/kanjidic2.xml.gz
+// Data source: KANJIDIC2 (c) EDRDG, CC BY-SA 4.0 — https://www.edrdg.org/kanjidic/kanjidic2.xml.gz
 import { readFileSync } from 'node:fs';
 
 const xmlPath = process.argv[2];
@@ -14,27 +14,27 @@ if (!xmlPath) {
 }
 const xml = readFileSync(xmlPath, 'utf8');
 
-// 片假名 → 平假名(逐字符 -0x60);丢弃长音符 ー / 非假名
+// Katakana → hiragana (per character, -0x60); drop the long-vowel mark ー / non-kana
 function toHira(s) {
   let out = '';
   for (const ch of s) {
     const c = ch.codePointAt(0);
     if (c >= 0x30a1 && c <= 0x30f6)
-      out += String.fromCodePoint(c - 0x60); // カタ→ひら
+      out += String.fromCodePoint(c - 0x60); // katakana → hiragana
     else if (c >= 0x3041 && c <= 0x3096)
-      out += ch; // 已是平假名
-    else if (c === 0x30fc) out += ''; // 长音符:on 读音里一般没有,丢弃
-    // 其余(标点/罗马字)丢弃
+      out += ch; // already hiragana
+    else if (c === 0x30fc) out += ''; // long-vowel mark: generally absent from on readings, drop it
+    // everything else (punctuation/romaji) is dropped
   }
   return out;
 }
 
-// 规整单条读音:剥词缀 '-'、okurigana(取 '.' 之前)、归一平假名
+// Normalize a single reading: strip affix '-', okurigana (keep the part before '.'), normalize to hiragana
 function normReading(raw) {
   let r = raw.trim();
-  r = r.replace(/-/g, ''); // 前/后缀标记
+  r = r.replace(/-/g, ''); // prefix/suffix markers
   const dot = r.indexOf('.');
-  if (dot >= 0) r = r.slice(0, dot); // okurigana:只留汉字对应的读音部分
+  if (dot >= 0) r = r.slice(0, dot); // okurigana: keep only the reading part corresponding to the kanji
   return toHira(r);
 }
 
@@ -47,7 +47,7 @@ while ((m = reChar.exec(xml))) {
   if (!lit) continue;
   const kanji = lit[1];
   const grade = /<grade>(\d+)<\/grade>/.exec(block);
-  if (!grade) continue; // 无年级 = 非常用/人名用,跳过
+  if (!grade) continue; // no grade = not common/name-use, skip
   const g = +grade[1];
   if (g < 1 || g > 10) continue;
 
@@ -74,10 +74,10 @@ while ((m = reChar.exec(xml))) {
 
 const count = Object.keys(map).length;
 const json = JSON.stringify(map);
-// 以「JSON 字符串常量」导出,懒 JSON.parse(避免每页注入都解析大对象)
-const out = `// 自动生成,请勿手改。见 scripts/build-readings.mjs。
-// 汉字读音表(常用+人名用,${count} 字),源自 KANJIDIC2 (c) EDRDG,CC BY-SA 4.0。
-// 值为逗号分隔的平假名读音候选,供 furigana-align.js 逐字对齐。
+// Export as a "JSON string constant", lazily JSON.parse'd (avoids parsing a large object on every page injection)
+const out = `// Auto-generated, do not edit by hand. See scripts/build-readings.mjs.
+// Kanji reading table (common-use + name-use kanji, ${count} characters), derived from KANJIDIC2 (c) EDRDG, CC BY-SA 4.0.
+// Values are comma-separated hiragana reading candidates, used by furigana-align.js for per-character alignment.
 export const KANJI_READINGS_JSON = ${JSON.stringify(json)};
 `;
 process.stdout.write(out);

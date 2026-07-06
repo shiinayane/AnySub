@@ -1,13 +1,13 @@
-// 动画字幕语义排版:识别「话者名 / 非语音 / 画外音 / 书面 / 歌词」并分别标记。
-// 纯逻辑(有单测)。只重排不删字。两个难点:
-//   1) 话者名与音效都用 （　）:两遍扫描消歧——buildSpeakers 先收「行首（X）+台词」的 X 成词表,
-//      独立（X）若 X 在词表 → 话者名,否则 → 非语音。
-//   2) 画外音〈…〉/书面《…》/歌曲 ♪…♪ 可能跨行、跨 cue 断成几句:用状态机跟踪未闭合的跨度——
-//      未闭合的 〈 / 《 会把后续行也标成同类直到闭合;♪ 用奇偶切换。跨 cue 仅在相邻不重叠时延续。
+// Semantic layout for anime subtitles: identify "speaker name / non-speech / off-screen voice / written text / lyrics" and mark each accordingly.
+// Pure logic (with unit tests). Only reorders, never deletes characters. Two hard problems:
+//   1) Both speaker names and sound effects use （　）: disambiguate with a two-pass scan — buildSpeakers first collects a vocabulary of X from "line-leading（X）+ dialogue" forms,
+//      then for a standalone（X), if X is in the vocabulary → speaker name, otherwise → non-speech.
+//   2) Off-screen voice 〈…〉 / written text 《…》 / song ♪…♪ may span lines and be broken across cues into several fragments: a state machine tracks the unclosed span —
+//      an unclosed 〈 / 《 marks the following lines as the same class until it closes; ♪ toggles on even/odd count. Spans continue across cues only when they are adjacent and non-overlapping.
 import type { Cue, SpanState, LineClass } from '../types.js';
 
-const NAME = 20; // 名字/音效单元数上限;过长不认,避免吞掉正文
-// 名字内容单元:非括号字符,或一层嵌套括号(话者名内嵌注音,如 千束（ちさと))
+const NAME = 20; // Upper bound on the number of name/SFX units; anything longer is rejected, to avoid swallowing the main text
+// A name-content unit: a non-parenthesis character, or one level of nested parentheses (a speaker name with embedded furigana, e.g. 千束（ちさと))
 const NONP = '[^（）()]';
 const INNER = '(?:' + NONP + '|[（(]' + NONP + '*[）)])';
 const RE_LEAD = new RegExp('^[（(](' + INNER + '{1,' + NAME + '})[）)]\\s*(\\S[\\s\\S]*)$');
@@ -18,7 +18,7 @@ const count = (s: string, re: RegExp): number => {
   return m ? m.length : 0;
 };
 
-// 话者名归一化 key:去掉内嵌注音（かな)/《かな》,让「千束（ちさと)」与「千束」对得上词表
+// Speaker-name normalization key: strip embedded furigana（かな) / 《かな》 so that 「千束（ちさと)」 and 「千束」 match up in the vocabulary
 export function speakerKey(name: string): string {
   return String(name)
     .replace(/[（(][^（）()]*[）)]/g, '')
@@ -26,7 +26,7 @@ export function speakerKey(name: string): string {
     .trim();
 }
 
-// 扫全部 cue,收集确定的话者名(仅取「行首（X）+台词」形态)。cue 内多行以 <br> 分隔。
+// Scan all cues and collect the confirmed speaker names (only from the "line-leading（X）+ dialogue" form). Multiple lines within a cue are separated by <br>.
 export function buildSpeakers(
   cues: ReadonlyArray<Pick<Cue, 'text'>> | null | undefined,
 ): Set<string> {
@@ -43,8 +43,8 @@ export function buildSpeakers(
 
 export const INIT_SPAN: SpanState = { span: 'none', lyric: false };
 
-// 带状态分类单行。st = { span:'none'|'voice'|'book', lyric:bool } = 进入本行前的跨度状态。
-// 返回 { type, name?, rest?, state }:state 为本行结束后的跨度状态(供下一行/下一 cue)。
+// Classify a single line with state. st = { span:'none'|'voice'|'book', lyric:bool } = the span state on entering this line.
+// Returns { type, name?, rest?, state }: state is the span state after this line ends (for the next line / next cue).
 //   type: dialogue | speaker | sfx | voice | book | lyric | plain
 export function stepCueLine(
   raw: string | null | undefined,
@@ -56,14 +56,14 @@ export function stepCueLine(
   const next: SpanState = { span: st.span, lyric: st.lyric };
   if (!t) return { type: 'plain', state: next };
 
-  // 歌曲:♪ 标记(每行前缀式)或 ♪…♪ 块(奇偶切换)。含 ♪ 或处于歌曲块内 → 歌词。
+  // Song: ♪ marker (per-line prefix style) or ♪…♪ block (even/odd toggle). Contains ♪ or is inside a song block → lyric.
   const notes = count(t, /[♪♫]/g);
   if (st.lyric || notes > 0) {
-    if (notes % 2 === 1) next.lyric = !st.lyric; // 奇数个 ♪ 翻转块状态
+    if (notes % 2 === 1) next.lyric = !st.lyric; // An odd number of ♪ flips the block state
     return { type: 'lyric', state: next };
   }
 
-  // 续接未闭合的画外音/书面跨度:直到某行的闭括号多于开括号才结束
+  // Continue an unclosed off-screen-voice / written-text span: it ends only once a line has more closing brackets than opening ones
   if (st.span === 'voice') {
     if (count(t, /[〉＞]/g) > count(t, /[〈＜]/g)) next.span = 'none';
     return { type: 'voice', state: next };
@@ -73,7 +73,7 @@ export function stepCueLine(
     return { type: 'book', state: next };
   }
 
-  // 起新跨度:开括号多于闭括号 → 未闭合,后续行延续;整行被包裹 → 自闭合。
+  // Start a new span: more opening brackets than closing → unclosed, continues onto following lines; the whole line is wrapped → self-closing.
   const vO = count(t, /[〈＜]/g),
     vC = count(t, /[〉＞]/g);
   if (vO > vC) {
@@ -87,10 +87,10 @@ export function stepCueLine(
     next.span = 'book';
     return { type: 'book', state: next };
   }
-  // 整行 《…》 → 书面;而注音「漢字《かな》」非整行,不会命中
+  // A whole-line 《…》 → written text; whereas furigana 「漢字《かな》」 is not a whole line, so it won't match
   if (bO === 1 && bC === 1 && /^《[\s\S]*》$/.test(t)) return { type: 'book', state: next };
 
-  // 单行括号:话者名 / 音效
+  // Single-line parentheses: speaker name / sound effect
   let m = RE_ALONE.exec(t);
   if (m) {
     const inner = m[1];
@@ -104,7 +104,7 @@ export function stepCueLine(
   return { type: 'plain', state: next };
 }
 
-// 无状态分类(整行独立):供简单调用/测试。等价于从初始状态跑一行。
+// Stateless classification (each line independent): for simple calls / tests. Equivalent to running a single line from the initial state.
 export function classifyCueLine(
   raw: string | null | undefined,
   speakers: Set<string> | null,
@@ -116,9 +116,9 @@ export function classifyCueLine(
   return out;
 }
 
-// 预计算每条 cue「进入时」的跨度状态,写到 cue._spanIn。cues 需按 start 升序。
-// 跨 cue 仅在「相邻、不重叠」时延续:与前一条重叠(=多人同时)或间隔过大(>2s)则重置,
-// 避免未闭合跨度污染并行说话或不相关的后续字幕。
+// Precompute the span state "on entry" for each cue, writing it to cue._spanIn. cues must be in ascending start order.
+// A span continues across cues only when they are "adjacent and non-overlapping": if it overlaps the previous cue (= simultaneous speakers) or the gap is too large (>2s), reset,
+// to avoid an unclosed span contaminating parallel speech or unrelated later subtitles.
 export function computeSpanStates(cues: Cue[] | null | undefined): void {
   let st = INIT_SPAN;
   let prevEnd = -Infinity;

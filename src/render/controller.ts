@@ -1,4 +1,4 @@
-// 渲染控制器:驱动渲染循环、管理当前渲染器与视频生命周期(格式无关)
+// Render controller: drives the render loop, manages the current renderer and the video lifecycle (format-agnostic)
 import { state } from '../state.js';
 import { refs } from '../refs.js';
 import { positionOverlay, ensureMounted, hideOverlay, invalidateLayout } from './overlay.js';
@@ -12,13 +12,13 @@ let intervalId: ReturnType<typeof setInterval> | undefined,
 let renderer: Renderer | null = null;
 let onScroll!: () => void, onResize!: () => void, onFs!: () => void, onVis!: () => void;
 
-// 切换当前渲染器(为多格式预留):销毁旧的、挂载新的
+// Switch the current renderer (reserved for multi-format): destroy the old one, mount the new one
 export function setRenderer(r: Renderer | null): void {
   if (renderer) renderer.destroy();
   renderer = r;
   if (renderer) {
     renderer.mount();
-    // 承接当前隐藏意图:否则用户按 V 隐藏后,切集/换字幕新建的渲染器会无视隐藏又冒出来
+    // carry over the current hidden intent: otherwise, after the user presses V to hide, a renderer newly created on an episode/subtitle switch would ignore the hidden state and pop back up
     if (renderer.setVisible) renderer.setVisible(!state.hidden);
   }
 }
@@ -33,7 +33,7 @@ export function refresh(): void {
 export function startRender(): void {
   state.active = true;
   attachDrivers();
-  if (!intervalId) intervalId = setInterval(renderTick, 250); // 兜底:文本切换 + 布局位移(timeupdate 负责播放时的实时性)
+  if (!intervalId) intervalId = setInterval(renderTick, 250); // fallback: text switching + layout shifts (timeupdate handles real-time responsiveness during playback)
   renderTick();
 }
 
@@ -108,7 +108,7 @@ export function setVideo(v: HTMLVideoElement): void {
   if (state.cues.length) startRender();
 }
 
-// 临时隐藏/显示字幕(不清除,不持久化)
+// Temporarily hide/show subtitles (not cleared, not persisted)
 export function toggleSubtitles(): boolean | undefined {
   if (!state.cues.length) {
     toast(t('toast.noSubs'));
@@ -134,6 +134,6 @@ export function clearSubtitle(): void {
     renderer = null;
   }
   updateStatus();
-  updateWatcher(); // 字幕已清除 → 若也没开悬浮球,断开观察器
+  updateWatcher(); // subtitles cleared → if the floating button is also off, disconnect the observer
   toast(t('toast.cleared'));
 }

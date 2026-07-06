@@ -1,4 +1,4 @@
-// 字幕解析:SRT / VTT → 统一 cue 结构 {start,end,text},按时间排序
+// Subtitle parsing: SRT / VTT → unified cue structure {start,end,text}, sorted by time
 import type { Cue } from '../types.js';
 
 const TIME_RE =
@@ -12,7 +12,7 @@ export function parseSubtitle(text: string, fileName?: string): Cue[] {
   return cues;
 }
 
-// "00:01:02,500" / "01:02.500" → 秒;非法(NaN / 超过 3 段)返回 NaN
+// "00:01:02,500" / "01:02.500" → seconds; invalid input (NaN / more than 3 segments) returns NaN
 export function timeToSeconds(t: string): number {
   t = t.trim().replace(',', '.');
   const parts = t.split(':');
@@ -26,7 +26,7 @@ export function timeToSeconds(t: string): number {
   return s;
 }
 
-// 按时间戳行扫描:cue 正文里的空行不会被误当作块边界(修正数据丢失)
+// Scan by timestamp lines: blank lines within a cue body are not mistaken for block boundaries (fixes data loss)
 export function parseSrt(text: string): Cue[] {
   const lines = text.split('\n');
   const cues: Cue[] = [];
@@ -43,7 +43,7 @@ export function parseSrt(text: string): Cue[] {
       body.push(lines[i]);
       i++;
     }
-    // 去掉尾部空行 + 下一条 cue 的序号行(它被裹进了本 body 末尾)
+    // Strip trailing blank lines + the next cue's index line (which got wrapped into the end of this body)
     while (body.length && body[body.length - 1].trim() === '') body.pop();
     if (body.length && /^\d+$/.test(body[body.length - 1].trim())) body.pop();
     while (body.length && body[body.length - 1].trim() === '') body.pop();
@@ -63,7 +63,7 @@ export function parseVtt(text: string): Cue[] {
       continue;
     }
     i++;
-    // VTT 规范:空行即 cue 分隔符
+    // VTT spec: a blank line is the cue separator
     const body: string[] = [];
     while (i < lines.length && lines[i].trim() !== '' && !TIME_RE.test(lines[i])) {
       body.push(lines[i]);
@@ -82,13 +82,13 @@ function pushCue(cues: Cue[], m: RegExpMatchArray, bodyLines: string[]): void {
   cues.push({ start, end, text: sanitize(body) });
 }
 
-// XSS 安全:先转义所有 HTML,再仅还原「无属性」的 i/b/u 标签,换行转 <br>
+// XSS-safe: first escape all HTML, then restore only the "attribute-free" i/b/u tags, converting newlines to <br>
 export function sanitize(s: string): string {
   s = s.replace(/\{\\[^}]*\}/g, ''); // ASS override {\...}
   s = s.replace(/\{[^}]*\}/g, ''); // SRT {...}
-  s = s.replace(/<\/?font[^>]*>/gi, ''); // 常见 font 标签:去标签留内容
-  s = escapeHtml(s); // 关键:转义一切,杜绝属性/事件注入
-  s = s.replace(/&lt;(\/?)(i|b|u)&gt;/gi, '<$1$2>'); // 只放行裸标签,不含任何属性
+  s = s.replace(/<\/?font[^>]*>/gi, ''); // Common font tags: remove the tag, keep the content
+  s = escapeHtml(s); // Key step: escape everything, blocking attribute/event injection
+  s = s.replace(/&lt;(\/?)(i|b|u)&gt;/gi, '<$1$2>'); // Allow only bare tags through, with no attributes
   s = s.replace(/\n/g, '<br>');
   return s;
 }

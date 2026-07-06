@@ -1,4 +1,4 @@
-// AnySub 入口:初始化 UI + 动态视频监听
+// AnySub entry point: initialize UI + dynamic video watching
 import { state } from './state.js';
 import { injectStyle } from './render/styles.js';
 import { buildUI, updateFabVisibility } from './ui/ui.js';
@@ -13,7 +13,7 @@ import { initAutoOffer } from './sites/auto-offer.js';
 import { initEpisodeSignal } from './sites/episode-signal.js';
 import type { SubStyle } from './types.js';
 
-// 避免在同一 window 重复注入
+// Avoid re-injecting into the same window
 if (!window.__ANYSUB_LOADED__) {
   window.__ANYSUB_LOADED__ = true;
   init();
@@ -28,15 +28,15 @@ function init(): void {
   injectStyle();
   buildUI();
   initShortcuts();
-  initEpisodeWatch(); // 注册切集续播订阅者
-  initAutoOffer(); // 注册「发现字幕」订阅者(仅已知站点)
-  initEpisodeSignal(); // 建立切集信号源(观察站点规则元素或回落 <title>)+ 基线
+  initEpisodeWatch(); // Register the episode-change continuation subscriber
+  initAutoOffer(); // Register the "subtitles found" subscriber (known sites only)
+  initEpisodeSignal(); // Set up the episode-change signal source (watch a site-specific element or fall back to <title>) + baseline
   setReactHandler(react);
   updateFabVisibility();
-  updateWatcher(); // 按需连接:仅当开了悬浮球或已加载字幕才观察 DOM
+  updateWatcher(); // Connect on demand: only observe the DOM when the floating button is enabled or subtitles are loaded
 }
 
-// DOM 变化时:SPA 换视频后重挂(仅字幕已加载时)+ 刷新悬浮球可见性
+// On DOM change: re-attach after an SPA swaps the video (only when subtitles are loaded) + refresh floating-button visibility
 function react(): void {
   if (state.cues.length && state.video && (!state.video.isConnected || !isVisible(state.video))) {
     const nv = pickBestVideo();
@@ -45,7 +45,7 @@ function react(): void {
   updateFabVisibility();
 }
 
-// 恢复持久化偏好(仅接受已知字段,防脏数据)
+// Restore persisted preferences (only accept known fields, to guard against dirty data)
 function restoreSettings(): void {
   const saved = loadSettings();
   const s = state.style;
@@ -58,20 +58,20 @@ function restoreSettings(): void {
   if (typeof saved.enhance === 'boolean') state.enhance = saved.enhance;
   if (saved.subPos === 'top' || saved.subPos === 'bottom') state.subPos = saved.subPos;
   if (saved.lang === 'en' || saved.lang === 'zh' || saved.lang === 'ja') state.lang = saved.lang;
-  // Jimaku key 走跨站存储(全站通用)。先用本站缓存立即恢复(若有),再异步取全站 key 覆盖
-  // (GM 存储可能是异步的);若全站为空但旧版 key 存在每站点设置里,一次性迁移。
+  // The Jimaku key uses cross-site storage (shared across all sites). First restore immediately from the per-site cache (if any), then asynchronously fetch the global key and override
+  // (GM storage may be async); if the global key is empty but a legacy key exists in the per-site settings, migrate it once.
   const cachedKey = getLocalKey();
   state.jimakuKey = cachedKey;
   loadGlobalKey().then((k) => {
-    if (state.jimakuKey !== cachedKey) return; // 启动期间用户已手动设/清 key → 不用异步旧值覆盖
+    if (state.jimakuKey !== cachedKey) return; // User manually set/cleared the key during startup → don't override with the stale async value
     if (k) state.jimakuKey = k;
     else if (typeof saved.jimakuKey === 'string' && saved.jimakuKey) {
       state.jimakuKey = saved.jimakuKey;
-      saveGlobalKey(saved.jimakuKey); // 迁移:旧的每站点 key → 全站
+      saveGlobalKey(saved.jimakuKey); // Migration: old per-site key → global
     }
-    refreshKeyArea(); // 若搜索面板已开着(异步解析前),刷新 key 区显示
+    refreshKeyArea(); // If the search panel is already open (before async resolution), refresh the key-area display
   });
-  // 只接受「纯对象 + 有限数值」的偏移表:防脏数据(数组/字符串/嵌套/超大)污染并被回写
+  // Only accept an offsets table that is a "plain object + finite numbers": guard against dirty data (arrays/strings/nested/oversized) polluting it and being written back
   if (saved.offsets && typeof saved.offsets === 'object' && !Array.isArray(saved.offsets)) {
     const clean: Record<string, number> = {};
     for (const k in saved.offsets) {

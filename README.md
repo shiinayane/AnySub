@@ -39,6 +39,7 @@ Pure userscript — no backend, no upload, nothing leaves your machine. Works on
 - 🖥️ **Fullscreen following**: the overlay re-attaches to the fullscreen element automatically.
 - 🈶 Automatic **encoding detection**: UTF-8 → GBK → Big5 → (Japanese) Shift-JIS / EUC-JP fallback.
 - ⏱️ **Timeline offset**: ±0.1 / ±1 step buttons, or type any number of seconds. **Offset memory**: remembered per "anime + subtitle source" and restored automatically across episodes / reopens.
+- 🌐 **Site-aware on DMM TV / Prime Video / U-NEXT**: reads the current show + episode from the player itself (not just `<title>`), so search pre-fill and auto next-episode stay reliable even on SPAs that don't update the title. Every other site falls back to parsing the page title. [Adding a site](#adding-a-site-adapter) is a small, self-contained change.
 - 🔎 Locates video **through Shadow DOM**; a "pick video" button when a page has several.
 - ⌨️ **Keyboard shortcuts** (`Ctrl+Shift` or `Alt+Shift`, barely ever collide with a site's single keys): `S` panel · `F` online · `V` show/hide · `O` local file · `←/→` offset ∓0.1s. Ignored while typing.
 - 🫧 **Minimal UI**: no floating ball by default, no popups — summon the panel with a shortcut (the floating ball is opt-in).
@@ -129,8 +130,13 @@ src/
 │   ├── online.ts           orchestration: resolveSubtitles (locate → files → download)
 │   ├── match.ts            same-source matching + exact-title pick (pure logic, tested)
 │   └── storage.ts          settings (localStorage) + cross-site Jimaku key (GM storage)
-├── sites/               site adapters + episode automation
-│   ├── site-adapters.ts    detect show/episode (DMM / Prime Video / U-NEXT)
+├── sites/               site detection + episode automation
+│   ├── adapters/           one file per site (single responsibility)
+│   │   ├── dmm.ts             DMM TV
+│   │   ├── prime.ts          Prime Video
+│   │   ├── unext.ts          U-NEXT
+│   │   └── index.ts          registry — the ADAPTERS array (register new sites here)
+│   ├── site-adapters.ts    getSiteAdapter() + detectShow() (site-agnostic; falls back to title)
 │   ├── title-parse.ts      page title → anime name + episode (JP / old-form kanji)
 │   ├── episode-signal.ts   shared episode-change signal (single observer, deduped)
 │   ├── episode-watch.ts    same-source auto-continue on episode change
@@ -143,6 +149,32 @@ src/
 ```
 
 **The render layer is pluggable**: `controller` drives the loop and holds one "renderer" implementing `{ mount, renderAt(video, rect, layoutChanged), applyStyle, destroy }`. `overlay` owns the video-aligned box (format-agnostic); the renderer draws into it. A **format registry** in `loader` picks the renderer by file type.
+
+### Adding a site adapter
+
+A **site adapter** teaches AnySub to read the **current show + episode** straight from a streaming site's player — powering search pre-fill, auto next-episode, and the "subtitles found" offer even when the page `<title>` doesn't carry that info. Without one it still works, just falling back to parsing `<title>` (`sites/title-parse.ts`).
+
+Each site is **one file** under `src/sites/adapters/` (single responsibility); the registry is `adapters/index.ts` and the site-agnostic resolution (`getSiteAdapter` / `detectShow`, with the `<title>` fallback) lives in `site-adapters.ts`. An adapter implements `SiteAdapter` (`src/types.ts`):
+
+```ts
+interface SiteAdapter {
+  name: string;
+  match(): boolean;           // right site? (by location.hostname)
+  isTarget(): boolean;        // on a playback page? (URL path or a player element)
+  detect(): DetectInfo;       // → { series, episode, showKey?, epKey? }
+  watchEl?(): Element | null; // optional: element to watch for episode changes
+}
+```
+
+To add a site:
+
+1. Copy an existing file (e.g. `adapters/dmm.ts`) to `adapters/<name>.ts`, export a `SiteAdapter`, then register it in `adapters/index.ts` (add it to the `ADAPTERS` array). Everything for one site stays in that one file.
+2. `match()` on `location.hostname`; `isTarget()` on the URL path or a stable player element.
+3. In `detect()`, return the `series` title and `episode` number. **Anchor on stable class-name prefixes / styled-component `displayName`s, never build hashes** — e.g. Prime's `atvwebplayersdk-*` is stable while `f6gi9c2` is a per-build hash; U-NEXT's `styles__TitleContainer-` is stable while `dWSOjb` is generated.
+4. If `<title>` doesn't change on episode switch (SPAs often swap a DOM node instead), return the changing element from `watchEl()` so the shared `episode-signal` observer can catch it; omit it to fall back to watching `<title>`.
+5. Add a case to `test/site-adapters.test.ts` — it stubs `location`/`document`, so no browser is needed.
+
+Keep detection **conservative**: when unsure, return an empty `series`/`episode` and let the title-parse fallback take over rather than guess wrong (a wrong auto-load is worse than none).
 
 ### Design notes
 
