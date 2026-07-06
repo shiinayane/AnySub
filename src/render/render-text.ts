@@ -11,36 +11,36 @@ import type { Cue, LineClass, Renderer } from '../types.js';
 // A single line + its classification → HTML (semantic typesetting + ruby). text/rest are already escape-safe HTML.
 // Exported for unit tests: every semantic type should correctly apply ruby (sfx once missed calling applyRuby, causing embedded ruby to be lost).
 export function typedHtml(text: string, c: Pick<LineClass, 'type' | 'name' | 'rest'>): string {
-  let out: string;
+  // Ruby + de-emphasize a line-final continuation arrow. Applied to the INNER content (before wrapping in a
+  // type span), so it also works when the whole line is a wrapped type (book 《…》 / voice 〈…〉 / lyric ♪) —
+  // otherwise the trailing arrow would sit inside </span> and be missed.
+  const body = (s: string): string => dimTrailingCont(applyRuby(s, state.rubyParen));
   switch (c.type) {
     case 'sfx':
-      out = `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
-      break;
+      return `<span class="anysub-sfx">${body(text)}</span>`;
     case 'voice':
-      out = `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
-      break;
+      return `<span class="anysub-voice">${body(text)}</span>`;
     case 'book':
-      out = `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
-      break;
+      return `<span class="anysub-book">${body(text)}</span>`;
     case 'lyric':
-      out = `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
-      break;
+      return `<span class="anysub-lyric">${body(text)}</span>`;
     case 'speaker':
-      out = `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
-      break;
+      return `<span class="anysub-spk">${body(text)}</span>`;
     case 'dialogue':
-      out = `<span class="anysub-spk">（${applyRuby(c.name ?? '', state.rubyParen)}）</span>${applyRuby(c.rest ?? '', state.rubyParen)}`;
-      break;
+      return `<span class="anysub-spk">（${applyRuby(c.name ?? '', state.rubyParen)}）</span>${body(c.rest ?? '')}`;
     default:
-      out = applyRuby(text, state.rubyParen);
+      return body(text);
   }
-  return dimTrailingCont(out);
 }
 
-// De-emphasize a line-final continuation arrow (→ / ➡ / ⇒) — a Japanese-CC marker meaning "this line continues
-// into the next caption". Only the trailing one is touched; arrows inside the content (e.g. 東京→大阪) are left alone.
+// Rightwards "continuation" arrows seen in Japanese CC — → is by far the most common; the rest are variants
+// across Unicode arrow blocks (⟶ long, ⇒/⇨ double, ➡/➔/➜/➤ dingbats, ￫ halfwidth). Left/other arrows excluded.
+const CONT_ARROW = /([→⇒➡⟶⟹⇨⇾➔➜➤￫])(\s*)$/u;
+
+// De-emphasize a line-final continuation arrow — a JP-CC marker meaning "this line continues into the next
+// caption". Only the trailing one is touched; arrows inside content (e.g. 東京→大阪, or 《A→B》) are left alone.
 function dimTrailingCont(html: string): string {
-  return html.replace(/([→➡⇒])(\s*)$/u, '<span class="anysub-cont">$1</span>$2');
+  return html.replace(CONT_ARROW, '<span class="anysub-cont">$1</span>$2');
 }
 
 // Split the currently active cues into "segments". A new segment starts at: the first line of each cue, a line beginning with a speaker name, or (when semantics are enabled) a standalone SFX line.

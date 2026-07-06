@@ -1729,32 +1729,20 @@
 		return "<ruby>" + base + "<rt>" + ruby + "</rt></ruby>";
 	}
 	function typedHtml(text, c) {
-		let out;
+		const body = (s) => dimTrailingCont(applyRuby(s, state.rubyParen));
 		switch (c.type) {
-			case "sfx":
-				out = `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
-				break;
-			case "voice":
-				out = `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
-				break;
-			case "book":
-				out = `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
-				break;
-			case "lyric":
-				out = `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
-				break;
-			case "speaker":
-				out = `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
-				break;
-			case "dialogue":
-				out = `<span class="anysub-spk">（${applyRuby(c.name ?? "", state.rubyParen)}）</span>${applyRuby(c.rest ?? "", state.rubyParen)}`;
-				break;
-			default: out = applyRuby(text, state.rubyParen);
+			case "sfx": return `<span class="anysub-sfx">${body(text)}</span>`;
+			case "voice": return `<span class="anysub-voice">${body(text)}</span>`;
+			case "book": return `<span class="anysub-book">${body(text)}</span>`;
+			case "lyric": return `<span class="anysub-lyric">${body(text)}</span>`;
+			case "speaker": return `<span class="anysub-spk">${body(text)}</span>`;
+			case "dialogue": return `<span class="anysub-spk">（${applyRuby(c.name ?? "", state.rubyParen)}）</span>${body(c.rest ?? "")}`;
+			default: return body(text);
 		}
-		return dimTrailingCont(out);
 	}
+	var CONT_ARROW = /([→⇒➡⟶⟹⇨⇾➔➜➤￫])(\s*)$/u;
 	function dimTrailingCont(html) {
-		return html.replace(/([→➡⇒])(\s*)$/u, "<span class=\"anysub-cont\">$1</span>$2");
+		return html.replace(CONT_ARROW, "<span class=\"anysub-cont\">$1</span>$2");
 	}
 	function buildSegments(active) {
 		const segs = [];

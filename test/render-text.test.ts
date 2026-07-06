@@ -65,6 +65,29 @@ test('正文中间的箭头不动（东京→大阪 不弱化）', () => {
   assert.match(h, /東京→大阪/);
 });
 
+// 算法回归:包裹型行(book/voice/lyric)行尾的箭头也要弱化——它在 </span> 之内,不能因锚定行尾而漏掉
+test('包裹型行(如 book《…》续接)行尾箭头也弱化,且 cont 在类型 span 之内', () => {
+  const h = typedHtml('かくのごとし→', { type: 'book' });
+  assert.match(h, /anysub-book/);
+  assert.match(h, /<span class="anysub-cont">→<\/span>/);
+  // cont 应嵌在 book span 内部
+  assert.match(h, /anysub-book[^]*anysub-cont/);
+});
+
+test('《…》内部的箭头是内容,不弱化(《A→B》)', () => {
+  const h = typedHtml('《A→B》', { type: 'book' });
+  assert.doesNotMatch(h, /anysub-cont/);
+  assert.match(h, /A→B/);
+});
+
+// 箭头不一样:其它右向续接箭头(⟶ / ⇒ / ➡ / ⇨ 等)同样弱化
+for (const arrow of ['⟶', '⇒', '➡', '⇨', '➜', '￫']) {
+  test(`行尾变体箭头 ${arrow} 也弱化`, () => {
+    const h = typedHtml('つづく' + arrow, { type: 'plain' });
+    assert.match(h, new RegExp('<span class="anysub-cont">' + arrow + '</span>'));
+  });
+}
+
 // ── buildSegments: a spoken line after an SFX line stays with speech (bottom), not dragged to the top ──
 test('回归:同 cue 内 音效行 + 台词行 → 拆成两段,各归其位', () => {
   state.enhance = true;
