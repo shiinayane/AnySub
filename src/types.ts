@@ -18,7 +18,8 @@ export interface Cue {
   _spanIn?: SpanState;
 }
 
-export type LineType = 'dialogue' | 'speaker' | 'sfx' | 'voice' | 'book' | 'lyric' | 'plain';
+export type LineType =
+  'dialogue' | 'speaker' | 'sfx' | 'voice' | 'dvoice' | 'book' | 'lyric' | 'plain';
 
 // Return of stepCueLine: classification + span state after processing
 export interface LineClass {

@@ -145,21 +145,21 @@ test('注音 漢字《かな》整行内平衡,不触发 book 跨度', () => {
   assert.deepEqual(run(['温厚《おんこう》な人', 'ただの台詞']), ['plain', 'plain']);
 });
 
-// ── 双层括号 （（…）） = 特殊人声(说出来的话)→ voice(底部),不是 sfx(顶部) ──
-test('单 cue 整行 （（…）） → voice(不再误判为 sfx)', () => {
-  assert.equal(classifyCueLine('（（ファプタ：あ！））', spk).type, 'voice');
+// ── 双层括号 （（…）） = 特殊人声(说出来的话)→ dvoice(底部),不是 sfx(顶部) ──
+test('单 cue 整行 （（…）） → dvoice(不再误判为 sfx)', () => {
+  assert.equal(classifyCueLine('（（ファプタ：あ！））', spk).type, 'dvoice');
 });
 
-test('跨行 （（… 未闭合开 dparen 跨度,遇 ）） 闭合,全程 voice', () => {
+test('跨行 （（… 未闭合开 dparen 跨度,遇 ）） 闭合,全程 dvoice', () => {
   assert.deepEqual(run(['（（ファプタ：あなたは→', 'なに？））', 'ただの台詞']), [
-    'voice',
-    'voice',
+    'dvoice',
+    'dvoice',
     'plain',
   ]);
 });
 
 test('half-width (( … )) 同样识别', () => {
-  assert.equal(classifyCueLine('((Faputa: ah!))', spk).type, 'voice');
+  assert.equal(classifyCueLine('((Faputa: ah!))', spk).type, 'dvoice');
 });
 
 test('（千束（ちさと）） 仍是话者名而非 dparen(无连续双括号)', () => {

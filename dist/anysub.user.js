@@ -118,6 +118,7 @@
   .anysub-cuebox .anysub-spk{font-size:.82em;font-weight:500;opacity:.66;margin-right:.15em;}
   .anysub-cuebox .anysub-sfx{font-style:italic;opacity:.68;}
   .anysub-cuebox .anysub-voice{font-style:italic;color:#c3d8ff;}
+  .anysub-cuebox .anysub-dvoice{color:#c3d8ff;opacity:.6;}
   .anysub-cuebox .anysub-book{font-family:'Hiragino Mincho ProN','Yu Mincho','Songti SC','Source Han Serif SC','SimSun',serif;letter-spacing:.04em;}
   .anysub-cuebox .anysub-lyric{font-style:italic;}
   .anysub-cuebox .anysub-cont{opacity:.4;font-size:.8em;}
@@ -1508,14 +1509,14 @@
 		if (st.span === "dparen") {
 			if (CLOSE2.test(t)) next.span = "none";
 			return {
-				type: "voice",
+				type: "dvoice",
 				state: next
 			};
 		}
 		if (OPEN2.test(t)) {
 			if (!CLOSE2.test(t)) next.span = "dparen";
 			return {
-				type: "voice",
+				type: "dvoice",
 				state: next
 			};
 		}
@@ -1749,6 +1750,7 @@
 		switch (c.type) {
 			case "sfx": return `<span class="anysub-sfx">${body(text)}</span>`;
 			case "voice": return `<span class="anysub-voice">${body(text)}</span>`;
+			case "dvoice": return `<span class="anysub-dvoice">${body(text)}</span>`;
 			case "book": return `<span class="anysub-book">${body(text)}</span>`;
 			case "lyric": return `<span class="anysub-lyric">${body(text)}</span>`;
 			case "speaker": return `<span class="anysub-spk">${body(text)}</span>`;

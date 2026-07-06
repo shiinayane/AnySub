@@ -20,6 +20,8 @@ export function typedHtml(text: string, c: Pick<LineClass, 'type' | 'name' | 're
       return `<span class="anysub-sfx">${body(text)}</span>`;
     case 'voice':
       return `<span class="anysub-voice">${body(text)}</span>`;
+    case 'dvoice':
+      return `<span class="anysub-dvoice">${body(text)}</span>`;
     case 'book':
       return `<span class="anysub-book">${body(text)}</span>`;
     case 'lyric':

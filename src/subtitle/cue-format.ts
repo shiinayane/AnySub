@@ -50,7 +50,7 @@ export const INIT_SPAN: SpanState = { span: 'none', lyric: false };
 
 // Classify a single line with state. st = { span:'none'|'voice'|'book'|'dparen', lyric:bool } = the span state on entering this line.
 // Returns { type, name?, rest?, state }: state is the span state after this line ends (for the next line / next cue).
-//   type: dialogue | speaker | sfx | voice | book | lyric | plain
+//   type: dialogue | speaker | sfx | voice | dvoice | book | lyric | plain
 export function stepCueLine(
   raw: string | null | undefined,
   speakers: Set<string> | null,
@@ -77,17 +77,18 @@ export function stepCueLine(
     if (count(t, /》/g) > count(t, /《/g)) next.span = 'none';
     return { type: 'book', state: next };
   }
-  // Continue an unclosed double-paren voice （（…）） until a line brings the closing ）） — render as voice (spoken).
+  // Continue an unclosed double-paren voice （（…）） until a line brings the closing ）） — its own 'dvoice' type
+  // (spoken content; rendered de-emphasized, harmonizing with off-screen voice but distinct from it).
   if (st.span === 'dparen') {
     if (CLOSE2.test(t)) next.span = 'none';
-    return { type: 'voice', state: next };
+    return { type: 'dvoice', state: next };
   }
 
   // Double-paren voice （（…）） — check before 〈〉/《》 and before the single-paren sfx/speaker logic (so it isn't
   // mistaken for a standalone-paren SFX). Whole-line （（…）） self-closes; an unclosed （（… opens a dparen span.
   if (OPEN2.test(t)) {
     if (!CLOSE2.test(t)) next.span = 'dparen';
-    return { type: 'voice', state: next };
+    return { type: 'dvoice', state: next };
   }
 
   // Start a new span: more opening brackets than closing → unclosed, continues onto following lines; the whole line is wrapped → self-closing.
