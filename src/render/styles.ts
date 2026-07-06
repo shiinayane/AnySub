@@ -69,6 +69,7 @@ const CSS = `
   .anysub-cuebox .anysub-spk{font-size:.82em;font-weight:500;opacity:.66;margin-right:.15em;}
   .anysub-cuebox .anysub-sfx{font-style:italic;opacity:.68;}
   .anysub-cuebox .anysub-voice{font-style:italic;color:#c3d8ff;}
+  .anysub-cuebox .anysub-dvoice{opacity:.6;}
   .anysub-cuebox .anysub-book{font-family:'Hiragino Mincho ProN','Yu Mincho','Songti SC','Source Han Serif SC','SimSun',serif;letter-spacing:.04em;}
   .anysub-cuebox .anysub-lyric{font-style:italic;}
   .anysub-cuebox .anysub-cont{opacity:.4;font-size:.8em;}

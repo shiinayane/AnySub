@@ -145,6 +145,39 @@ test('注音 漢字《かな》整行内平衡,不触发 book 跨度', () => {
   assert.deepEqual(run(['温厚《おんこう》な人', 'ただの台詞']), ['plain', 'plain']);
 });
 
+// ── 双层括号 （（…）） = 特殊人声(说出来的话)→ dvoice(底部),不是 sfx(顶部) ──
+test('单 cue 整行 （（…）） → dvoice(不再误判为 sfx)', () => {
+  assert.equal(classifyCueLine('（（ファプタ：あ！））', spk).type, 'dvoice');
+});
+
+test('跨行 （（… 未闭合开 dparen 跨度,遇 ）） 闭合,全程 dvoice', () => {
+  assert.deepEqual(run(['（（ファプタ：あなたは→', 'なに？））', 'ただの台詞']), [
+    'dvoice',
+    'dvoice',
+    'plain',
+  ]);
+});
+
+test('half-width (( … )) 同样识别', () => {
+  assert.equal(classifyCueLine('((Faputa: ah!))', spk).type, 'dvoice');
+});
+
+test('（千束（ちさと）） 仍是话者名而非 dparen(无连续双括号)', () => {
+  assert.equal(classifyCueLine('（千束（ちさと））', new Set(['千束'])).type, 'speaker');
+});
+
+test('computeSpanStates:双层括号跨 cue 相邻延续', () => {
+  const cues: Cue[] = [
+    { start: 0, end: 3, text: '（（ファプタ：あなたは→' }, // opens dparen, not closed
+    { start: 3, end: 6, text: 'なに？））' }, // adjacent → inherits dparen, then closes
+    { start: 6, end: 9, text: 'ただの台詞' }, // dparen closed → none
+  ];
+  computeSpanStates(cues);
+  assert.equal(cues[0]._spanIn!.span, 'none');
+  assert.equal(cues[1]._spanIn!.span, 'dparen'); // inherited
+  assert.equal(cues[2]._spanIn!.span, 'none');
+});
+
 test('computeSpanStates:跨 cue 相邻延续,重叠/大间隔则重置', () => {
   const cues: Cue[] = [
     { start: 0, end: 3, text: '〈声が' }, // opens voice, not yet closed

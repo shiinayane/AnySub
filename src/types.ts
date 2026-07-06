@@ -3,9 +3,9 @@
 
 export type Locale = 'en' | 'zh' | 'ja';
 
-// Span state: cross-line, cross-cue tracking of voice-over 〈…〉 / written 《…》 / lyrics ♪
+// Span state: cross-line, cross-cue tracking of voice-over 〈…〉 / written 《…》 / double-paren voice （（…）） / lyrics ♪
 export interface SpanState {
-  span: 'none' | 'voice' | 'book';
+  span: 'none' | 'voice' | 'book' | 'dparen';
   lyric: boolean;
 }
 
@@ -18,7 +18,8 @@ export interface Cue {
   _spanIn?: SpanState;
 }
 
-export type LineType = 'dialogue' | 'speaker' | 'sfx' | 'voice' | 'book' | 'lyric' | 'plain';
+export type LineType =
+  'dialogue' | 'speaker' | 'sfx' | 'voice' | 'dvoice' | 'book' | 'lyric' | 'plain';
 
 // Return of stepCueLine: classification + span state after processing
 export interface LineClass {
