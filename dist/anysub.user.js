@@ -3387,8 +3387,11 @@
 	}
 	function react() {
 		if (state.cues.length && state.video && (!state.video.isConnected || !isVisible(state.video))) {
-			const nv = pickBestVideo();
-			if (nv && nv !== state.video) setVideo(nv);
+			const ad = getSiteAdapter();
+			if (!ad || ad.isTarget()) {
+				const nv = pickBestVideo();
+				if (nv && nv !== state.video) setVideo(nv);
+			}
 		}
 		updateFabVisibility();
 	}

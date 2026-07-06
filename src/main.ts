@@ -3,6 +3,7 @@ import { state } from './state.js';
 import { injectStyle } from './render/styles.js';
 import { buildUI, updateFabVisibility } from './ui/ui.js';
 import { pickBestVideo, isVisible } from './render/locator.js';
+import { getSiteAdapter } from './sites/site-adapters.js';
 import { setVideo } from './render/controller.js';
 import { loadSettings, getLocalKey, loadGlobalKey, saveGlobalKey } from './online/storage.js';
 import { refreshKeyArea } from './ui/search-ui.js';
@@ -39,8 +40,14 @@ function init(): void {
 // On DOM change: re-attach after an SPA swaps the video (only when subtitles are loaded) + refresh floating-button visibility
 function react(): void {
   if (state.cues.length && state.video && (!state.video.isConnected || !isVisible(state.video))) {
-    const nv = pickBestVideo();
-    if (nv && nv !== state.video) setVideo(nv);
+    // Only re-attach on a playback page. On a known site's non-playback page (e.g. a DMM detail page with a
+    // muted preview player), skip — otherwise we'd mount the subtitles onto that unrelated preview. On unknown
+    // sites there's no adapter to consult, so re-attach as before (the old <video> being gone → overlay hides).
+    const ad = getSiteAdapter();
+    if (!ad || ad.isTarget()) {
+      const nv = pickBestVideo();
+      if (nv && nv !== state.video) setVideo(nv);
+    }
   }
   updateFabVisibility();
 }
