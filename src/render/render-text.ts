@@ -11,27 +11,41 @@ import type { Cue, LineClass, Renderer } from '../types.js';
 // A single line + its classification → HTML (semantic typesetting + ruby). text/rest are already escape-safe HTML.
 // Exported for unit tests: every semantic type should correctly apply ruby (sfx once missed calling applyRuby, causing embedded ruby to be lost).
 export function typedHtml(text: string, c: Pick<LineClass, 'type' | 'name' | 'rest'>): string {
+  // Ruby + de-emphasize a line-final continuation arrow. Applied to the INNER content (before wrapping in a
+  // type span), so it also works when the whole line is a wrapped type (book 《…》 / voice 〈…〉 / lyric ♪) —
+  // otherwise the trailing arrow would sit inside </span> and be missed.
+  const body = (s: string): string => dimTrailingCont(applyRuby(s, state.rubyParen));
   switch (c.type) {
     case 'sfx':
-      return `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
+      return `<span class="anysub-sfx">${body(text)}</span>`;
     case 'voice':
-      return `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
+      return `<span class="anysub-voice">${body(text)}</span>`;
     case 'book':
-      return `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
+      return `<span class="anysub-book">${body(text)}</span>`;
     case 'lyric':
-      return `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
+      return `<span class="anysub-lyric">${body(text)}</span>`;
     case 'speaker':
-      return `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
+      return `<span class="anysub-spk">${body(text)}</span>`;
     case 'dialogue':
-      return `<span class="anysub-spk">（${applyRuby(c.name ?? '', state.rubyParen)}）</span>${applyRuby(c.rest ?? '', state.rubyParen)}`;
+      return `<span class="anysub-spk">（${applyRuby(c.name ?? '', state.rubyParen)}）</span>${body(c.rest ?? '')}`;
     default:
-      return applyRuby(text, state.rubyParen);
+      return body(text);
   }
+}
+
+// Rightwards "continuation" arrows seen in Japanese CC — → is by far the most common; the rest are variants
+// across Unicode arrow blocks (⟶ long, ⇒/⇨ double, ➡/➔/➜/➤ dingbats, ￫ halfwidth). Left/other arrows excluded.
+const CONT_ARROW = /([→⇒➡⟶⟹⇨⇾➔➜➤￫])(\s*)$/u;
+
+// De-emphasize a line-final continuation arrow — a JP-CC marker meaning "this line continues into the next
+// caption". Only the trailing one is touched; arrows inside content (e.g. 東京→大阪, or 《A→B》) are left alone.
+function dimTrailingCont(html: string): string {
+  return html.replace(CONT_ARROW, '<span class="anysub-cont">$1</span>$2');
 }
 
 // Split the currently active cues into "segments". A new segment starts at: the first line of each cue, a line beginning with a speaker name, or (when semantics are enabled) a standalone SFX line.
 // Each segment carries a nonspeech flag (standalone （…）SFX), so that when splitting it can be moved to the opposite side, out of the way of the dialogue.
-function buildSegments(active: Cue[]): Array<{ html: string; nonspeech: boolean }> {
+export function buildSegments(active: Cue[]): Array<{ html: string; nonspeech: boolean }> {
   const segs: Array<{ lines: string[]; nonspeech: boolean }> = [];
   for (const cue of active) {
     let st = cue._spanIn || INIT_SPAN;
@@ -41,7 +55,13 @@ function buildSegments(active: Cue[]): Array<{ html: string; nonspeech: boolean 
       st = c.state;
       const html = state.enhance ? typedHtml(line, c) : applyRuby(line, state.rubyParen);
       const nonspeech = state.enhance && c.type === 'sfx'; // only true SFX go to the top; written text is mostly spoken aloud → keep it at the bottom
-      const turnStart = c.type === 'dialogue' || c.type === 'speaker' || nonspeech;
+      // Open a new segment on a new turn (dialogue/speaker) OR when the speech/non-speech class flips —
+      // otherwise a spoken line right after an SFX line (e.g. （SFX） then あっ！) gets absorbed into the SFX
+      // segment and dragged to the top anchor instead of staying with speech at the bottom.
+      const turnStart =
+        c.type === 'dialogue' ||
+        c.type === 'speaker' ||
+        (cur !== null && cur.nonspeech !== nonspeech);
       if (cur === null || turnStart) {
         cur = { lines: [html], nonspeech };
         segs.push(cur);

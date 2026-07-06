@@ -71,6 +71,7 @@ const CSS = `
   .anysub-cuebox .anysub-voice{font-style:italic;color:#c3d8ff;}
   .anysub-cuebox .anysub-book{font-family:'Hiragino Mincho ProN','Yu Mincho','Songti SC','Source Han Serif SC','SimSun',serif;letter-spacing:.04em;}
   .anysub-cuebox .anysub-lyric{font-style:italic;}
+  .anysub-cuebox .anysub-cont{opacity:.4;font-size:.8em;}
   #anysub-fab{position:fixed;bottom:28%;z-index:2147483646;width:30px;height:30px;
     display:flex;align-items:center;justify-content:center;
     background:var(--as-accent2);color:#fff;border-radius:50%;
