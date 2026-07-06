@@ -11,7 +11,8 @@ interface Shortcut {
   run: () => void;
 }
 
-// code → action. These are the "default key bindings", shown in the panel's legend.
+// code → action. The single source of truth for key bindings; only `code`/`run` are consumed (via MAP below).
+// `label`/`desc` are documentation of each binding's default combo + purpose (the panel renders its own hints in ui.ts).
 export const SHORTCUTS: Shortcut[] = [
   { code: 'KeyS', label: 'Alt+Shift+S', desc: 'toggle panel', run: () => togglePanel() },
   { code: 'KeyF', label: 'Alt+Shift+F', desc: 'online subtitle search', run: () => openSearch() },

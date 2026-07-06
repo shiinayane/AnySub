@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { parsePrimeEpisode, cleanPrimeTitle } from '../src/sites/adapters/prime.js';
 import { parseUnextEpisode } from '../src/sites/adapters/unext.js';
 
-// Site adapters read the global location/document; those are absent by default in node, so inject stubs per test case before importing the module.
+// Site adapters read the global location/document at call time (not at import); those are absent by default in node,
+// so each test injects fresh stubs before calling getSiteAdapter()/detectShow() (the module is imported once, below).
 // els: selector fragment → element text (simulates Prime's atvwebplayersdk-* elements); ogTitle goes through meta;
 // boxes: selector fragment → [{h2, h3}] (simulates U-NEXT styled-components containers, supporting inner h2/h3).
 interface Box {

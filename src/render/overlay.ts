@@ -1,4 +1,4 @@
-// Overlay: format-agnostic positioning / fullscreen tracking. Both the text and (future) ASS renderers render into this box.
+// Overlay: format-agnostic positioning / fullscreen tracking. Both the text and ASS renderers render into this box.
 import { refs } from '../refs.js';
 
 let lastRectKey = '',
