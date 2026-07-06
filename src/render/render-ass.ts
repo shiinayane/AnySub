@@ -1,7 +1,7 @@
-// ASS/SSA 渲染器:先文本保底,后台加载 libass-wasm。
-// libass 渲染进「我们自己的 overlay canvas」(复用 overlay 的 fixed 定位/尺寸/全屏跟随,
-// 与文本字幕同源,故在复杂播放器/DMM 上一致可显);采用 canvas-only 手动驱动模式
-// (不给 octopus 传 video)—— 绕开它内部随视频事件触发、会解引用 null canvasParent 的自动 resize。
+// ASS/SSA renderer: text fallback first, load libass-wasm in the background.
+// libass renders into "our own overlay canvas" (reusing the overlay's fixed positioning / sizing / fullscreen tracking,
+// same origin as the text subtitles, so it displays consistently on complex players / DMM); uses canvas-only manual-drive mode
+// (don't pass video to octopus) — bypassing its internal auto-resize that fires on video events and would dereference a null canvasParent.
 import { state } from '../state.js';
 import { refs } from '../refs.js';
 import { createTextRenderer } from './render-text.js';
@@ -11,7 +11,7 @@ import { t } from '../i18n.js';
 import type { OctopusInstance, Renderer } from '../types.js';
 
 export function createAssRenderer(assText: string): Renderer {
-  const textRenderer = createTextRenderer(); // 文本保底,渲染 state.cues(loader 已用 parseAss 填充)
+  const textRenderer = createTextRenderer(); // text fallback, renders state.cues (the loader already populated them via parseAss)
   let octopus: OctopusInstance | null = null;
   let assCanvas: HTMLCanvasElement | null = null;
   let usingLibass = false;
@@ -29,21 +29,21 @@ export function createAssRenderer(assText: string): Renderer {
           'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:block;';
         refs.overlay!.appendChild(assCanvas);
         octopus = new Octopus({
-          canvas: assCanvas, // 只给 canvas,不给 video → 我们手动驱动时间轴与尺寸
+          canvas: assCanvas, // only give it the canvas, not the video → we manually drive the timeline and sizing
           subContent: assText,
           workerUrl,
           fallbackFont,
-          fonts, // 额外字体库,libass 为缺失字形做替换,减少方块
+          fonts, // extra font library; libass substitutes for missing glyphs, reducing tofu boxes
           onReady: () => {
             if (disposed) {
               safeDispose();
               return;
             }
             usingLibass = true;
-            textRenderer.destroy(); // 交给 canvas,撤掉文本保底
+            textRenderer.destroy(); // hand off to the canvas, remove the text fallback
             lastSizeKey = '';
-            sizeCanvas(); // 首次定尺寸
-            drive(); // 立即渲染当前帧
+            sizeCanvas(); // set the size for the first time
+            drive(); // render the current frame immediately
             if (state.hidden && assCanvas) assCanvas.style.display = 'none';
             toast(t('toast.assHiFi'));
           },
@@ -58,7 +58,7 @@ export function createAssRenderer(assText: string): Renderer {
       });
   }
 
-  // 让 libass 渲染分辨率跟上 overlay(overlay 已同步到视频位置/尺寸)
+  // keep libass's render resolution in step with the overlay (the overlay is already synced to the video position/size)
   function sizeCanvas(): void {
     if (!octopus || !assCanvas || !refs.overlay) return;
     const w = refs.overlay.clientWidth,
@@ -70,7 +70,7 @@ export function createAssRenderer(assText: string): Renderer {
     const key = bw + 'x' + bh;
     if (key === lastSizeKey) return;
     lastSizeKey = key;
-    lastDriveT = -1; // 尺寸变了需强制重绘(canvas 可能被清空),让下次 drive() 不因时间相同而跳过
+    lastDriveT = -1; // a size change requires a forced redraw (the canvas may have been cleared), so the next drive() isn't skipped just because the time is the same
     try {
       octopus.resize(bw, bh, 0, 0);
     } catch (_) {
@@ -78,7 +78,7 @@ export function createAssRenderer(assText: string): Renderer {
     }
   }
 
-  // 把视频当前时间(含偏移)推给 libass;时间未变则跳过(暂停+滚动/resize 时避免每 tick 重绘)
+  // push the video's current time (including offset) to libass; skip if the time is unchanged (avoids redrawing every tick while paused + scrolling/resizing)
   function drive(): void {
     if (!octopus || !state.video) return;
     const time = Math.max(0, state.video.currentTime - state.offset);
@@ -116,8 +116,8 @@ export function createAssRenderer(assText: string): Renderer {
         textRenderer.renderAt(v, rect, layoutChanged);
         return;
       }
-      // lastSizeKey 为空 = onReady 时 overlay 尚无尺寸(如当时视频 display:none),持续重试直到定尺寸,
-      // 否则若之后 rect 未变(changed=false)canvas 会一直停在默认 300×150
+      // lastSizeKey empty = the overlay had no size at onReady time (e.g. the video was display:none then); keep retrying until sized,
+      // otherwise if the rect doesn't change afterwards (changed=false) the canvas would stay stuck at the default 300×150
       if (layoutChanged || lastSizeKey === '') sizeCanvas();
       drive();
     },
@@ -127,7 +127,7 @@ export function createAssRenderer(assText: string): Renderer {
       } else textRenderer.setVisible!(vis);
     },
     applyStyle() {
-      if (!usingLibass) textRenderer.applyStyle!(); // ASS 用文件自带样式,libass 阶段忽略面板样式
+      if (!usingLibass) textRenderer.applyStyle!(); // ASS uses the file's own styles; in the libass stage the panel style is ignored
     },
     destroy() {
       disposed = true;

@@ -1,6 +1,6 @@
-// 键盘快捷键:统一 Alt+Shift + <键>,几乎不与站点单键冲突。
-// capture 阶段拦截,仅吞我们占用的组合(preventDefault + stopImmediatePropagation),
-// 不影响站点其它按键;输入框/可编辑区内不响应。按 event.code(物理键)判定,跨布局/Mac 稳定。
+// Keyboard shortcuts: uniformly Alt+Shift + <key>, which almost never conflicts with a site's single-key shortcuts.
+// Intercepted in the capture phase, swallowing only the combos we occupy (preventDefault + stopImmediatePropagation),
+// leaving the site's other keys unaffected; does not respond inside input fields / editable areas. Keyed off event.code (physical key), stable across layouts / on Mac.
 import { togglePanel, openFilePicker, adjustOffset, openSearch } from './ui.js';
 import { toggleSubtitles } from '../render/controller.js';
 
@@ -11,7 +11,7 @@ interface Shortcut {
   run: () => void;
 }
 
-// code → 动作。这是「默认键位」,展示在面板图例里。
+// code → action. These are the "default key bindings", shown in the panel's legend.
 export const SHORTCUTS: Shortcut[] = [
   { code: 'KeyS', label: 'Alt+Shift+S', desc: '打开/关闭面板', run: () => togglePanel() },
   { code: 'KeyF', label: 'Alt+Shift+F', desc: '在线找字幕', run: () => openSearch() },
@@ -26,12 +26,12 @@ const MAP: Record<string, () => void> = Object.fromEntries(
 );
 
 export function initShortcuts(): void {
-  window.addEventListener('keydown', onKey, true); // capture:先于站点处理
+  window.addEventListener('keydown', onKey, true); // capture: handle before the site does
 }
 
 function onKey(e: KeyboardEvent): void {
-  // 快捷键恒启用(不提供关闭开关,避免与「无悬浮球」叠加造成无法打开面板的死锁)
-  // 前缀同时接受 Alt+Shift 与 Ctrl+Shift(用哪个都行);排除再叠加另一修饰键 / Meta
+  // Shortcuts are always enabled (no toggle to disable them, to avoid a deadlock where combining "no floating ball" with disabled shortcuts leaves no way to open the panel)
+  // The prefix accepts both Alt+Shift and Ctrl+Shift (either works); excludes cases where yet another modifier / Meta is also held
   const alt = e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey;
   const ctrl = e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey;
   if (!alt && !ctrl) return;
@@ -43,7 +43,7 @@ function onKey(e: KeyboardEvent): void {
   run();
 }
 
-// 非文本录入的 input 类型:焦点在这些上不算「正在输入」(播放器的音量/进度多为 range)
+// Non-text-entry input types: focus on these does not count as "typing" (player volume/progress are usually range)
 const NON_TEXT_INPUT = new Set([
   'range',
   'checkbox',

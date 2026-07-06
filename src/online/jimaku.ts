@@ -1,4 +1,4 @@
-// Jimaku API 客户端。需 API key(Authorization 头);CORS 反射 Origin,@grant none 可直连。
+// Jimaku API client. Requires an API key (Authorization header); CORS reflects Origin, so @grant none can connect directly.
 import { state } from '../state.js';
 import type { JimakuEntry, SubFile } from '../types.js';
 
@@ -18,17 +18,17 @@ async function get<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// 按 AniList ID 找条目
+// Find entries by AniList ID
 export function searchByAnilist(anilistId: number | string): Promise<JimakuEntry[]> {
   return get('/entries/search?anilist_id=' + encodeURIComponent(anilistId));
 }
 
-// 自由文本搜索条目
+// Free-text search for entries
 export function searchByQuery(query: string): Promise<JimakuEntry[]> {
   return get('/entries/search?query=' + encodeURIComponent(query));
 }
 
-// 列出条目下的文件(可按集数过滤)
+// List the files under an entry (optionally filtered by episode)
 export function getFiles(entryId: number | string, episode?: string | number): Promise<SubFile[]> {
   let p = '/entries/' + encodeURIComponent(entryId) + '/files';
   if (episode != null && episode !== '') p += '?episode=' + encodeURIComponent(episode);

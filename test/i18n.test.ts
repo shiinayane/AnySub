@@ -2,7 +2,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { t } from '../src/i18n.js';
 
-// 回归:插值值里的 $&/$1/$$ 不能被 String.replace 当替换模式(番名/文件名/报错是远程数据)
+// Regression: $&/$1/$$ inside interpolated values must not be treated as replacement patterns by String.replace (show names/file names/error messages are remote data)
 test('t() 插值:值含 $ 序列原样保留', () => {
   const out = t('toast.mountedFile', { name: 'A$&B$1C$$D$`E' });
   assert.ok(out.includes('A$&B$1C$$D$`E'), '含 $ 的值应原样出现,实际: ' + out);

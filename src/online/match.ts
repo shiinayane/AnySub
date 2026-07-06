@@ -1,12 +1,12 @@
-// 跨集「同源」匹配(纯逻辑,无 DOM 依赖,便于单测)。
-// 同一番剧的候选番剧名相同,不用于区分;真正标识「源」的是文件名里的拉丁标签
-// (平台/组名/格式/分辨率/语言)。只比这些「源特征」token,忽略每集都变的日文集标题。
+// Cross-episode "same-source" matching (pure logic, no DOM dependency, easy to unit-test).
+// Candidates of the same anime share the same series name, so it isn't used to distinguish them; what really identifies the "source" is the Latin tags in the filename
+// (platform/group name/format/resolution/language). Compare only these "source-signature" tokens, ignoring the Japanese episode title that changes every episode.
 import type { AnimeCandidate } from '../types.js';
 
-// 集数样 / 哈希样 token(跨集会变,匹配时剔除)
+// Episode-like / hash-like tokens (change across episodes, stripped out during matching)
 const EP_TOK = /^(s\d{1,2}e\d{1,3}|e\d{1,3}|v\d+|\d{1,4}|[0-9a-f]{8})$/;
 
-// 「源特征」token:文件名里的拉丁字母数字(剔除集号/哈希)
+// "Source-signature" tokens: the Latin alphanumerics in the filename (episode numbers/hashes removed)
 export function sourceTokens(name: string): Set<string> {
   const out = new Set<string>();
   for (const t of String(name || '')
@@ -17,7 +17,7 @@ export function sourceTokens(name: string): Set<string> {
   return out;
 }
 
-// 整体 token(含 CJK):源特征为空(纯日文命名)时的退路
+// Whole-name tokens (including CJK): the fallback when the source signature is empty (pure-Japanese naming)
 export function fileTokens(name: string): string[] {
   return String(name || '')
     .toLowerCase()
@@ -26,7 +26,7 @@ export function fileTokens(name: string): string[] {
     .filter((t) => t && !EP_TOK.test(t));
 }
 
-// 在候选里挑与参考文件同源者:优先比「源特征」,为空时退化到整体 token
+// Pick the candidate that shares the source with the reference file: compare the "source signature" first, degrading to whole-name tokens when it's empty
 export function pickSameSource<T extends { name: string }>(files: T[], refName: string): T | null {
   if (!refName) return null;
   const refSig = sourceTokens(refName);
@@ -48,14 +48,14 @@ export function pickSameSource<T extends { name: string }>(files: T[], refName: 
     }
   }
   const thresh = useSig ? 0.5 : 0.6;
-  // 达阈值,或明显优于次优(应对源特征很少的情况),即认为同源
+  // Considered same-source if it reaches the threshold, or is clearly better than the runner-up (handles cases with very few source-signature tokens)
   if (best && (bestScore >= thresh || (bestScore >= 0.34 && bestScore - second >= 0.34)))
     return best;
   return null;
 }
 
-// 番名归一:NFKC(全角→半角、全角空格 U+3000→半角空格)+ 小写 + 空白折叠 + trim。
-// 刻意保守——只吸收「全/半角空格差异、大小写」这类无意义差异,不做模糊匹配。
+// Series-name normalization: NFKC (fullwidth→halfwidth, fullwidth space U+3000→halfwidth space) + lowercase + whitespace collapse + trim.
+// Deliberately conservative — absorbs only meaningless differences like "fullwidth/halfwidth space differences, letter case", no fuzzy matching.
 export function normTitle(s: unknown): string {
   return String(s == null ? '' : s)
     .normalize('NFKC')
@@ -64,9 +64,9 @@ export function normTitle(s: unknown): string {
     .trim();
 }
 
-// 自动选番:仅当「唯一」一个候选的某个标题(日文/罗马字/英文)与查询「精确相等」才返回它;
-// 否则(0 个或 ≥2 个精确命中)返回 null → 回落人工选,避免选错季/错作品。
-// 例:查询「メイドインアビス 烈日の黄金郷」→ 只命中第二季条目;查询「メイドインアビス」不会命中它。
+// Automatic anime selection: return a candidate only when "exactly one" candidate has some title (Japanese/romaji/English) that is "exactly equal" to the query;
+// otherwise (0 or ≥2 exact hits) return null → fall back to manual selection, to avoid picking the wrong season / wrong work.
+// Example: query "メイドインアビス 烈日の黄金郷" → hits only the second-season entry; query "メイドインアビス" won't hit it.
 type TitleFields = Partial<Pick<AnimeCandidate, 'native' | 'romaji' | 'english' | 'title'>>;
 
 export function pickExactAnime<T extends TitleFields>(candidates: T[], query: string): T | null {

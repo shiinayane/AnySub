@@ -21,7 +21,7 @@ test('UTF-16 LE / BE BOM', () => {
 });
 
 test('非法 UTF-8 走 CJK 回退且不抛错', () => {
-  // 0x82 0xA0 是 Shift-JIS 的「あ」,不是合法 UTF-8
+  // 0x82 0xA0 is Shift-JIS for 「あ」, which is not valid UTF-8
   const out = decodeBuffer(new Uint8Array([0x82, 0xa0]));
   assert.equal(typeof out, 'string');
   assert.ok(out.length >= 1);

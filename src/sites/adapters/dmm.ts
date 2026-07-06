@@ -1,9 +1,9 @@
-// DMM TV 适配器。<title>/og:title 已含清晰的番名 + 第X話,parseVideoTitle 直接可用;
-// URL 的 season/content 是稳定 ID —— content 每集不同(=切集信号)、season 同季不变(=同源键)。
+// DMM TV adapter. <title>/og:title already contain a clean series name + 第X話, so parseVideoTitle works directly;
+// the URL's season/content are stable IDs — content differs per episode (= episode-change signal), season stays constant within a season (= same-source key).
 import { parseVideoTitle } from '../title-parse.js';
 import type { SiteAdapter } from '../../types.js';
 
-// og:title 分隔符更干净(… | DMM TV…),优先用;回退 document.title
+// og:title has a cleaner separator (… | DMM TV…), so prefer it; fall back to document.title
 function ogTitle(): string {
   const m = document.querySelector('meta[property="og:title"]');
   return (m && m.getAttribute('content')) || document.title;

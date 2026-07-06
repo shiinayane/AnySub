@@ -1,6 +1,6 @@
-// U-NEXT 适配器。番名/集数在播放器标题块(styled-components):sc-6lwken 是组件哈希、dWSOjb/eIsrMu
-// 是生成类(每次构建变);故用稳定的 displayName 段 styles__TitleContainer- 做包含匹配,再取其中
-// h2(番名)/ h3(集标题,形如「#1 …」)。用「容器+h2/h3」比单独 styles__Title(太泛,全站皆有)更稳。
+// U-NEXT adapter. Series name/episode are in the player's title block (styled-components): sc-6lwken is the component hash, dWSOjb/eIsrMu
+// are generated classes (change every build); so use the stable displayName segment styles__TitleContainer- for a contains match, then take within it
+// the h2 (series name) / h3 (episode title, shaped like "#1 …"). Using "container + h2/h3" is more stable than styles__Title alone (too broad, present site-wide).
 import type { SiteAdapter } from '../../types.js';
 
 export function parseUnextEpisode(text: string | null | undefined): string {
@@ -11,7 +11,7 @@ export function parseUnextEpisode(text: string | null | undefined): string {
 
 function unextBox(): Element | null {
   const boxes = document.querySelectorAll('[class*="styles__TitleContainer-"]');
-  for (const b of boxes) if (b.querySelector('h2')) return b; // 取含番名 h2 的那个(排除同名泛用容器)
+  for (const b of boxes) if (b.querySelector('h2')) return b; // take the one containing the series-name h2 (excludes the same-named generic container)
   return null;
 }
 
@@ -19,7 +19,7 @@ export const unext: SiteAdapter = {
   name: 'unext',
   match: () => /(^|\.)unext\.jp$/.test(location.hostname),
   isTarget: () => !!unextBox(),
-  watchEl: () => unextBox(), // 切集时标题块内容变(h3 集标题)
+  watchEl: () => unextBox(), // on episode change the title block's content changes (the h3 episode title)
   detect() {
     const box = unextBox();
     const h2 = box && box.querySelector('h2');

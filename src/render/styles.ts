@@ -1,7 +1,7 @@
-// 注入样式(用 <style> 标签,保持 @grant none)
-// 主题:chrome(面板/搜索/悬浮球)用 CSS 变量令牌,深色为默认,
-// @media (prefers-color-scheme: light) 覆盖为浅色,随浏览器主题自动切换。
-// 字幕覆盖层(#anysub-overlay/#anysub-cuebox)由用户自选颜色,不跟随主题。
+// Inject styles (via a <style> tag, keeping @grant none)
+// Theming: the chrome (panel / search / floating button) uses CSS variable tokens, dark by default,
+// @media (prefers-color-scheme: light) overrides to light, switching automatically with the browser theme.
+// The subtitle overlay (#anysub-overlay/#anysub-cuebox) uses user-chosen colors and does not follow the theme.
 
 const CSS = `
   #anysub-root{
@@ -85,7 +85,7 @@ const CSS = `
   #anysub-fab.dock-right:hover,#anysub-fab.dock-left:hover{transform:translateX(0);}
   #anysub-fab.dragging{transition:none;cursor:grabbing;}
 
-  /* ── 设置面板(无 backdrop-filter 以免每帧重绘视频区) ── */
+  /* ── Settings panel (no backdrop-filter to avoid repainting the video area every frame) ── */
   #anysub-panel{position:fixed;right:16px;bottom:54px;z-index:2147483647;width:300px;box-sizing:border-box;
     color:var(--as-fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
     background:linear-gradient(180deg,var(--as-grad-top),var(--as-grad-bot));border:1px solid var(--as-border);border-radius:14px;padding:12px;
@@ -135,7 +135,7 @@ const CSS = `
   #anysub-panel .as-label{display:flex;align-items:center;justify-content:space-between;color:var(--as-fg2);font-size:11.5px;font-weight:550;margin-bottom:7px;}
   #anysub-panel .as-val{color:var(--as-val);font-variant-numeric:tabular-nums;font-weight:600;}
 
-  /* 语言选择:label 左、select 右,同一行紧凑排布 */
+  /* Language selection: label on the left, select on the right, laid out compactly on the same line */
   #anysub-panel .as-field-lang{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 8px;}
   #anysub-panel .as-field-lang .as-label{margin:0;}
   #anysub-panel .as-select{appearance:none;-webkit-appearance:none;background:var(--as-inset);color:var(--as-fg-strong);
@@ -183,7 +183,7 @@ const CSS = `
   #anysub-panel .as-hints kbd{display:inline-block;background:var(--as-kbd-bg);border:1px solid var(--as-kbd-bd);
     border-bottom-width:2px;border-radius:4px;padding:0 4px;margin:0 1px;font:600 10px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--as-kbd-fg);}
 
-  /* ── 在线搜索面板(独立居中模态,与主面板同一视觉语言) ── */
+  /* ── Online search panel (a standalone centered modal, sharing the same visual language as the main panel) ── */
   #anysub-search{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;
     width:400px;max-width:92vw;max-height:82vh;display:flex;flex-direction:column;box-sizing:border-box;color:var(--as-fg);
     font:13px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
@@ -258,14 +258,14 @@ const CSS = `
     background:rgba(0,0,0,.85);color:#fff;padding:8px 16px;border-radius:6px;
     font:13px -apple-system,system-ui,sans-serif;opacity:0;transition:opacity .3s;pointer-events:none;max-width:80vw;text-align:center;}
 
-  /* 可点「发现字幕」提示:带主操作按钮 + 关闭 */
+  /* Clickable "subtitles found" prompt: with a primary action button + close */
   #anysub-offer{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:2147483647;
     display:flex;align-items:center;gap:10px;max-width:88vw;box-sizing:border-box;pointer-events:auto;
     color:var(--as-fg);font:13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
     background:linear-gradient(180deg,var(--as-grad-top),var(--as-grad-bot));border:1px solid var(--as-border);
     border-radius:12px;padding:9px 10px 9px 14px;box-shadow:var(--as-shadow);animation:as-pop-x .14s cubic-bezier(.2,.7,.3,1);}
-  /* 复用 as-pop 的 to{transform:none} 会冲掉本元素居中用的 translateX(-50%),
-     导致入场时先贴右侧、动画结束才瞬移回中间——故用专用 keyframe 保留该偏移 */
+  /* reusing as-pop's to{transform:none} would wipe out this element's centering translateX(-50%),
+     causing it to first stick to the right on entry and only snap back to center when the animation ends — so use a dedicated keyframe that preserves that offset */
   @keyframes as-pop-x{from{opacity:0;transform:translateX(-50%) translateY(5px) scale(.985);}to{opacity:1;transform:translateX(-50%);}}
   #anysub-offer .as-offer-msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw;}
   #anysub-offer button{font-family:inherit;cursor:pointer;border-radius:8px;transition:background .15s,border-color .15s;}
@@ -280,6 +280,6 @@ const CSS = `
 export function injectStyle() {
   const s = document.createElement('style');
   s.textContent = CSS;
-  // document.head 在 XML/SVG/极简文档下可能为 null,回退到 documentElement
+  // document.head may be null in XML/SVG/minimal documents; fall back to documentElement
   (document.head || document.documentElement).appendChild(s);
 }

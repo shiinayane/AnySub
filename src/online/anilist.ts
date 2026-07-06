@@ -1,4 +1,4 @@
-// AniList GraphQL:番剧名 → 候选(id / 标题 / 集数 / 年份)。无需鉴权,CORS: *。
+// AniList GraphQL: anime title → candidates (id / title / episode count / year). No auth needed, CORS: *.
 import type { AnimeCandidate } from '../types.js';
 
 const ENDPOINT = 'https://graphql.anilist.co';

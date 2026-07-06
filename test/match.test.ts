@@ -2,7 +2,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { pickSameSource, sourceTokens, pickExactAnime, normTitle } from '../src/online/match.js';
 
-// 真实 Jimaku 文件名(EVA / 薬屋),回归 v0.11.2 的「按源特征匹配」修复。
+// Real Jimaku file names (EVA / 薬屋), a regression for the v0.11.2 "match by source signature" fix.
 const EVA_EP2 = [
   { name: '新世紀エヴァンゲリオン.S01E02.第弐話.見知らぬ、天井.WEBRip.Netflix.ja[cc].srt' },
   { name: '[Korean-Blog] Neon Genesis Evangelion 02.ass' },
@@ -64,7 +64,7 @@ test('空参考 → null', () => {
   assert.equal(pickSameSource([{ name: 'a.srt' }], ''), null);
 });
 
-// ── pickExactAnime:自动选番只在「唯一精确命中」时触发 ──
+// ── pickExactAnime: auto-selecting an anime only triggers on a "unique exact match" ──
 const MIA = [
   {
     native: 'メイドインアビス 烈日の黄金郷',
@@ -87,7 +87,7 @@ const MIA = [
 ];
 
 test('精确命中唯一:DMM 全角空格标题 → 自动选中第二季(不选第一季)', () => {
-  const picked = pickExactAnime(MIA, 'メイドインアビス　烈日の黄金郷'); // U+3000 全角空格
+  const picked = pickExactAnime(MIA, 'メイドインアビス　烈日の黄金郷'); // U+3000 full-width space
   assert.ok(picked);
   assert.equal(picked.native, 'メイドインアビス 烈日の黄金郷');
 });
@@ -109,7 +109,7 @@ test('部分/不精确 → 不自动选(null)', () => {
 test('多个精确同名 → 不自动选(歧义,回落人工)', () => {
   const dup = [
     { native: '同名作品', romaji: 'Onmei', title: '同名作品' },
-    { native: '同名作品', romaji: 'Onmei Movie', title: '同名作品' }, // TV 与剧场版同名
+    { native: '同名作品', romaji: 'Onmei Movie', title: '同名作品' }, // TV series and movie share the same name
   ];
   assert.equal(pickExactAnime(dup, '同名作品'), null);
 });
@@ -120,5 +120,5 @@ test('normTitle:全角空格/大小写归一,但不做模糊', () => {
     normTitle('メイドインアビス 烈日の黄金郷'),
   );
   assert.equal(normTitle('Made In Abyss'), 'made in abyss');
-  assert.notEqual(normTitle('メイドインアビス'), normTitle('メイドインアビス 烈日の黄金郷')); // 非子串匹配
+  assert.notEqual(normTitle('メイドインアビス'), normTitle('メイドインアビス 烈日の黄金郷')); // not a substring match
 });

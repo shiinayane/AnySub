@@ -1,4 +1,4 @@
-// 悬浮 UI:设置面板(快捷键唤出)+ 可选悬浮球 + 拖拽吸附 + 手动选视频
+// Floating UI: settings panel (invoked by shortcut) + optional floating ball + drag-and-snap + manual video selection
 import { state } from '../state.js';
 import { refs } from '../refs.js';
 import {
@@ -20,10 +20,10 @@ import type { SubStyle } from '../types.js';
 
 const persist = saveState;
 
-// 悬浮球带一个自定义标记位:区分「拖动后松手」与「真正点击」
+// The floating ball carries a custom flag: distinguishes "released after a drag" from "a real click"
 type DraggableEl = HTMLElement & { __dragged?: boolean };
 
-// 内联 SVG 图标(stroke 用 currentColor,随文字色走;16px 视觉)
+// Inline SVG icons (stroke uses currentColor, following the text color; 16px visually)
 const SVG = (p: string): string =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const ICON = {
@@ -51,7 +51,7 @@ function langOptions(): string {
   ).join('');
 }
 
-// 面板 HTML 随语言生成(可运行时重建以切换语言)
+// The panel HTML is generated per language (can be rebuilt at runtime to switch language)
 function panelHtml(): string {
   return `
   <div class="as-head">
@@ -157,7 +157,7 @@ export function buildUI(): void {
 
   const overlay = document.createElement('div');
   overlay.id = 'anysub-overlay';
-  // 关键定位属性内联,即使站点 CSP 剥离了注入的 <style>,覆盖层也不会遮挡/拦截页面
+  // Inline the critical positioning properties so that even if the site's CSP strips the injected <style>, the overlay won't obscure/intercept the page
   overlay.style.cssText =
     'display:none;position:fixed;z-index:2147483640;pointer-events:none;overflow:hidden;';
 
@@ -166,7 +166,7 @@ export function buildUI(): void {
   fab.className = 'dock-right';
   fab.textContent = '字';
   fab.title = t('panel.fabTip');
-  fab.style.display = 'none'; // 默认隐藏,靠快捷键;可在面板里开启
+  fab.style.display = 'none'; // hidden by default, relying on shortcuts; can be enabled in the panel
 
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
@@ -183,7 +183,7 @@ export function buildUI(): void {
   refs.fab = fab;
   refs.fileInput = fileInput;
 
-  // 轻量事件(不依赖面板):悬浮球点击/拖拽、文件选择。面板与搜索 DOM 懒建,空闲页面省创建成本。
+  // Lightweight events (not dependent on the panel): floating-ball click/drag, file selection. The panel and search DOM are built lazily, saving creation cost on idle pages.
   fab.addEventListener('click', () => {
     if (fab.__dragged) {
       fab.__dragged = false;
@@ -199,7 +199,7 @@ export function buildUI(): void {
   makeDraggable(fab);
 }
 
-// 懒建设置面板 + 搜索面板:首次打开(快捷键/悬浮球/在线搜索)时才创建 DOM 并接线。
+// Lazily build the settings panel + search panel: the DOM is created and wired up only on first open (via shortcut/floating ball/online search).
 let panelBuilt = false;
 export function ensurePanel(): void {
   if (panelBuilt) return;
@@ -213,10 +213,10 @@ export function ensurePanel(): void {
   refs.statusEl = panel.querySelector<HTMLElement>('#anysub-status');
   buildSearchUI();
   wirePanel();
-  updateStatus(); // 首建即反映当前加载状态
+  updateStatus(); // reflect the current load state right after the first build
 }
 
-// 运行时切换语言:重建面板+搜索 DOM 并重新接线/同步(无需刷新页面)
+// Switch language at runtime: rebuild the panel + search DOM and re-wire/re-sync (no page reload needed)
 export function relocalize(): void {
   if (!panelBuilt) return;
   const panel = refs.panel!;
@@ -228,10 +228,10 @@ export function relocalize(): void {
   refs.fab!.title = t('panel.fabTip');
 }
 
-// 供快捷键调用:打开在线搜索
+// For shortcut invocation: open online search
 export { openSearch };
 
-// ── 供快捷键调用的动作 ──
+// ── Actions invoked by shortcuts ──
 export function togglePanel(): void {
   ensurePanel();
   const p = refs.panel!;
@@ -240,19 +240,19 @@ export function togglePanel(): void {
   else p.style.display = 'none';
 }
 
-// 显式打开主面板(供快捷键 show 分支 + 搜索面板「返回主面板」复用)
+// Explicitly open the main panel (reused by the shortcut's show branch + the search panel's "back to main panel")
 export function openPanel(): void {
   ensurePanel();
   const p = refs.panel!;
-  if (refs.searchPanel) refs.searchPanel.style.display = 'none'; // 与搜索面板互斥
+  if (refs.searchPanel) refs.searchPanel.style.display = 'none'; // mutually exclusive with the search panel
   p.style.display = 'block';
   const inp = p.querySelector<HTMLInputElement>('#anysub-offset');
-  if (inp) inp.value = state.offset.toFixed(1); // 偏移可能在加载时被记忆恢复
+  if (inp) inp.value = state.offset.toFixed(1); // the offset may have been restored from memory at load time
   syncVisBtn();
   positionPanel();
   p.classList.remove('as-in');
   void p.offsetWidth;
-  p.classList.add('as-in'); // 重放入场动画(小面板,reflow 廉价)
+  p.classList.add('as-in'); // replay the entrance animation (small panel, so the reflow is cheap)
 }
 
 export function openFilePicker(): void {
@@ -268,7 +268,7 @@ export function adjustOffset(delta: number): void {
   toast(t('toast.offset', { v: state.offset.toFixed(1) }));
 }
 
-// 绝对设置偏移(供切集同源续播沿用上一集偏移):更新值 + 同步输入框 + 重渲染 + 记忆
+// Set the offset absolutely (used so that same-source continuation across episodes reuses the previous episode's offset): update the value + sync the input + re-render + remember
 export function setOffset(val: number): void {
   state.offset = Math.round(val * 10) / 10;
   const inp = refs.panel && refs.panel.querySelector<HTMLInputElement>('#anysub-offset');
@@ -277,16 +277,16 @@ export function setOffset(val: number): void {
   rememberOffset();
 }
 
-// 按「番剧|源特征」记住当前偏移(持久化);同番剧同源下次自动恢复
+// Remember the current offset keyed by "anime|source signature" (persisted); auto-restored next time for the same anime and same source
 function rememberOffset(): void {
   if (!state.offsetKey) return;
   state.offsets[state.offsetKey] = state.offset;
   const keys = Object.keys(state.offsets);
-  if (keys.length > 200) delete state.offsets[keys[0]]; // 软上限
+  if (keys.length > 200) delete state.offsets[keys[0]]; // soft cap
   persist();
 }
 
-// 接线面板控件(懒建时调用一次)
+// Wire up the panel controls (called once during lazy build)
 function wirePanel(): void {
   const panel = refs.panel!;
 
@@ -382,15 +382,15 @@ function wirePanel(): void {
     relocalize();
   });
 
-  setupDrop(panel.querySelector<HTMLElement>('#anysub-drop')!); // 仅面板区域接收拖放,避免劫持页面拖放
+  setupDrop(panel.querySelector<HTMLElement>('#anysub-drop')!); // only the panel area accepts drag-and-drop, to avoid hijacking the page's drag-and-drop
   syncControls();
 }
 
-// 仅当页面存在 <video> 且用户开启了悬浮球时才显示;先便宜地查 light-DOM,再深扫 Shadow DOM
+// Only shown when the page has a <video> and the user has enabled the floating ball; check the light DOM cheaply first, then deep-scan the Shadow DOM
 export function updateFabVisibility(): void {
   const fab = refs.fab;
   if (!fab) return;
-  // 悬浮球关闭时无需检测视频(球始终隐藏),直接返回,零开销
+  // When the floating ball is off there's no need to detect video (the ball stays hidden), so return immediately at zero cost
   if (!state.showFab) {
     fab.style.display = 'none';
     return;
@@ -402,7 +402,7 @@ export function updateFabVisibility(): void {
 function syncVisBtn(): void {
   const b = refs.panel!.querySelector('#anysub-vis');
   if (!b) return;
-  b.classList.toggle('off', state.hidden); // 图标切 eye/eye-off,不改结构
+  b.classList.toggle('off', state.hidden); // switch the icon between eye/eye-off without changing the structure
   (b as HTMLElement).title = state.hidden ? t('panel.show') : t('panel.hide');
 }
 
@@ -419,7 +419,7 @@ function syncToggles(): void {
   fb.setAttribute('aria-checked', String(state.showFab));
 }
 
-// 用(可能已从持久化恢复的)state 同步各控件初始显示
+// Sync each control's initial display from state (which may have been restored from persistence)
 function syncControls(): void {
   const panel = refs.panel!;
   const s = state.style;
@@ -470,7 +470,7 @@ function setupDrop(el: HTMLElement): void {
   });
 }
 
-// 胶囊拖动 + 松手吸附到最近的左右边缘
+// Capsule drag + snap to the nearest left/right edge on release
 function makeDraggable(el: DraggableEl): void {
   let sx: number, sy: number, ox: number, oy: number, moved: boolean;
   el.addEventListener('pointerdown', (e) => {
@@ -518,13 +518,13 @@ function snapFab(el: HTMLElement): void {
   el.classList.add(onRight ? 'dock-right' : 'dock-left');
 }
 
-// 面板定位:有悬浮球贴其一侧;否则屏幕居中
+// Panel positioning: if the floating ball exists, dock to its side; otherwise center on screen
 function positionPanel(): void {
   const fab = refs.fab!,
     panel = refs.panel!;
   const W = window.innerWidth || document.documentElement.clientWidth || 1;
   const H = window.innerHeight || document.documentElement.clientHeight || 800;
-  // bottom 显式 auto:否则回落到 CSS 的 bottom:54px,与下面设的 top 同时生效会把面板纵向拉伸
+  // Set bottom explicitly to auto: otherwise it falls back to the CSS bottom:54px, which combined with the top set below would stretch the panel vertically
   panel.style.left = '';
   panel.style.right = '';
   panel.style.top = '';
@@ -543,7 +543,7 @@ function positionPanel(): void {
   }
 }
 
-// 手动选视频
+// Manual video selection
 let picking = false;
 function startPickVideo(): void {
   if (picking) return;
@@ -569,7 +569,7 @@ function startPickVideo(): void {
     refs.uiRoot!.appendChild(o);
     return o;
   });
-  // cleanup 里统一移除 keydown 监听:点击选中视频也会 cleanup,避免遗留悬空的 document 监听
+  // cleanup removes the keydown listener in one place: selecting a video by click also triggers cleanup, avoiding a dangling document listener
   function cleanup(): void {
     overlays.forEach((o) => o.remove());
     picking = false;

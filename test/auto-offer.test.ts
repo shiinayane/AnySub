@@ -6,7 +6,7 @@ const rect = (w: number, h: number) => ({ getBoundingClientRect: () => ({ width:
 const VW = 1280,
   VH = 800;
 
-// 真实数据点(用户实测 Prime):正片在播放
+// Real data point (user-tested on Prime): the feature video is playing
 test('Prime 播放页正片(dur1566 起播有声)→ 命中', () => {
   assert.equal(
     isFeatureVideo(
@@ -25,7 +25,7 @@ test('Prime 播放页正片(dur1566 起播有声)→ 命中', () => {
   );
 });
 
-// 真实数据点:首页预加载但暂停的长视频(dur9721 paused cur0 muted:false)→ 必须排除
+// Real data point: a long video preloaded on the homepage but paused (dur9721 paused cur0 muted:false) → must be excluded
 test('首页预加载但暂停的视频 → 排除(paused/cur=0 是主闸门)', () => {
   assert.equal(
     isFeatureVideo(

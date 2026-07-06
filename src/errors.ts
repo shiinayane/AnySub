@@ -1,6 +1,6 @@
-// 从任意 throwable / promise rejection 里安全取一句人类可读消息(用于 toast)。
-// 覆盖:Error、以及带 string message 的对象(如 DOMException —— 浏览器里它并非 Error 实例,
-// 但通常带有用的 message);其余回退 String()。
+// Safely extract a human-readable message from any throwable / promise rejection (for use in toasts).
+// Covers: Error, as well as objects carrying a string message (e.g. DOMException — in the browser it is not
+// an Error instance, but usually carries a useful message); everything else falls back to String().
 export function errMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (e && typeof e === 'object' && 'message' in e) {

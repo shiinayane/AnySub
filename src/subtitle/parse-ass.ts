@@ -1,4 +1,4 @@
-// ASS / SSA → 统一 cue 结构(文本保底渲染用):解析 [Events] 的 Dialogue 行
+// ASS / SSA → unified cue structure (for the text fallback rendering path): parse the Dialogue lines in [Events]
 import { sanitize } from './parse.js';
 import type { Cue } from '../types.js';
 
@@ -8,7 +8,7 @@ export function parseAss(text: string): Cue[] {
   let inEvents = false;
   let idxStart = 1,
     idxEnd = 2,
-    idxText = 9; // 标准 Format 顺序的默认下标
+    idxText = 9; // Default indices for the standard Format ordering
   for (const raw of lines) {
     const line = raw.trim();
     if (/^\[/.test(line)) {
@@ -36,7 +36,7 @@ export function parseAss(text: string): Cue[] {
       const end = assTime(fields[idxEnd]);
       if (!isFinite(start) || !isFinite(end) || end <= start) continue;
       let body = (fields[idxText] || '').replace(/\\N/gi, '\n').replace(/\\h/gi, ' ');
-      body = sanitize(body); // 去 {\...} 特效标记 + 转义 + 换行转 <br>
+      body = sanitize(body); // Strip {\...} effect tags + escape + convert newlines to <br>
       if (body) cues.push({ start, end, text: body });
     }
   }
@@ -44,7 +44,7 @@ export function parseAss(text: string): Cue[] {
   return cues;
 }
 
-// 在前 textIdx 个逗号处切分;Text 字段(可能含逗号)作为最后一段
+// Split at the first textIdx commas; the Text field (which may contain commas) is taken as the last segment
 function splitFields(rest: string, textIdx: number): string[] {
   const out: string[] = [];
   let start = 0;
@@ -61,7 +61,7 @@ function splitFields(rest: string, textIdx: number): string[] {
   return out;
 }
 
-// "0:00:01.50" / "1:02:03,456" → 秒
+// "0:00:01.50" / "1:02:03,456" → seconds
 function assTime(t: string): number {
   if (!t) return NaN;
   const m = t.trim().match(/^(\d+):(\d{1,2}):(\d{1,2})[.,](\d{1,3})$/);

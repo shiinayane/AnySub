@@ -1,7 +1,7 @@
-// 切集信号(单一来源):集中一个 MutationObserver,观察「站点适配器指定的元素」(watchEl)
-// 优先,否则回落 <title>;去抖后重读 detectShow(),仅当 series/episode 指纹变化才通知订阅者。
-// 好处:切集监听「观察什么」交给站点规则(扩展新站只改适配器),订阅者(切集续播 / 自动提示)
-// 共用同一信号且被指纹去重——无关的标题抖动不再触发多余工作。
+// Episode-change signal (single source): centralize one MutationObserver, observing "the element specified by the site adapter" (watchEl)
+// preferentially, otherwise falling back to <title>; after debouncing, re-read detectShow(), and notify subscribers only when the series/episode fingerprint changes.
+// Benefit: the episode-change listener leaves "what to observe" up to the site rules (extending to a new site only changes the adapter), and subscribers (cross-episode continuation / auto-offer)
+// share the same signal and are deduplicated by fingerprint — irrelevant title jitter no longer triggers redundant work.
 import { detectShow, getSiteAdapter } from './site-adapters.js';
 import type { DetectInfo } from '../types.js';
 
@@ -14,7 +14,7 @@ let mo: MutationObserver | null = null,
   armed: Node | null = null,
   lastSig: string | null = null;
 
-// 订阅切集(回调收到最新 detectShow() 结果)
+// Subscribe to episode changes (the callback receives the latest detectShow() result)
 export function onEpisodeChange(fn: EpisodeSub): void {
   subs.push(fn);
 }
@@ -23,7 +23,7 @@ function sig(info: DetectInfo): string {
   return (info.series || '') + '#' + (info.episode || '');
 }
 
-// 观察目标:站点规则(适配器在目标页提供的 watchEl)优先,回落 <title>
+// Observation target: site rules (the watchEl the adapter provides on the target page) preferred, falling back to <title>
 function target(): Node | null {
   const ad = getSiteAdapter();
   if (ad && ad.isTarget() && ad.watchEl) {
@@ -36,20 +36,20 @@ function target(): Node | null {
 function fire(): void {
   const info = detectShow();
   const s = sig(info);
-  if (s === lastSig) return; // 指纹未变 → 不是切集,忽略
+  if (s === lastSig) return; // fingerprint unchanged → not an episode change, ignore
   lastSig = s;
   for (const fn of subs) {
     try {
       fn(info);
     } catch (_) {
-      /* 单个订阅者出错不影响其余 */
+      /* one subscriber's error doesn't affect the rest */
     }
   }
 }
 
 function arm(): void {
   const node = target();
-  if (!node || node === armed) return; // 目标未变则不重挂
+  if (!node || node === armed) return; // don't re-attach if the target hasn't changed
   if (mo) mo.disconnect();
   armed = node;
   mo = new MutationObserver(() => {
@@ -60,24 +60,24 @@ function arm(): void {
 }
 
 export function initEpisodeSignal(): void {
-  lastSig = sig(detectShow()); // 记录基线,首次不算切集
+  lastSig = sig(detectShow()); // record the baseline, the first time doesn't count as an episode change
   arm();
   const ad = getSiteAdapter();
-  // 纯 <title> 站点(含 DMM、普通站):目标稳定,arm 一次即可,零心跳 → 守空闲开销。
+  // Pure-<title> sites (including DMM and ordinary sites): the target is stable, arming once suffices, zero heartbeat → keeps idle overhead low.
   if (!ad || !ad.watchEl) return;
-  // 观察目标是动态元素(如 Prime,晚出现 / 被 SPA 替换)→ 轮询兜底:重挂观察器 + 主动重算指纹。
-  // 关键:换集时 Prime 常「整体替换」剧集信息元素,挂在旧节点上的观察器会失灵、错过变更;
-  // fire() 是指纹去重的,定期主动调用即可在 ≤1.5s 内补捉到切集,不依赖那次 mutation。
-  // 若始终未进播放页(如 amazon 购物页),探测约 30s 无果即停,不长期占用。
+  // When the observation target is a dynamic element (e.g. Prime, appears late / replaced by the SPA) → polling fallback: re-attach the observer + proactively recompute the fingerprint.
+  // Key: on episode change Prime often "wholesale-replaces" the episode-info element, so an observer attached to the old node goes dead and misses the change;
+  // fire() is fingerprint-deduplicated, so calling it proactively on a schedule catches the episode change within ≤1.5s, without relying on that mutation.
+  // If we never reach a playback page (e.g. an amazon shopping page), the probing stops after ~30s of no result, so it doesn't occupy resources long-term.
   let n = 0;
   poll = setInterval(() => {
     arm();
     fire();
     if (ad.isTarget())
-      n = 0; // 在播放页 → 重置计数(正常浏览一阵后不再永久停摆)
+      n = 0; // on a playback page → reset the counter (so it doesn't permanently stall after a while of normal browsing)
     else if (++n > 20) {
       clearInterval(poll);
       poll = undefined;
-    } // 仅「持续 ~30s 未进播放页」才停,守空闲
+    } // stop only after "~30s of continuously not reaching a playback page", to keep idle
   }, 1500);
 }

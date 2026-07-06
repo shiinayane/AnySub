@@ -1,26 +1,26 @@
-// 共享类型定义(纯类型,无运行时代码;esbuild 构建时整体剥离)。
-// 跨模块的数据形状集中在此,避免各处推断出过窄的字面量类型。
+// Shared type definitions (pure types, no runtime code; entirely stripped by esbuild at build time).
+// Cross-module data shapes are centralized here to avoid narrow literal types being inferred all over the place.
 
 export type Locale = 'en' | 'zh' | 'ja';
 
-// 跨度状态:画外音〈…〉/ 书面《…》/ 歌词 ♪ 的跨行·跨 cue 追踪
+// Span state: cross-line, cross-cue tracking of voice-over 〈…〉 / written 《…》 / lyrics ♪
 export interface SpanState {
   span: 'none' | 'voice' | 'book';
   lyric: boolean;
 }
 
-// 统一 cue 结构(SRT / VTT / ASS 解析后)
+// Unified cue structure (after parsing SRT / VTT / ASS)
 export interface Cue {
   start: number;
   end: number;
   text: string;
-  // computeSpanStates 预计算写入:进入本 cue 时的跨度状态
+  // Precomputed and written by computeSpanStates: the span state on entering this cue
   _spanIn?: SpanState;
 }
 
 export type LineType = 'dialogue' | 'speaker' | 'sfx' | 'voice' | 'book' | 'lyric' | 'plain';
 
-// stepCueLine 的返回:分类 + 结束后的跨度状态
+// Return of stepCueLine: classification + span state after processing
 export interface LineClass {
   type: LineType;
   name?: string;
@@ -28,13 +28,13 @@ export interface LineClass {
   state: SpanState;
 }
 
-// furigana 逐字对齐结果:plain=对不齐的前缀汉字;pairs=[汉字, 读音片段][]
+// Furigana per-character alignment result: plain = leading kanji that couldn't be aligned; pairs = [kanji, reading segment][]
 export interface FuriganaAlign {
   plain: string;
   pairs: Array<[string, string]>;
 }
 
-// AniList 搜索候选(searchAnime 返回)
+// AniList search candidate (returned by searchAnime)
 export interface AnimeCandidate {
   anilistId: number;
   title: string;
@@ -47,16 +47,16 @@ export interface AnimeCandidate {
   cover: string;
 }
 
-// Jimaku 字幕文件(getFiles 返回项)
+// Jimaku subtitle file (item returned by getFiles)
 export interface SubFile {
   name: string;
   url: string;
   size?: number;
   last_modified?: string;
-  entryName?: string; // 由 online.subtitleFiles 附加:所属条目名(候选列表分组显示用)
+  entryName?: string; // Attached by online.subtitleFiles: the owning entry name (used to group the candidate list for display)
 }
 
-// Jimaku 条目(entries/search 返回项)
+// Jimaku entry (item returned by entries/search)
 export interface JimakuEntry {
   id: number;
   name?: string;
@@ -66,14 +66,14 @@ export interface JimakuEntry {
   [k: string]: unknown;
 }
 
-// 最近在线来源(切集续播同源优先用)
+// Most recent online source (used to prefer the same source when continuing to the next episode)
 export interface OnlineCtx {
   anilistId: number;
-  name: string; // 已加载字幕文件名(据此比对源特征)
+  name: string; // Loaded subtitle file name (used to compare source characteristics)
   tokens?: string[];
 }
 
-// 站点探测结果(site-adapters detectShow / adapter.detect)
+// Site detection result (site-adapters detectShow / adapter.detect)
 export interface DetectInfo {
   series: string;
   episode: string;
@@ -81,7 +81,7 @@ export interface DetectInfo {
   epKey?: string;
 }
 
-// 字幕样式
+// Subtitle style
 export interface SubStyle {
   fontPct: number;
   bg: 'outline' | 'translucent' | 'solid' | 'none';
@@ -89,7 +89,7 @@ export interface SubStyle {
   bottomPct: number;
 }
 
-// 全局共享状态(单例)
+// Global shared state (singleton)
 export interface State {
   video: HTMLVideoElement | null;
   cues: Cue[];
@@ -112,7 +112,7 @@ export interface State {
   style: SubStyle;
 }
 
-// 共享 DOM 引用(由 ui.js 创建填充,其余模块只读)
+// Shared DOM references (created and populated by ui.js, read-only for other modules)
 export interface Refs {
   uiRoot: HTMLElement | null;
   overlay: HTMLElement | null;
@@ -123,7 +123,7 @@ export interface Refs {
   searchPanel?: HTMLElement | null;
 }
 
-// 渲染器接口(文本 / ASS 渲染器共同实现;controller 只依赖此接口)
+// Renderer interface (implemented by both the text and ASS renderers; controller depends only on this interface)
 export interface Renderer {
   mount(): void;
   renderAt(v: HTMLVideoElement, rect: DOMRect | null, layoutChanged: boolean): void;
@@ -132,7 +132,7 @@ export interface Renderer {
   applyStyle?(): void;
 }
 
-// 站点适配器:识别「这是哪部番·第几话」
+// Site adapter: identifies "which anime this is and which episode"
 export interface SiteAdapter {
   name: string;
   match(): boolean;
@@ -141,7 +141,7 @@ export interface SiteAdapter {
   watchEl?(): Element | null;
 }
 
-// resolveSubtitles 返回
+// Return of resolveSubtitles
 export interface ResolveResult {
   anime: AnimeCandidate | null;
   candidates: AnimeCandidate[];
@@ -149,7 +149,7 @@ export interface ResolveResult {
   exact: boolean;
 }
 
-// libass-wasm (JavascriptSubtitlesOctopus) 最小类型(外部库无类型声明)
+// libass-wasm (JavascriptSubtitlesOctopus) minimal types (the external library has no type declarations)
 export interface OctopusInstance {
   resize(width: number, height: number, top?: number, left?: number): void;
   setCurrentTime(time: number): void;

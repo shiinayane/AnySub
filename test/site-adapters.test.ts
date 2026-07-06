@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { parsePrimeEpisode, cleanPrimeTitle } from '../src/sites/adapters/prime.js';
 import { parseUnextEpisode } from '../src/sites/adapters/unext.js';
 
-// 站点适配器读全局 location/document;node 里默认没有,逐用例注入桩再导入模块。
-// els: 选择器片段 → 元素文本(模拟 Prime 的 atvwebplayersdk-* 元素);ogTitle 走 meta;
-// boxes: 选择器片段 → [{h2, h3}](模拟 U-NEXT styled-components 容器,支持内部 h2/h3)。
+// Site adapters read the global location/document; those are absent by default in node, so inject stubs per test case before importing the module.
+// els: selector fragment → element text (simulates Prime's atvwebplayersdk-* elements); ogTitle goes through meta;
+// boxes: selector fragment → [{h2, h3}] (simulates U-NEXT styled-components containers, supporting inner h2/h3).
 interface Box {
   h2?: string | null;
   h3?: string | null;
@@ -36,9 +36,9 @@ function stub({ hostname, pathname, href, title, ogTitle, els, boxes }: StubOpts
     querySelector: (sel: string) => {
       if (ogTitle != null && sel.includes('og:title')) return { getAttribute: () => ogTitle };
       if (sel === '[class*="atvwebplayersdk-"]')
-        return els && Object.keys(els).length ? { textContent: '' } : null; // isTarget 探针
+        return els && Object.keys(els).length ? { textContent: '' } : null; // isTarget probe
       if (els) {
-        // 取「最具体(最长)」匹配片段,避免 episode-info 命中 title 的桩
+        // pick the "most specific (longest)" matching fragment, to avoid episode-info hitting the title stub
         let best = null,
           len = -1;
         for (const frag in els)
@@ -89,8 +89,8 @@ test('DMM 非播放页(如详情页):不当作目标,回落标题解析', () => 
     title: DMM_TITLE,
     ogTitle: DMM_OG,
   });
-  assert.equal(getSiteAdapter()!.name, 'dmm'); // 站点匹配
-  const r = detectShow(); // 但非播放页 → 回落 parseVideoTitle,无 showKey/epKey
+  assert.equal(getSiteAdapter()!.name, 'dmm'); // site matches
+  const r = detectShow(); // but not a playback page → falls back to parseVideoTitle, no showKey/epKey
   assert.equal(r.series, 'メイドインアビス　烈日の黄金郷');
   assert.equal(r.episode, '2');
   assert.equal(r.showKey, undefined);
@@ -160,7 +160,7 @@ test('cleanPrimeTitle:去 Amazon 前缀 / を観る 后缀 / 站点名', () => {
   );
 });
 
-// ── 切集信号源:适配器可选提供 watchEl,否则回落 <title> ──
+// ── Episode-change signal source: an adapter may optionally provide watchEl, otherwise fall back to <title> ──
 test('Prime 提供 watchEl(剧集信息元素);DMM 不提供 → 由 episode-signal 回落 <title>', () => {
   stub({
     hostname: 'www.amazon.co.jp',
@@ -171,7 +171,7 @@ test('Prime 提供 watchEl(剧集信息元素);DMM 不提供 → 由 episode-sig
   });
   const prime = getSiteAdapter();
   assert.equal(typeof prime!.watchEl, 'function');
-  assert.ok(prime!.watchEl!()); // 返回剧集信息元素(切集信号源)
+  assert.ok(prime!.watchEl!()); // returns the episode-info element (episode-change signal source)
 
   stub({
     hostname: 'tv.dmm.com',
@@ -179,7 +179,7 @@ test('Prime 提供 watchEl(剧集信息元素);DMM 不提供 → 由 episode-sig
     href: 'https://tv.dmm.com/vod/playback/on-demand/?season=S&content=C',
     title: 'x',
   });
-  assert.equal(getSiteAdapter()!.watchEl, undefined); // DMM <title> 已带集数 → 无需 watchEl
+  assert.equal(getSiteAdapter()!.watchEl, undefined); // DMM's <title> already includes the episode number → no watchEl needed
 });
 
 // ── U-NEXT ──
@@ -212,5 +212,5 @@ test('parseUnextEpisode:#N / 第N話 / EN', () => {
   assert.equal(parseUnextEpisode('#1 ニャーが'), '1');
   assert.equal(parseUnextEpisode('#12 タイトル'), '12');
   assert.equal(parseUnextEpisode('第7話 サブ'), '7');
-  assert.equal(parseUnextEpisode('劇場版'), ''); // 无集数(电影)
+  assert.equal(parseUnextEpisode('劇場版'), ''); // no episode number (movie)
 });

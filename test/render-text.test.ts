@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { state } from '../src/state.js';
 import { typedHtml } from '../src/render/render-text.js';
 
-// typedHtml 读 state.rubyParen 决定括号式注音是否生效
+// typedHtml reads state.rubyParen to decide whether parenthesized furigana is applied
 state.rubyParen = true;
 
 test('回归:独立音效内嵌注音会渲染 ruby（曾因 sfx 漏调 applyRuby 而丢失）', () => {
@@ -18,7 +18,7 @@ test('纯假名音效不产生 ruby（无可注汉字）', () => {
   assert.doesNotMatch(h, /<ruby>/);
 });
 
-// 每种承载文本的语义类型都应套用注音——防止再出现 sfx 那类「某分支漏调 applyRuby」
+// Every semantic type that carries text should apply furigana — to prevent another "some branch forgot to call applyRuby" case like sfx
 for (const type of ['sfx', 'voice', 'book', 'lyric', 'speaker', 'plain'] as const) {
   test(`类型 ${type}:汉字（かな）应产生 ruby`, () => {
     const h = typedHtml('薬草（やくそう）', { type });
@@ -40,8 +40,8 @@ test('dialogue:话者名与台词都套用注音,名字包在 spk', () => {
     rest: 'この薬草（やくそう）を',
   });
   assert.match(h, /anysub-spk/);
-  assert.match(h, /<ruby>猫猫<rt>マオマオ<\/rt><\/ruby>/); // 话者名内嵌注音(整串回退)
-  assert.ok(h.includes('<rt>やく</rt>') && h.includes('<rt>そう</rt>'), '台词未逐字注音'); // 薬草→薬/草 逐字对齐
+  assert.match(h, /<ruby>猫猫<rt>マオマオ<\/rt><\/ruby>/); // speaker name with embedded furigana (whole-string fallback)
+  assert.ok(h.includes('<rt>やく</rt>') && h.includes('<rt>そう</rt>'), '台词未逐字注音'); // 薬草→薬/草 per-character alignment
 });
 
 test('rubyParen 关闭时括号式不注音（但类型 class 仍在）', () => {
@@ -49,5 +49,5 @@ test('rubyParen 关闭时括号式不注音（但类型 class 仍在）', () => 
   const h = typedHtml('（扉（とびら）が開く音）', { type: 'sfx' });
   assert.match(h, /anysub-sfx/);
   assert.doesNotMatch(h, /<ruby>/);
-  state.rubyParen = true; // 复原,避免影响后续用例
+  state.rubyParen = true; // restore, to avoid affecting subsequent test cases
 });
