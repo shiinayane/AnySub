@@ -48,12 +48,12 @@ export function createAssRenderer(assText: string): Renderer {
             toast(t('toast.assHiFi'));
           },
           onError: (e: unknown) => {
-            console.warn('[AnySub] libass 渲染出错,保留文本', e);
+            console.warn('[AnySub] libass render error, keeping text', e);
           },
         });
       })
       .catch((err) => {
-        console.warn('[AnySub] 无法加载 libass,使用文本渲染:', err && err.message);
+        console.warn('[AnySub] Failed to load libass, using text rendering:', err && err.message);
         toast(t('toast.assText'));
       });
   }

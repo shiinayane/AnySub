@@ -895,6 +895,41 @@
 			en: "{title} · select subtitle ({n})",
 			zh: "{title} · 选择字幕({n})",
 			ja: "{title} · 字幕を選択({n})"
+		},
+		"err.anilistRateLimit": {
+			en: "AniList: too many requests, please try again later",
+			zh: "AniList 请求过于频繁,请稍后再试",
+			ja: "AniList: リクエストが多すぎます。しばらくして再試行してください"
+		},
+		"err.anilistFailed": {
+			en: "AniList query failed ({status})",
+			zh: "AniList 查询失败 {status}",
+			ja: "AniList クエリ失敗 ({status})"
+		},
+		"err.jimakuNoKey": {
+			en: "Jimaku API key not set",
+			zh: "未设置 Jimaku API key",
+			ja: "Jimaku API キーが未設定です"
+		},
+		"err.jimakuBadKey": {
+			en: "Invalid Jimaku API key",
+			zh: "Jimaku API key 无效",
+			ja: "Jimaku API キーが無効です"
+		},
+		"err.jimakuRateLimit": {
+			en: "Jimaku: too many requests, please try again later",
+			zh: "Jimaku 请求过于频繁,请稍后再试",
+			ja: "Jimaku: リクエストが多すぎます。しばらくして再試行してください"
+		},
+		"err.jimakuFailed": {
+			en: "Jimaku request failed ({status})",
+			zh: "Jimaku 请求失败 {status}",
+			ja: "Jimaku リクエスト失敗 ({status})"
+		},
+		"err.downloadFailed": {
+			en: "Download failed ({status})",
+			zh: "下载失败 {status}",
+			ja: "ダウンロード失敗 ({status})"
 		}
 	};
 	function t(key, params) {
@@ -1125,7 +1160,7 @@
 				}
 			} catch (_) {}
 			if (best !== null) return best;
-			console.warn("[AnySub] 无法自动识别字幕编码,按 UTF-8 兜底,可能乱码;建议转成 UTF-8");
+			console.warn("[AnySub] Could not auto-detect subtitle encoding; falling back to UTF-8, output may be garbled — converting the file to UTF-8 is recommended");
 			return new TextDecoder("utf-8").decode(bytes);
 		}
 	}
@@ -1849,7 +1884,7 @@
 	async function doLoad() {
 		if (!window.SubtitlesOctopus) {
 			await injectScript(await fetchText(CDN + "subtitles-octopus.js"));
-			if (!window.SubtitlesOctopus) throw new Error("SubtitlesOctopus 未定义(可能被 CSP 拦截)");
+			if (!window.SubtitlesOctopus) throw new Error("SubtitlesOctopus is undefined (possibly blocked by CSP)");
 		}
 		const workerText = await fetchText(CDN + "subtitles-octopus-worker.js");
 		const prefix = "var Module={locateFile:function(p){return " + JSON.stringify(CDN) + "+p;}};\n";
@@ -1863,7 +1898,7 @@
 	}
 	function fetchText(url) {
 		return fetch(url, { credentials: "omit" }).then((r) => {
-			if (!r.ok) throw new Error(`加载失败 ${r.status}: ${url}`);
+			if (!r.ok) throw new Error(`Failed to load ${r.status}: ${url}`);
 			return r.text();
 		});
 	}
@@ -1882,7 +1917,7 @@
 			};
 			s.onerror = () => {
 				cleanup();
-				reject(new Error("主脚本注入失败(可能被 CSP 拦截)"));
+				reject(new Error("Main script injection failed (possibly blocked by CSP)"));
 			};
 			(document.head || document.documentElement).appendChild(s);
 		});
@@ -1922,11 +1957,11 @@
 						toast(t("toast.assHiFi"));
 					},
 					onError: (e) => {
-						console.warn("[AnySub] libass 渲染出错,保留文本", e);
+						console.warn("[AnySub] libass render error, keeping text", e);
 					}
 				});
 			}).catch((err) => {
-				console.warn("[AnySub] 无法加载 libass,使用文本渲染:", err && err.message);
+				console.warn("[AnySub] Failed to load libass, using text rendering:", err && err.message);
 				toast(t("toast.assText"));
 			});
 		}
@@ -2185,8 +2220,8 @@
 				variables: { s: title }
 			})
 		});
-		if (res.status === 429) throw new Error("AniList 请求过于频繁,请稍后再试");
-		if (!res.ok) throw new Error("AniList 查询失败 " + res.status);
+		if (res.status === 429) throw new Error(t("err.anilistRateLimit"));
+		if (!res.ok) throw new Error(t("err.anilistFailed", { status: res.status }));
 		return ((await res.json())?.data?.Page?.media || []).map((m) => ({
 			anilistId: m.id,
 			title: m.title.native || m.title.romaji || m.title.english || String(m.id),
@@ -2202,14 +2237,14 @@
 	var BASE = "https://jimaku.cc/api";
 	function auth() {
 		const key = state.jimakuKey;
-		if (!key) throw new Error("未设置 Jimaku API key");
+		if (!key) throw new Error(t("err.jimakuNoKey"));
 		return { Authorization: key };
 	}
 	async function get(path) {
 		const res = await fetch(BASE + path, { headers: auth() });
-		if (res.status === 401) throw new Error("Jimaku API key 无效");
-		if (res.status === 429) throw new Error("Jimaku 请求过于频繁,请稍后再试");
-		if (!res.ok) throw new Error("Jimaku 请求失败 " + res.status);
+		if (res.status === 401) throw new Error(t("err.jimakuBadKey"));
+		if (res.status === 429) throw new Error(t("err.jimakuRateLimit"));
+		if (!res.ok) throw new Error(t("err.jimakuFailed", { status: res.status }));
 		return res.json();
 	}
 	function searchByAnilist(anilistId) {
@@ -2284,7 +2319,7 @@
 	}
 	async function downloadAndLoad(url, name) {
 		const res = await fetch(url);
-		if (!res.ok) throw new Error("下载失败 " + res.status);
+		if (!res.ok) throw new Error(t("err.downloadFailed", { status: res.status }));
 		return loadFromBuffer(await res.arrayBuffer(), name);
 	}
 	function markLoaded(anilistId, fileName) {
@@ -3049,37 +3084,37 @@
 		{
 			code: "KeyS",
 			label: "Alt+Shift+S",
-			desc: "打开/关闭面板",
+			desc: "toggle panel",
 			run: () => togglePanel()
 		},
 		{
 			code: "KeyF",
 			label: "Alt+Shift+F",
-			desc: "在线找字幕",
+			desc: "online subtitle search",
 			run: () => openSearch()
 		},
 		{
 			code: "KeyV",
 			label: "Alt+Shift+V",
-			desc: "显示/隐藏字幕",
+			desc: "show/hide subtitles",
 			run: () => toggleSubtitles()
 		},
 		{
 			code: "KeyO",
 			label: "Alt+Shift+O",
-			desc: "打开本地文件",
+			desc: "open local file",
 			run: () => openFilePicker()
 		},
 		{
 			code: "ArrowLeft",
 			label: "Alt+Shift+←",
-			desc: "偏移 −0.1s",
+			desc: "offset −0.1s",
 			run: () => adjustOffset(-.1)
 		},
 		{
 			code: "ArrowRight",
 			label: "Alt+Shift+→",
-			desc: "偏移 +0.1s",
+			desc: "offset +0.1s",
 			run: () => adjustOffset(.1)
 		}
 	].map((s) => [s.code, s.run]));

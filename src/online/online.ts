@@ -5,6 +5,7 @@ import { searchAnime } from './anilist.js';
 import { searchByAnilist, searchByQuery, getFiles } from './jimaku.js';
 import { pickExactAnime } from './match.js';
 import { loadFromBuffer } from '../render/loader.js';
+import { t } from '../i18n.js';
 import type { AnimeCandidate, ResolveResult, SubFile } from '../types.js';
 
 const SUB_RE = /\.(ass|ssa|srt|vtt|sub|sbv)$/i; // subtitle files only, skip .7z/.zip and other archives
@@ -69,7 +70,7 @@ function rank(n: string): number {
 
 export async function downloadAndLoad(url: string, name: string): Promise<boolean> {
   const res = await fetch(url);
-  if (!res.ok) throw new Error('下载失败 ' + res.status);
+  if (!res.ok) throw new Error(t('err.downloadFailed', { status: res.status }));
   const buf = await res.arrayBuffer();
   return loadFromBuffer(buf, name);
 }

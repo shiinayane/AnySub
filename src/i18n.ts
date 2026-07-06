@@ -278,6 +278,43 @@ const DICT: Record<string, Record<Locale, string>> = {
     zh: '{title} · 选择字幕({n})',
     ja: '{title} · 字幕を選択({n})',
   },
+
+  // ── Errors (thrown by API clients, surfaced via toast) ──
+  'err.anilistRateLimit': {
+    en: 'AniList: too many requests, please try again later',
+    zh: 'AniList 请求过于频繁,请稍后再试',
+    ja: 'AniList: リクエストが多すぎます。しばらくして再試行してください',
+  },
+  'err.anilistFailed': {
+    en: 'AniList query failed ({status})',
+    zh: 'AniList 查询失败 {status}',
+    ja: 'AniList クエリ失敗 ({status})',
+  },
+  'err.jimakuNoKey': {
+    en: 'Jimaku API key not set',
+    zh: '未设置 Jimaku API key',
+    ja: 'Jimaku API キーが未設定です',
+  },
+  'err.jimakuBadKey': {
+    en: 'Invalid Jimaku API key',
+    zh: 'Jimaku API key 无效',
+    ja: 'Jimaku API キーが無効です',
+  },
+  'err.jimakuRateLimit': {
+    en: 'Jimaku: too many requests, please try again later',
+    zh: 'Jimaku 请求过于频繁,请稍后再试',
+    ja: 'Jimaku: リクエストが多すぎます。しばらくして再試行してください',
+  },
+  'err.jimakuFailed': {
+    en: 'Jimaku request failed ({status})',
+    zh: 'Jimaku 请求失败 {status}',
+    ja: 'Jimaku リクエスト失敗 ({status})',
+  },
+  'err.downloadFailed': {
+    en: 'Download failed ({status})',
+    zh: '下载失败 {status}',
+    ja: 'ダウンロード失敗 ({status})',
+  },
 };
 
 // Fetch the translation and interpolate. Missing key → return the key itself (helps spot missing translations during development); missing current language → fall back to en.

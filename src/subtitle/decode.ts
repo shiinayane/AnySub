@@ -30,7 +30,9 @@ export function decodeBuffer(bytes: Uint8Array): string {
       }
     }
     if (best !== null) return best;
-    console.warn('[AnySub] 无法自动识别字幕编码,按 UTF-8 兜底,可能乱码;建议转成 UTF-8');
+    console.warn(
+      '[AnySub] Could not auto-detect subtitle encoding; falling back to UTF-8, output may be garbled — converting the file to UTF-8 is recommended',
+    );
     return new TextDecoder('utf-8').decode(bytes);
   }
 }

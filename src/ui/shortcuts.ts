@@ -13,12 +13,12 @@ interface Shortcut {
 
 // code → action. These are the "default key bindings", shown in the panel's legend.
 export const SHORTCUTS: Shortcut[] = [
-  { code: 'KeyS', label: 'Alt+Shift+S', desc: '打开/关闭面板', run: () => togglePanel() },
-  { code: 'KeyF', label: 'Alt+Shift+F', desc: '在线找字幕', run: () => openSearch() },
-  { code: 'KeyV', label: 'Alt+Shift+V', desc: '显示/隐藏字幕', run: () => toggleSubtitles() },
-  { code: 'KeyO', label: 'Alt+Shift+O', desc: '打开本地文件', run: () => openFilePicker() },
-  { code: 'ArrowLeft', label: 'Alt+Shift+←', desc: '偏移 −0.1s', run: () => adjustOffset(-0.1) },
-  { code: 'ArrowRight', label: 'Alt+Shift+→', desc: '偏移 +0.1s', run: () => adjustOffset(0.1) },
+  { code: 'KeyS', label: 'Alt+Shift+S', desc: 'toggle panel', run: () => togglePanel() },
+  { code: 'KeyF', label: 'Alt+Shift+F', desc: 'online subtitle search', run: () => openSearch() },
+  { code: 'KeyV', label: 'Alt+Shift+V', desc: 'show/hide subtitles', run: () => toggleSubtitles() },
+  { code: 'KeyO', label: 'Alt+Shift+O', desc: 'open local file', run: () => openFilePicker() },
+  { code: 'ArrowLeft', label: 'Alt+Shift+←', desc: 'offset −0.1s', run: () => adjustOffset(-0.1) },
+  { code: 'ArrowRight', label: 'Alt+Shift+→', desc: 'offset +0.1s', run: () => adjustOffset(0.1) },
 ];
 
 const MAP: Record<string, () => void> = Object.fromEntries(

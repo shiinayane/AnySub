@@ -36,7 +36,8 @@ async function doLoad(): Promise<OctopusBundle> {
   if (!window.SubtitlesOctopus) {
     const mainText = await fetchText(CDN + 'subtitles-octopus.js');
     await injectScript(mainText);
-    if (!window.SubtitlesOctopus) throw new Error('SubtitlesOctopus 未定义(可能被 CSP 拦截)');
+    if (!window.SubtitlesOctopus)
+      throw new Error('SubtitlesOctopus is undefined (possibly blocked by CSP)');
   }
   // 2) worker: wrap the whole thing in a blob, and preset Module.locateFile so wasm loads from the CDN
   const workerText = await fetchText(CDN + 'subtitles-octopus-worker.js');
@@ -55,7 +56,7 @@ async function doLoad(): Promise<OctopusBundle> {
 
 function fetchText(url: string): Promise<string> {
   return fetch(url, { credentials: 'omit' }).then((r) => {
-    if (!r.ok) throw new Error(`加载失败 ${r.status}: ${url}`);
+    if (!r.ok) throw new Error(`Failed to load ${r.status}: ${url}`);
     return r.text();
   });
 }
@@ -77,7 +78,7 @@ function injectScript(text: string): Promise<void> {
     };
     s.onerror = () => {
       cleanup();
-      reject(new Error('主脚本注入失败(可能被 CSP 拦截)'));
+      reject(new Error('Main script injection failed (possibly blocked by CSP)'));
     };
     (document.head || document.documentElement).appendChild(s);
   });
