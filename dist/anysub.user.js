@@ -120,6 +120,7 @@
   .anysub-cuebox .anysub-voice{font-style:italic;color:#c3d8ff;}
   .anysub-cuebox .anysub-book{font-family:'Hiragino Mincho ProN','Yu Mincho','Songti SC','Source Han Serif SC','SimSun',serif;letter-spacing:.04em;}
   .anysub-cuebox .anysub-lyric{font-style:italic;}
+  .anysub-cuebox .anysub-cont{opacity:.4;font-size:.8em;}
   #anysub-fab{position:fixed;bottom:28%;z-index:2147483646;width:30px;height:30px;
     display:flex;align-items:center;justify-content:center;
     background:var(--as-accent2);color:#fff;border-radius:50%;
@@ -1728,15 +1729,32 @@
 		return "<ruby>" + base + "<rt>" + ruby + "</rt></ruby>";
 	}
 	function typedHtml(text, c) {
+		let out;
 		switch (c.type) {
-			case "sfx": return `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
-			case "voice": return `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
-			case "book": return `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
-			case "lyric": return `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
-			case "speaker": return `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
-			case "dialogue": return `<span class="anysub-spk">（${applyRuby(c.name ?? "", state.rubyParen)}）</span>${applyRuby(c.rest ?? "", state.rubyParen)}`;
-			default: return applyRuby(text, state.rubyParen);
+			case "sfx":
+				out = `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
+				break;
+			case "voice":
+				out = `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
+				break;
+			case "book":
+				out = `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
+				break;
+			case "lyric":
+				out = `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
+				break;
+			case "speaker":
+				out = `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
+				break;
+			case "dialogue":
+				out = `<span class="anysub-spk">（${applyRuby(c.name ?? "", state.rubyParen)}）</span>${applyRuby(c.rest ?? "", state.rubyParen)}`;
+				break;
+			default: out = applyRuby(text, state.rubyParen);
 		}
+		return dimTrailingCont(out);
+	}
+	function dimTrailingCont(html) {
+		return html.replace(/([→➡⇒])(\s*)$/u, "<span class=\"anysub-cont\">$1</span>$2");
 	}
 	function buildSegments(active) {
 		const segs = [];
@@ -1748,7 +1766,7 @@
 				st = c.state;
 				const html = state.enhance ? typedHtml(line, c) : applyRuby(line, state.rubyParen);
 				const nonspeech = state.enhance && c.type === "sfx";
-				const turnStart = c.type === "dialogue" || c.type === "speaker" || nonspeech;
+				const turnStart = c.type === "dialogue" || c.type === "speaker" || cur !== null && cur.nonspeech !== nonspeech;
 				if (cur === null || turnStart) {
 					cur = {
 						lines: [html],

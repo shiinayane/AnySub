@@ -1,7 +1,8 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { state } from '../src/state.js';
-import { typedHtml } from '../src/render/render-text.js';
+import { typedHtml, buildSegments } from '../src/render/render-text.js';
+import type { Cue } from '../src/types.js';
 
 // typedHtml reads state.rubyParen to decide whether parenthesized furigana is applied
 state.rubyParen = true;
@@ -50,4 +51,38 @@ test('rubyParen 关闭时括号式不注音（但类型 class 仍在）', () => 
   assert.match(h, /anysub-sfx/);
   assert.doesNotMatch(h, /<ruby>/);
   state.rubyParen = true; // restore, to avoid affecting subsequent test cases
+});
+
+// ── continuation arrow → is de-emphasized (not removed), only at line end ──
+test('行尾续接 → 被弱化包进 anysub-cont（不删除）', () => {
+  const h = typedHtml('それぞれを思って行動した結果→', { type: 'plain' });
+  assert.match(h, /<span class="anysub-cont">→<\/span>/);
+});
+
+test('正文中间的箭头不动（东京→大阪 不弱化）', () => {
+  const h = typedHtml('東京→大阪の話', { type: 'plain' });
+  assert.doesNotMatch(h, /anysub-cont/);
+  assert.match(h, /東京→大阪/);
+});
+
+// ── buildSegments: a spoken line after an SFX line stays with speech (bottom), not dragged to the top ──
+test('回归:同 cue 内 音效行 + 台词行 → 拆成两段,各归其位', () => {
+  state.enhance = true;
+  state.speakers = new Set();
+  const cues: Cue[] = [{ start: 0, end: 2, text: '（ファプタの遠吠え）<br>あっ！' }];
+  const segs = buildSegments(cues);
+  assert.equal(segs.length, 2, '应拆成 音效段 + 语音段');
+  assert.equal(segs[0].nonspeech, true); // SFX → 顶部锚点
+  assert.match(segs[0].html, /anysub-sfx/);
+  assert.equal(segs[1].nonspeech, false); // あっ！→ 语音,底部锚点
+  assert.match(segs[1].html, /あっ/);
+});
+
+test('普通多行台词仍并为一段（不误拆）', () => {
+  state.enhance = true;
+  state.speakers = new Set();
+  const cues: Cue[] = [{ start: 0, end: 2, text: 'これが<br>みんながみんな' }];
+  const segs = buildSegments(cues);
+  assert.equal(segs.length, 1);
+  assert.equal(segs[0].nonspeech, false);
 });

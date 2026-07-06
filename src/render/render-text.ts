@@ -11,27 +11,41 @@ import type { Cue, LineClass, Renderer } from '../types.js';
 // A single line + its classification → HTML (semantic typesetting + ruby). text/rest are already escape-safe HTML.
 // Exported for unit tests: every semantic type should correctly apply ruby (sfx once missed calling applyRuby, causing embedded ruby to be lost).
 export function typedHtml(text: string, c: Pick<LineClass, 'type' | 'name' | 'rest'>): string {
+  let out: string;
   switch (c.type) {
     case 'sfx':
-      return `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
+      out = `<span class="anysub-sfx">${applyRuby(text, state.rubyParen)}</span>`;
+      break;
     case 'voice':
-      return `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
+      out = `<span class="anysub-voice">${applyRuby(text, state.rubyParen)}</span>`;
+      break;
     case 'book':
-      return `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
+      out = `<span class="anysub-book">${applyRuby(text, state.rubyParen)}</span>`;
+      break;
     case 'lyric':
-      return `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
+      out = `<span class="anysub-lyric">${applyRuby(text, state.rubyParen)}</span>`;
+      break;
     case 'speaker':
-      return `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
+      out = `<span class="anysub-spk">${applyRuby(text, state.rubyParen)}</span>`;
+      break;
     case 'dialogue':
-      return `<span class="anysub-spk">（${applyRuby(c.name ?? '', state.rubyParen)}）</span>${applyRuby(c.rest ?? '', state.rubyParen)}`;
+      out = `<span class="anysub-spk">（${applyRuby(c.name ?? '', state.rubyParen)}）</span>${applyRuby(c.rest ?? '', state.rubyParen)}`;
+      break;
     default:
-      return applyRuby(text, state.rubyParen);
+      out = applyRuby(text, state.rubyParen);
   }
+  return dimTrailingCont(out);
+}
+
+// De-emphasize a line-final continuation arrow (→ / ➡ / ⇒) — a Japanese-CC marker meaning "this line continues
+// into the next caption". Only the trailing one is touched; arrows inside the content (e.g. 東京→大阪) are left alone.
+function dimTrailingCont(html: string): string {
+  return html.replace(/([→➡⇒])(\s*)$/u, '<span class="anysub-cont">$1</span>$2');
 }
 
 // Split the currently active cues into "segments". A new segment starts at: the first line of each cue, a line beginning with a speaker name, or (when semantics are enabled) a standalone SFX line.
 // Each segment carries a nonspeech flag (standalone （…）SFX), so that when splitting it can be moved to the opposite side, out of the way of the dialogue.
-function buildSegments(active: Cue[]): Array<{ html: string; nonspeech: boolean }> {
+export function buildSegments(active: Cue[]): Array<{ html: string; nonspeech: boolean }> {
   const segs: Array<{ lines: string[]; nonspeech: boolean }> = [];
   for (const cue of active) {
     let st = cue._spanIn || INIT_SPAN;
@@ -41,7 +55,13 @@ function buildSegments(active: Cue[]): Array<{ html: string; nonspeech: boolean 
       st = c.state;
       const html = state.enhance ? typedHtml(line, c) : applyRuby(line, state.rubyParen);
       const nonspeech = state.enhance && c.type === 'sfx'; // only true SFX go to the top; written text is mostly spoken aloud → keep it at the bottom
-      const turnStart = c.type === 'dialogue' || c.type === 'speaker' || nonspeech;
+      // Open a new segment on a new turn (dialogue/speaker) OR when the speech/non-speech class flips —
+      // otherwise a spoken line right after an SFX line (e.g. （SFX） then あっ！) gets absorbed into the SFX
+      // segment and dragged to the top anchor instead of staying with speech at the bottom.
+      const turnStart =
+        c.type === 'dialogue' ||
+        c.type === 'speaker' ||
+        (cur !== null && cur.nonspeech !== nonspeech);
       if (cur === null || turnStart) {
         cur = { lines: [html], nonspeech };
         segs.push(cur);
