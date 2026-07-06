@@ -4,7 +4,7 @@
 // @name:zh-CN         AnySub · 日语沉浸式字幕挂载
 // @name:ja            AnySub · どんな動画にも字幕を(日本語学習向け)
 // @namespace          https://github.com/shiinayane/anysub
-// @version            0.16.0
+// @version            0.17.0
 // @author             shiinayane
 // @description        Turn any video into a Japanese-immersion tool: accurate per-kanji furigana, one-click Jimaku subtitles with auto next-episode, and semantic CC formatting (speaker / SFX / inner-voice). Also loads any local SRT/VTT/ASS with full style control and fullscreen following. UI in English / 中文 / 日本語.
 // @description:en     Turn any video into a Japanese-immersion tool: accurate per-kanji furigana, one-click Jimaku subtitles with auto next-episode, and semantic CC formatting (speaker / SFX / inner-voice). Also loads any local SRT/VTT/ASS with full style control and fullscreen following. UI in English / 中文 / 日本語.

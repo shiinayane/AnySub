@@ -1,7 +1,7 @@
 {
   "name": "anysub",
   "private": true,
-  "version": "0.16.0",
+  "version": "0.17.0",
   "type": "module",
   "license": "MIT",
   "description": "Japanese-immersion subtitles for any HTML5 video: per-kanji furigana, one-click Jimaku subtitles with auto next-episode, semantic CC formatting. Userscript.",
