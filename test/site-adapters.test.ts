@@ -1,5 +1,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { parsePrimeEpisode, cleanPrimeTitle } from '../src/sites/adapters/prime.js';
+import { parseUnextEpisode } from '../src/sites/adapters/unext.js';
 
 // 站点适配器读全局 location/document;node 里默认没有,逐用例注入桩再导入模块。
 // els: 选择器片段 → 元素文本(模拟 Prime 的 atvwebplayersdk-* 元素);ogTitle 走 meta;
@@ -55,8 +57,7 @@ function stub({ hostname, pathname, href, title, ogTitle, els, boxes }: StubOpts
   } as unknown as Document;
 }
 
-const { getSiteAdapter, detectShow, parsePrimeEpisode, cleanPrimeTitle, parseUnextEpisode } =
-  await import('../src/sites/site-adapters.js');
+const { getSiteAdapter, detectShow } = await import('../src/sites/site-adapters.js');
 
 const DMM_TITLE =
   'メイドインアビス　烈日の黄金郷 第2話 還らずの都 (アニメ/2022年)｜アニメ・ドラマの動画配信ならDMM TV';

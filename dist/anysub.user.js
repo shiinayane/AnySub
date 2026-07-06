@@ -1288,7 +1288,7 @@
 			return "";
 		}
 	}
-	var DMM = {
+	var dmm = {
 		name: "dmm",
 		match: () => /(^|\.)tv\.dmm\.(com|co\.jp)$/.test(location.hostname),
 		isTarget: () => location.pathname.includes("/vod/playback/"),
@@ -1310,7 +1310,7 @@
 	function cleanPrimeTitle(raw) {
 		return String(raw || "").split(/[|｜]/)[0].replace(/^\s*Amazon\.[a-z.]+:\s*/i, "").replace(/\s*(を観る|を視聴|を見る)\s*$/, "").trim();
 	}
-	var PRIME = {
+	var prime = {
 		name: "prime",
 		match: () => /(^|\.)(primevideo\.com|amazon\.[a-z.]+)$/.test(location.hostname),
 		isTarget: () => !!document.querySelector("[class*=\"atvwebplayersdk-\"]"),
@@ -1335,8 +1335,8 @@
 		return null;
 	}
 	var ADAPTERS = [
-		DMM,
-		PRIME,
+		dmm,
+		prime,
 		{
 			name: "unext",
 			match: () => /(^|\.)unext\.jp$/.test(location.hostname),
