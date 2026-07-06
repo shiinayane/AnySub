@@ -109,3 +109,13 @@ test('普通多行台词仍并为一段（不误拆）', () => {
   assert.equal(segs.length, 1);
   assert.equal(segs[0].nonspeech, false);
 });
+
+test('回归:双层括号 （（…）） → 底部语音区(不再置顶),voice 样式', () => {
+  state.enhance = true;
+  state.speakers = new Set();
+  const cues: Cue[] = [{ start: 0, end: 2, text: '（（ファプタ：あ！））' }];
+  const segs = buildSegments(cues);
+  assert.equal(segs.length, 1);
+  assert.equal(segs[0].nonspeech, false); // voice → 底部,而非 sfx 顶部
+  assert.match(segs[0].html, /anysub-voice/);
+});

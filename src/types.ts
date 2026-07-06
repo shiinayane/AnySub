@@ -3,9 +3,9 @@
 
 export type Locale = 'en' | 'zh' | 'ja';
 
-// Span state: cross-line, cross-cue tracking of voice-over 〈…〉 / written 《…》 / lyrics ♪
+// Span state: cross-line, cross-cue tracking of voice-over 〈…〉 / written 《…》 / double-paren voice （（…）） / lyrics ♪
 export interface SpanState {
-  span: 'none' | 'voice' | 'book';
+  span: 'none' | 'voice' | 'book' | 'dparen';
   lyric: boolean;
 }
 

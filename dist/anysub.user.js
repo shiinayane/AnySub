@@ -1448,6 +1448,8 @@
 	}
 	var RE_LEAD = new RegExp("^[（(]((?:[^（）()]|[（(][^（）()]*[）)]){1,20})[）)]\\s*(\\S[\\s\\S]*)$");
 	var RE_ALONE = new RegExp("^[（(]((?:[^（）()]|[（(][^（）()]*[）)]){1,20})[）)]$");
+	var OPEN2 = /（（|\(\(/;
+	var CLOSE2 = /））|\)\)/;
 	var count = (s, re) => {
 		const m = s.match(re);
 		return m ? m.length : 0;
@@ -1500,6 +1502,20 @@
 			if (count(t, /》/g) > count(t, /《/g)) next.span = "none";
 			return {
 				type: "book",
+				state: next
+			};
+		}
+		if (st.span === "dparen") {
+			if (CLOSE2.test(t)) next.span = "none";
+			return {
+				type: "voice",
+				state: next
+			};
+		}
+		if (OPEN2.test(t)) {
+			if (!CLOSE2.test(t)) next.span = "dparen";
+			return {
+				type: "voice",
 				state: next
 			};
 		}
